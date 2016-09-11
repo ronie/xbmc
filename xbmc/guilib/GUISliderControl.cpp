@@ -498,6 +498,11 @@ void CGUISliderControl::SetFloatRange(float fStart, float fEnd)
   }
 }
 
+void CGUISliderControl::SetActive()
+{
+  m_active = true;
+}
+
 void CGUISliderControl::FreeResources(bool immediately)
 {
   CGUIControl::FreeResources(immediately);

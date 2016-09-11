@@ -69,6 +69,7 @@ public:
   virtual void SetInvalid();
   virtual void SetRange(int iStart, int iEnd);
   virtual void SetFloatRange(float fStart, float fEnd);
+  virtual void SetActive();
   virtual bool OnMessage(CGUIMessage& message);
   bool ProcessSelector(CGUITexture &nib, unsigned int currentTime, float fScale, RangeSelector selector);
   void SetRangeSelection(bool rangeSelection);

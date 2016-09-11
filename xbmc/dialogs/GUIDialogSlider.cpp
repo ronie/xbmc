@@ -42,6 +42,11 @@ CGUIDialogSlider::~CGUIDialogSlider(void)
 
 bool CGUIDialogSlider::OnAction(const CAction &action)
 {
+  if (action.GetID() == ACTION_SELECT_ITEM)
+  {
+    Close();
+    return true;
+  }
   return CGUIDialog::OnAction(action);
 }
 
@@ -76,6 +81,7 @@ void CGUIDialogSlider::SetSlider(const std::string &label, float value, float mi
   m_callbackData = callbackData;
   if (slider)
   {
+    slider->SetActive();
     slider->SetType(SLIDER_CONTROL_TYPE_FLOAT);
     slider->SetFloatRange(min, max);
     slider->SetFloatInterval(delta);
