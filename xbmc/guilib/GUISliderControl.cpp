@@ -248,6 +248,11 @@ bool CGUISliderControl::OnAction(const CAction &action)
   return CGUIControl::OnAction(action);
 }
 
+void CGUISliderControl::OnUnFocus()
+{
+  m_active = false;
+}
+
 void CGUISliderControl::Move(int iNumSteps)
 {
   bool rangeSwap = false;

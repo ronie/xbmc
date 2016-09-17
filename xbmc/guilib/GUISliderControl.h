@@ -63,6 +63,7 @@ public:
   virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual void Render();
   virtual bool OnAction(const CAction &action);
+  virtual void OnUnFocus() override;
   virtual void AllocResources();
   virtual void FreeResources(bool immediately = false);
   virtual void DynamicResourceAlloc(bool bOnOff);
