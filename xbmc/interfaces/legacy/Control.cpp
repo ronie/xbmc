@@ -10,7 +10,7 @@
 #include "LanguageHook.h"
 #include "AddonUtils.h"
 #include "ServiceBroker.h"
-
+#include "WindowException.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUILabel.h"
 #include "guilib/GUIFontManager.h"
@@ -27,10 +27,9 @@
 #include "guilib/GUIEditControl.h"
 #include "guilib/GUIControlFactory.h"
 #include "listproviders/StaticProvider.h"
-
-#include "utils/XBMCTinyXML.h"
 #include "utils/StringUtils.h"
-#include "WindowException.h"
+#include "utils/StringValidation.h"
+#include "utils/XBMCTinyXML.h"
 
 using namespace KODI;
 
@@ -1068,6 +1067,38 @@ namespace XBMCAddon
         XBMCAddonUtils::GuiLock(languageHook, false);
         static_cast<CGUIEditControl*>(pGUIControl)->SetInputType(static_cast<CGUIEditControl::INPUT_TYPE>(type), CVariant{heading});
       }
+    }
+
+    void ControlEdit::setInputValidation(int rule)
+    {
+      if (pGUIControl)
+      {
+        XBMCAddonUtils::GuiLock(languageHook, false);
+        StringValidation::Validator validator = nullptr;
+
+        if (rule == Validator::NonEmpty)
+          validator = StringValidation::NonEmpty;
+        else if (rule == Validator::IsInteger)
+          validator = StringValidation::IsInteger;
+        else if (rule == Validator::IsPositiveInteger)
+          validator = StringValidation::IsPositiveInteger;
+        else if (rule == Validator::IsTime)
+          validator = StringValidation::IsTime;
+
+        static_cast<CGUIEditControl*>(pGUIControl)->SetInputValidation(validator);
+      }
+    }
+
+    bool ControlEdit::hasInvalidInput()
+    {
+      bool isInvalid = false;
+
+      if (pGUIControl)
+      {
+        XBMCAddonUtils::GuiLock(languageHook, false);
+        isInvalid = static_cast<CGUIEditControl*>(pGUIControl)->HasInvalidInput();
+      }
+      return isInvalid;
     }
 
     // ============================================================

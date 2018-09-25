@@ -1098,6 +1098,74 @@ namespace XBMCAddon
 #else
       virtual void setType(int type, const String& heading);
 #endif
+
+      // setInputValidation() Method
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      /// \ingroup python_xbmcgui_control_edit
+      /// @brief \python_func{ setInputValidation(rule) }
+      ///-----------------------------------------------------------------------
+      /// Sets the input validation rule for this edit control.
+      ///
+      ///
+      /// @param rule               [int] - validation rule.
+      /// | Type                                | Description                            |
+      /// |------------------------------------:|:---------------------------------------|
+      /// | xbmcgui.VALIDATOR_NonEmpty          | Value can not be empty
+      /// | xbmcgui.VALIDATOR_IsInteger         | Value must be an integer
+      /// | xbmcgui.VALIDATOR_IsPositiveInteger | Value must be a positive integer
+      /// | xbmcgui.VALIDATOR_IsTime            | Value must be a time format (HH:MM:SS)
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      /// @python_v18 New function added.
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// self.edit.setInputValidation(2)
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      setInputValidation(...);
+#else
+      enum Validator
+      {
+        NonEmpty,
+        IsInteger,
+        IsPositiveInteger,
+        IsTime
+      };
+      SWIG_CONSTANT2(int, VALIDATOR_NonEmpty, ControlEdit::Validator::NonEmpty);
+      SWIG_CONSTANT2(int, VALIDATOR_IsInteger, ControlEdit::Validator::IsInteger);
+      SWIG_CONSTANT2(int, VALIDATOR_IsPositiveInteger, ControlEdit::Validator::IsPositiveInteger);
+      SWIG_CONSTANT2(int, VALIDATOR_IsTime, ControlEdit::Validator::IsTime);
+      virtual void setInputValidation(int rule);
+#endif
+
+      // hasInvalidInput() Method
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      /// \ingroup python_xbmcgui_control_edit
+      /// @brief \python_func{ hasInvalidInput() }
+      ///-----------------------------------------------------------------------
+      /// Returns the edit button's value status.
+      ///
+      /// @return                       True if the entered value is invalid
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      /// @python_v18 New function added.
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// self.edit.hasInvalidInput()
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      hasInvalidInput();
+#else
+      virtual bool hasInvalidInput();
+#endif
     };
     /// @}
 
