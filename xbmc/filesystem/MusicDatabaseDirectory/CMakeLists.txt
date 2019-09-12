@@ -1,6 +1,4 @@
-set(SOURCES DirectoryNodeAlbumCompilations.cpp
-            DirectoryNodeAlbumCompilationsSongs.cpp
-            DirectoryNodeAlbum.cpp
+set(SOURCES DirectoryNodeAlbum.cpp
             DirectoryNodeAlbumRecentlyAdded.cpp
             DirectoryNodeAlbumRecentlyAddedSong.cpp
             DirectoryNodeAlbumRecentlyPlayed.cpp
@@ -22,8 +20,6 @@ set(SOURCES DirectoryNodeAlbumCompilations.cpp
 
 set(HEADERS DirectoryNode.h
             DirectoryNodeAlbum.h
-            DirectoryNodeAlbumCompilations.h
-            DirectoryNodeAlbumCompilationsSongs.h
             DirectoryNodeAlbumRecentlyAdded.h
             DirectoryNodeAlbumRecentlyAddedSong.h
             DirectoryNodeAlbumRecentlyPlayed.h

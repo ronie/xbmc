@@ -63,8 +63,9 @@ static Translator s_musicDbTranslator[] = {
   { "musicdb://5",    "musicdb://top100" },
   { "musicdb://6",    "musicdb://recentlyaddedalbums" },
   { "musicdb://7",    "musicdb://recentlyplayedalbums" },
-  { "musicdb://8",    "musicdb://compilations" },
-  { "musicdb://9",    "musicdb://years" }
+  { "musicdb://8",    "musicdb://albums/?compilation=true" },
+  { "musicdb://9",    "musicdb://years" },
+  { "musicdb://compilations/", "musicdb://albums/?compilation=true" }
 };
 
 #define MusicDbTranslatorSize sizeof(s_musicDbTranslator) / sizeof(Translator)

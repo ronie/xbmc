@@ -159,7 +159,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
       SetSortOrder(viewState->m_sortDescription.sortOrder);
     }
     break;
-  case NODE_TYPE_ALBUM_COMPILATIONS:
   case NODE_TYPE_ALBUM:
   case NODE_TYPE_YEAR_ALBUM:
     {
@@ -251,7 +250,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
       SetSortOrder(viewState->m_sortDescription.sortOrder);
     }
     break;
-  case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
   case NODE_TYPE_ALBUM_TOP100_SONGS:
   case NODE_TYPE_YEAR_SONG:
   case NODE_TYPE_SONG:
@@ -309,13 +307,11 @@ void CGUIViewStateMusicDatabase::SaveViewState()
     case NODE_TYPE_ARTIST:
       SaveViewToDb(m_items.GetPath(), WINDOW_MUSIC_NAV, CViewStateSettings::GetInstance().Get("musicnavartists"));
       break;
-    case NODE_TYPE_ALBUM_COMPILATIONS:
     case NODE_TYPE_ALBUM:
     case NODE_TYPE_YEAR_ALBUM:
       SaveViewToDb(m_items.GetPath(), WINDOW_MUSIC_NAV, CViewStateSettings::GetInstance().Get("musicnavalbums"));
       break;
     case NODE_TYPE_SINGLES:
-    case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
     case NODE_TYPE_SONG:
     case NODE_TYPE_YEAR_SONG:
       SaveViewToDb(m_items.GetPath(), WINDOW_MUSIC_NAV, CViewStateSettings::GetInstance().Get("musicnavsongs"));

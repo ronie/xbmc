@@ -9,8 +9,6 @@
 #include "DirectoryNode.h"
 
 #include "DirectoryNodeAlbum.h"
-#include "DirectoryNodeAlbumCompilations.h"
-#include "DirectoryNodeAlbumCompilationsSongs.h"
 #include "DirectoryNodeAlbumRecentlyAdded.h"
 #include "DirectoryNodeAlbumRecentlyAddedSong.h"
 #include "DirectoryNodeAlbumRecentlyPlayed.h"
@@ -126,10 +124,6 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& st
     return new CDirectoryNodeAlbumRecentlyPlayed(strName, pParent);
   case NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS:
     return new CDirectoryNodeAlbumRecentlyPlayedSong(strName, pParent);
-  case NODE_TYPE_ALBUM_COMPILATIONS:
-    return new CDirectoryNodeAlbumCompilations(strName, pParent);
-  case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
-    return new CDirectoryNodeAlbumCompilationsSongs(strName, pParent);
   case NODE_TYPE_YEAR_ALBUM:
     return new CDirectoryNodeYearAlbum(strName, pParent);
   case NODE_TYPE_YEAR_SONG:

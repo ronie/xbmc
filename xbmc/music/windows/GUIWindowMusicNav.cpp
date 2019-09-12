@@ -413,7 +413,6 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
         node == NODE_TYPE_ALBUM_RECENTLY_ADDED ||
         node == NODE_TYPE_ALBUM_RECENTLY_PLAYED ||
         node == NODE_TYPE_ALBUM_TOP100 ||
-        node == NODE_TYPE_ALBUM_COMPILATIONS ||
         node == NODE_TYPE_YEAR_ALBUM)
       items.SetContent("albums");
     else if (node == NODE_TYPE_ARTIST)
@@ -423,7 +422,6 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
              node == NODE_TYPE_SINGLES ||
              node == NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS ||
              node == NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS ||
-             node == NODE_TYPE_ALBUM_COMPILATIONS_SONGS ||
              node == NODE_TYPE_ALBUM_TOP100_SONGS ||
              node == NODE_TYPE_YEAR_SONG)
       items.SetContent("songs");
