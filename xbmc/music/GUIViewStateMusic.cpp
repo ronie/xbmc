@@ -108,16 +108,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
       SetSortOrder(SortOrderNone);
     }
     break;
-  case NODE_TYPE_TOP100:
-    {
-      AddSortMethod(SortByNone, 551, LABEL_MASKS("%F", "", "%L", ""));  // Filename, empty | Foldername, empty
-      SetSortMethod(SortByNone);
-
-      SetViewAsControl(DEFAULT_VIEW_LIST);
-
-      SetSortOrder(SortOrderNone);
-    }
-    break;
   case NODE_TYPE_GENRE:
     {
       AddSortMethod(SortByGenre, 515, LABEL_MASKS("%F", "", "%G", ""));  // Filename, empty | Genre, empty
@@ -221,15 +211,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
       SetViewAsControl(CViewStateSettings::GetInstance().Get("musicnavalbums")->m_viewMode);
     }
     break;
-  case NODE_TYPE_ALBUM_TOP100:
-    {
-      AddSortMethod(SortByNone, 551, LABEL_MASKS("%F", "", strAlbum, "%V"));  // Filename, empty | Userdefined, Play count
-      SetSortMethod(SortByNone);
-
-      SetViewAsControl(DEFAULT_VIEW_LIST);
-      SetSortOrder(SortOrderNone);
-    }
-    break;
   case NODE_TYPE_SINGLES:
     {
       AddSortMethod(SortByArtist, sortAttribute, 557, LABEL_MASKS("%A - %T", "%D"));  // Artist, Title, Duration| empty, empty
@@ -250,7 +231,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
       SetSortOrder(viewState->m_sortDescription.sortOrder);
     }
     break;
-  case NODE_TYPE_ALBUM_TOP100_SONGS:
   case NODE_TYPE_YEAR_SONG:
   case NODE_TYPE_SONG:
     {
@@ -278,16 +258,6 @@ CGUIViewStateMusicDatabase::CGUIViewStateMusicDatabase(const CFileItemList& item
 
       SetViewAsControl(viewState->m_viewMode);
       SetSortOrder(viewState->m_sortDescription.sortOrder);
-    }
-    break;
-  case NODE_TYPE_SONG_TOP100:
-    {
-      AddSortMethod(SortByNone, 576, LABEL_MASKS("%T - %A", "%V"));
-      SetSortMethod(SortByPlaycount);
-
-      SetViewAsControl(CViewStateSettings::GetInstance().Get("musicnavsongs")->m_viewMode);
-
-      SetSortOrder(SortOrderNone);
     }
     break;
   default:

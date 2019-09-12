@@ -58,14 +58,17 @@ static Translator s_musicDbTranslator[] = {
   { "musicdb://2",    "musicdb://artists" },
   { "musicdb://3",    "musicdb://albums" },
   { "musicdb://4",    "musicdb://songs" },
-  { "musicdb://5/1",  "musicdb://top100/albums" },
-  { "musicdb://5/2",  "musicdb://top100/songs" },
-  { "musicdb://5",    "musicdb://top100" },
+  { "musicdb://5/1",  "musicdb://albums" }, // Top 100 albums now accessed using filter rules
+  { "musicdb://5/2",  "musicdb://songs" }, // Top 100 songs now accessed using filter rules
+  { "musicdb://5",    "musicdb://albums" }, // Top 100 node submenu 
   { "musicdb://6",    "musicdb://recentlyaddedalbums" },
   { "musicdb://7",    "musicdb://recentlyplayedalbums" },
   { "musicdb://8",    "musicdb://albums/?compilation=true" },
   { "musicdb://9",    "musicdb://years" },
-  { "musicdb://compilations/", "musicdb://albums/?compilation=true" }
+  { "musicdb://compilations/", "musicdb://albums/?compilation=true" },
+  { "musicdb://top100/songs", "musicdb://songs" },
+  { "musicdb://top100/albums", "musicdb://albums" },
+  { "musicdb://top100/", "musicdb://albums" }
 };
 
 #define MusicDbTranslatorSize sizeof(s_musicDbTranslator) / sizeof(Translator)

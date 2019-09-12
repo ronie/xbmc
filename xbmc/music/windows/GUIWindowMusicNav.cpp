@@ -412,17 +412,14 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
     if (node == NODE_TYPE_ALBUM ||
         node == NODE_TYPE_ALBUM_RECENTLY_ADDED ||
         node == NODE_TYPE_ALBUM_RECENTLY_PLAYED ||
-        node == NODE_TYPE_ALBUM_TOP100 ||
         node == NODE_TYPE_YEAR_ALBUM)
       items.SetContent("albums");
     else if (node == NODE_TYPE_ARTIST)
       items.SetContent("artists");
     else if (node == NODE_TYPE_SONG ||
-             node == NODE_TYPE_SONG_TOP100 ||
              node == NODE_TYPE_SINGLES ||
              node == NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS ||
              node == NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS ||
-             node == NODE_TYPE_ALBUM_TOP100_SONGS ||
              node == NODE_TYPE_YEAR_SONG)
       items.SetContent("songs");
     else if (node == NODE_TYPE_GENRE)
@@ -594,8 +591,7 @@ void CGUIWindowMusicNav::GetContextButtons(int itemNumber, CContextButtons &butt
           NODE_TYPE nodetype = dir.GetDirectoryType(item->GetPath());
           if (!inPlaylists &&
              (nodetype == NODE_TYPE_ROOT ||
-              nodetype == NODE_TYPE_OVERVIEW ||
-              nodetype == NODE_TYPE_TOP100))
+              nodetype == NODE_TYPE_OVERVIEW))
           {
             const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
             if (!item->IsPath(settings->GetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW)))
@@ -900,18 +896,10 @@ std::string CGUIWindowMusicNav::GetStartFolder(const std::string &dir)
     return "musicdb://singles/";
   else if (lower == "songs")
     return "musicdb://songs/";
-  else if (lower == "top100")
-    return "musicdb://top100/";
-  else if (lower == "top100songs")
-    return "musicdb://top100/songs/";
-  else if (lower == "top100albums")
-    return "musicdb://top100/albums/";
   else if (lower == "recentlyaddedalbums")
     return "musicdb://recentlyaddedalbums/";
   else if (lower == "recentlyplayedalbums")
    return "musicdb://recentlyplayedalbums/";
-  else if (lower == "compilations")
-    return "musicdb://compilations/";
   else if (lower == "years")
     return "musicdb://years/";
   else if (lower == "files")

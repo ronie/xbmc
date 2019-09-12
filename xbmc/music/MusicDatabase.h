@@ -398,13 +398,6 @@ public:
   bool GetIsAlbumArtist(int idArtist, CFileItem* item);
 
   /////////////////////////////////////////////////
-  // Top 100
-  /////////////////////////////////////////////////
-  bool GetTop100(const std::string& strBaseDir, CFileItemList& items);
-  bool GetTop100Albums(VECALBUMS& albums);
-  bool GetTop100AlbumSongs(const std::string& strBaseDir, CFileItemList& item);
-
-  /////////////////////////////////////////////////
   // Recently added
   /////////////////////////////////////////////////
   bool GetRecentlyAddedAlbums(VECALBUMS& albums, unsigned int limit=0);

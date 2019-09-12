@@ -1263,7 +1263,8 @@ msgctxt "#270"
 msgid "Sort by: Album"
 msgstr ""
 
-#: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeOverview.cpp
+#. Node title for 100 most played songs and albums
+#: system/library/music/top100/index.xml
 msgctxt "#271"
 msgid "Top 100"
 msgstr ""
@@ -4066,6 +4067,8 @@ msgctxt "#1049"
 msgid "Script settings"
 msgstr ""
 
+#. Node title for singles (a song released separately)
+#: system/library/music/singles.xml
 #: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeOverview.cpp
 msgctxt "#1050"
 msgid "Singles"
@@ -5266,12 +5269,14 @@ msgctxt "#10503"
 msgid "Music playlist editor"
 msgstr ""
 
-#: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeTop100.cpp
+#. Node title for 100 most played songs
+#: system/library/music/top100/top100songs.xml
 msgctxt "#10504"
 msgid "Top 100 songs"
 msgstr ""
 
-#: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeTop100.cpp
+#. Node title for 100 most played albums
+#: system/library/music/top100/top100albums.xml
 msgctxt "#10505"
 msgid "Top 100 albums"
 msgstr ""
