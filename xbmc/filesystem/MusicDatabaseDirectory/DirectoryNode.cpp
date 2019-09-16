@@ -9,22 +9,16 @@
 #include "DirectoryNode.h"
 
 #include "DirectoryNodeAlbum.h"
-#include "DirectoryNodeAlbumCompilations.h"
-#include "DirectoryNodeAlbumCompilationsSongs.h"
 #include "DirectoryNodeAlbumRecentlyAdded.h"
 #include "DirectoryNodeAlbumRecentlyAddedSong.h"
 #include "DirectoryNodeAlbumRecentlyPlayed.h"
 #include "DirectoryNodeAlbumRecentlyPlayedSong.h"
-#include "DirectoryNodeAlbumTop100.h"
-#include "DirectoryNodeAlbumTop100Song.h"
 #include "DirectoryNodeArtist.h"
 #include "DirectoryNodeGrouped.h"
 #include "DirectoryNodeOverview.h"
 #include "DirectoryNodeRoot.h"
 #include "DirectoryNodeSingles.h"
 #include "DirectoryNodeSong.h"
-#include "DirectoryNodeSongTop100.h"
-#include "DirectoryNodeTop100.h"
 #include "DirectoryNodeYearAlbum.h"
 #include "DirectoryNodeYearSong.h"
 #include "FileItem.h"
@@ -110,14 +104,6 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& st
     return new CDirectoryNodeSong(strName, pParent);
   case NODE_TYPE_SINGLES:
     return new CDirectoryNodeSingles(strName, pParent);
-  case NODE_TYPE_TOP100:
-    return new CDirectoryNodeTop100(strName, pParent);
-  case NODE_TYPE_ALBUM_TOP100:
-    return new CDirectoryNodeAlbumTop100(strName, pParent);
-  case NODE_TYPE_ALBUM_TOP100_SONGS:
-    return new CDirectoryNodeAlbumTop100Song(strName, pParent);
-  case NODE_TYPE_SONG_TOP100:
-    return new CDirectoryNodeSongTop100(strName, pParent);
   case NODE_TYPE_ALBUM_RECENTLY_ADDED:
     return new CDirectoryNodeAlbumRecentlyAdded(strName, pParent);
   case NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS:
@@ -126,10 +112,6 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& st
     return new CDirectoryNodeAlbumRecentlyPlayed(strName, pParent);
   case NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS:
     return new CDirectoryNodeAlbumRecentlyPlayedSong(strName, pParent);
-  case NODE_TYPE_ALBUM_COMPILATIONS:
-    return new CDirectoryNodeAlbumCompilations(strName, pParent);
-  case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
-    return new CDirectoryNodeAlbumCompilationsSongs(strName, pParent);
   case NODE_TYPE_YEAR_ALBUM:
     return new CDirectoryNodeYearAlbum(strName, pParent);
   case NODE_TYPE_YEAR_SONG:

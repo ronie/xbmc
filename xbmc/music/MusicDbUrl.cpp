@@ -41,18 +41,13 @@ bool CMusicDbUrl::parse()
     case NODE_TYPE_ALBUM:
     case NODE_TYPE_ALBUM_RECENTLY_ADDED:
     case NODE_TYPE_ALBUM_RECENTLY_PLAYED:
-    case NODE_TYPE_ALBUM_TOP100:
-    case NODE_TYPE_ALBUM_COMPILATIONS:
     case NODE_TYPE_YEAR_ALBUM:
       m_type = "albums";
       break;
 
     case NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS:
     case NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS:
-    case NODE_TYPE_ALBUM_TOP100_SONGS:
-    case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
     case NODE_TYPE_SONG:
-    case NODE_TYPE_SONG_TOP100:
     case NODE_TYPE_YEAR_SONG:
     case NODE_TYPE_SINGLES:
       m_type = "songs";
@@ -71,7 +66,6 @@ bool CMusicDbUrl::parse()
     case NODE_TYPE_ALBUM:
     case NODE_TYPE_ALBUM_RECENTLY_ADDED:
     case NODE_TYPE_ALBUM_RECENTLY_PLAYED:
-    case NODE_TYPE_ALBUM_TOP100:
     case NODE_TYPE_YEAR_ALBUM:
       m_type = "albums";
       break;
@@ -79,9 +73,6 @@ bool CMusicDbUrl::parse()
     case NODE_TYPE_SONG:
     case NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS:
     case NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS:
-    case NODE_TYPE_ALBUM_TOP100_SONGS:
-    case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
-    case NODE_TYPE_SONG_TOP100:
     case NODE_TYPE_YEAR_SONG:
     case NODE_TYPE_SINGLES:
       m_type = "songs";
@@ -101,14 +92,6 @@ bool CMusicDbUrl::parse()
 
     case NODE_TYPE_YEAR:
       m_type = "years";
-      break;
-
-    case NODE_TYPE_ALBUM_COMPILATIONS:
-      m_type = "albums";
-      break;
-
-    case NODE_TYPE_TOP100:
-      m_type = "top100";
       break;
 
     case NODE_TYPE_ROOT:

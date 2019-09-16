@@ -49,7 +49,8 @@ bool CMusicDatabaseDirectory::GetDirectory(const CURL& url, CFileItemList &items
         item->SetArt("icon", strImage);
     }
   }
-  items.SetLabel(pNode->GetLocalizedName());
+  if (items.GetLabel().empty())
+    items.SetLabel(pNode->GetLocalizedName());
 
   return bResult;
 }
@@ -159,9 +160,6 @@ bool CMusicDatabaseDirectory::GetLabel(const std::string& strDirectory, std::str
   {
     switch (pNode->GetChildType())
     {
-    case NODE_TYPE_TOP100:
-      strLabel = g_localizeStrings.Get(271); // Top 100
-      break;
     case NODE_TYPE_GENRE:
       strLabel = g_localizeStrings.Get(135); // Genres
       break;
@@ -185,27 +183,16 @@ bool CMusicDatabaseDirectory::GetLabel(const std::string& strDirectory, std::str
     case NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS:
       strLabel = g_localizeStrings.Get(517); // Recently Played Albums
       break;
-    case NODE_TYPE_ALBUM_TOP100:
-    case NODE_TYPE_ALBUM_TOP100_SONGS:
-      strLabel = g_localizeStrings.Get(10505); // Top 100 Albums
-      break;
     case NODE_TYPE_SINGLES:
       strLabel = g_localizeStrings.Get(1050); // Singles
       break;
     case NODE_TYPE_SONG:
       strLabel = g_localizeStrings.Get(134); // Songs
       break;
-    case NODE_TYPE_SONG_TOP100:
-      strLabel = g_localizeStrings.Get(10504); // Top 100 Songs
-      break;
     case NODE_TYPE_YEAR:
     case NODE_TYPE_YEAR_ALBUM:
     case NODE_TYPE_YEAR_SONG:
       strLabel = g_localizeStrings.Get(652);  // Years
-      break;
-    case NODE_TYPE_ALBUM_COMPILATIONS:
-    case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
-      strLabel = g_localizeStrings.Get(521);
       break;
     case NODE_TYPE_OVERVIEW:
       strLabel = "";
@@ -225,9 +212,6 @@ bool CMusicDatabaseDirectory::ContainsSongs(const std::string &path)
   if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_SINGLES) return true;
   if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS) return true;
   if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS) return true;
-  if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_ALBUM_COMPILATIONS_SONGS) return true;
-  if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_ALBUM_TOP100_SONGS) return true;
-  if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_SONG_TOP100) return true;
   if (type == MUSICDATABASEDIRECTORY::NODE_TYPE_YEAR_SONG) return true;
   return false;
 }
@@ -267,8 +251,6 @@ std::string CMusicDatabaseDirectory::GetIcon(const std::string &strDirectory)
     return "DefaultMusicSources.png";
   case NODE_TYPE_ROLE:
     return "DefaultMusicRoles.png";
-  case NODE_TYPE_TOP100:
-      return "DefaultMusicTop100.png";
   case NODE_TYPE_ALBUM:
   case NODE_TYPE_YEAR_ALBUM:
     return "DefaultMusicAlbums.png";
@@ -281,17 +263,9 @@ std::string CMusicDatabaseDirectory::GetIcon(const std::string &strDirectory)
   case NODE_TYPE_SINGLES:
   case NODE_TYPE_SONG:
   case NODE_TYPE_YEAR_SONG:
-  case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
     return "DefaultMusicSongs.png";
-  case NODE_TYPE_ALBUM_TOP100:
-  case NODE_TYPE_ALBUM_TOP100_SONGS:
-    return "DefaultMusicTop100Albums.png";
-  case NODE_TYPE_SONG_TOP100:
-    return "DefaultMusicTop100Songs.png";
   case NODE_TYPE_YEAR:
     return "DefaultMusicYears.png";
-  case NODE_TYPE_ALBUM_COMPILATIONS:
-    return "DefaultMusicCompilations.png";
   default:
     break;
   }

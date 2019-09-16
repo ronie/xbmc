@@ -1238,7 +1238,8 @@ bool CGUIMediaWindow::GoParentFolder()
   // in case the path history is messed up and the current folder is on
   // the stack more than once, keep going until there's nothing left or they
   // dont match anymore.
-  while (!parentPath.empty() && URIUtils::PathEquals(parentPath, currentPath, true))
+  while (!parentPath.empty() && (URIUtils::PathEquals(parentPath, currentPath, true) ||
+                                 URIUtils::IsLibraryFolder(parentPath)))
   {
     m_history.RemoveParentPath();
     parentPath = m_history.GetParentPath();
