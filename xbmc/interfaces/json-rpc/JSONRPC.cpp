@@ -6,23 +6,25 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <string.h>
-
 #include "JSONRPC.h"
+
+#include "ServiceBroker.h"
 #include "ServiceDescription.h"
+#include "TextureDatabase.h"
 #include "addons/Addon.h"
 #include "addons/IAddon.h"
 #include "dbwrappers/DatabaseQuery.h"
-#include "input/ActionTranslator.h"
 #include "input/WindowTranslator.h"
+#include "input/actions/ActionTranslator.h"
 #include "interfaces/AnnouncementManager.h"
 #include "playlists/SmartPlayList.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/log.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
-#include "ServiceBroker.h"
-#include "TextureDatabase.h"
+#include "utils/log.h"
+
+#include <string.h>
 
 using namespace JSONRPC;
 
@@ -98,6 +100,8 @@ void CJSONRPC::Initialize()
 
   for (unsigned int index = 0; index < size; index++)
     CJSONServiceDescription::AddNotification(JSONRPC_SERVICE_NOTIFICATIONS[index]);
+
+  CJSONServiceDescription::ResolveReferences();
 
   m_initialized = true;
   CLog::Log(LOGINFO, "JSONRPC v%s: Successfully initialized", CJSONServiceDescription::GetVersion());
@@ -264,7 +268,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
 
   std::string str;
   if (hasResponse)
-    CJSONVariantWriter::Write(outputroot, str, g_advancedSettings.m_jsonOutputCompact);
+    CJSONVariantWriter::Write(outputroot, str, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_jsonOutputCompact);
 
   return str;
 }

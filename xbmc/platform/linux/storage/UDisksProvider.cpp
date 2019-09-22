@@ -6,12 +6,16 @@
  *  See LICENSES/README.md for more information.
  */
 #include "UDisksProvider.h"
-#include "settings/AdvancedSettings.h"
+
+#include "ServiceBroker.h"
 #include "guilib/LocalizeStrings.h"
-#include "utils/log.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "PosixMountProvider.h"
+#include "utils/log.h"
+
+#include "platform/posix/PosixMountProvider.h"
 
 CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI):
   m_DeviceKitUDI(DeviceKitUDI)
@@ -182,10 +186,8 @@ CUDisksProvider::CUDisksProvider()
 
 CUDisksProvider::~CUDisksProvider()
 {
-  DeviceMap::iterator itr;
-
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
-    delete m_AvailableDevices[itr->first];
+  for (auto& itr : m_AvailableDevices)
+    delete itr.second;
 
   m_AvailableDevices.clear();
 }
@@ -204,13 +206,12 @@ void CUDisksProvider::Initialize()
 
 bool CUDisksProvider::Eject(const std::string& mountpath)
 {
-  DeviceMap::iterator itr;
   std::string path(mountpath);
   URIUtils::RemoveSlashAtEnd(path);
 
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
+  for (auto& itr : m_AvailableDevices)
   {
-    CUDiskDevice *device = itr->second;
+    CUDiskDevice* device = itr.second;
     if (device->m_MountPath == path)
       return device->UnMount();
   }
@@ -269,7 +270,7 @@ void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *ca
     device = new CUDiskDevice(object);
   m_AvailableDevices[object] = device;
 
-  if (g_advancedSettings.m_handleMounting)
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_handleMounting)
     device->Mount();
 
   CLog::Log(LOGDEBUG, LOGDBUS, "UDisks: DeviceAdded - %s", device->toString().c_str());
@@ -312,7 +313,7 @@ void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *
     bool mounted = device->m_isMounted;
     /* make sure to not silently remount ejected usb thumb drives
        that user wants to eject, but make sure to mount blurays */
-    if (!mounted && g_advancedSettings.m_handleMounting && device->m_isOptical)
+    if (!mounted && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_handleMounting && device->m_isOptical)
       device->Mount();
 
     device->Update();
@@ -349,11 +350,9 @@ std::vector<std::string> CUDisksProvider::EnumerateDisks()
 
 void CUDisksProvider::GetDisks(VECSOURCES& devices, bool EnumerateRemovable)
 {
-  DeviceMap::iterator itr;
-
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
+  for (auto& itr : m_AvailableDevices)
   {
-    CUDiskDevice *device = itr->second;
+    CUDiskDevice* device = itr.second;
     if (device && device->IsApproved() && device->m_isSystemInternal != EnumerateRemovable)
       devices.push_back(device->ToMediaShare());
   }

@@ -7,19 +7,20 @@
  */
 
 #include "LibraryDirectory.h"
+
 #include "Directory.h"
-#include "playlists/SmartPlayList.h"
-#include "profiles/ProfilesManager.h"
+#include "File.h"
+#include "FileItem.h"
+#include "GUIInfoManager.h"
 #include "SmartPlaylistDirectory.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
-#include "utils/XMLUtils.h"
+#include "URL.h"
 #include "guilib/GUIControlFactory.h" // for label parsing
 #include "guilib/TextureManager.h"
-#include "FileItem.h"
-#include "File.h"
-#include "URL.h"
-#include "GUIInfoManager.h"
+#include "playlists/SmartPlayList.h"
+#include "profiles/ProfileManager.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/XMLUtils.h"
 #include "utils/log.h"
 
 using namespace XFILE;
@@ -117,7 +118,7 @@ bool CLibraryDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 
       item->SetLabel(label);
       if (!icon.empty() && CServiceBroker::GetGUI()->GetTextureManager().HasTexture(icon))
-        item->SetIconImage(icon);
+        item->SetArt("icon", icon);
       item->m_iprogramCount = order;
       items.Add(item);
     }
@@ -154,7 +155,7 @@ bool CLibraryDirectory::Exists(const CURL& url)
 
 std::string CLibraryDirectory::GetNode(const CURL& url)
 {
-  std::string libDir = URIUtils::AddFileToFolder(m_profileManager.GetLibraryFolder(), url.GetHostName() + "/");
+  std::string libDir = URIUtils::AddFileToFolder(m_profileManager->GetLibraryFolder(), url.GetHostName() + "/");
   if (!CDirectory::Exists(libDir))
     libDir = URIUtils::AddFileToFolder("special://xbmc/system/library/", url.GetHostName() + "/");
 

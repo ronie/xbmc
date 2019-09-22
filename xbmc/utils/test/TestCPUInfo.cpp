@@ -12,13 +12,15 @@
 
 #include "utils/CPUInfo.h"
 #include "utils/Temperature.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 
 #ifdef TARGET_POSIX
-#include "../linux/XTimeUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 TEST(TestCPUInfo, getUsedPercentage)
 {
@@ -64,7 +66,7 @@ private:
 #ifndef TARGET_WINDOWS
 TEST(TestCPUInfo, getTemperature)
 {
-  TemporarySetting command(g_advancedSettings.m_cpuTempCmd, "echo '50 c'");
+  TemporarySetting command(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cpuTempCmd, "echo '50 c'");
   CTemperature t;
   EXPECT_TRUE(g_cpuInfo.getTemperature(t));
   EXPECT_TRUE(t.IsValid());

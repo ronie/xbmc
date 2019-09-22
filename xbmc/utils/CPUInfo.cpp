@@ -18,13 +18,13 @@
 #if defined(TARGET_DARWIN)
 #include <sys/types.h>
 #include <sys/sysctl.h>
-#if defined(__ppc__) || defined (TARGET_DARWIN_IOS)
+#if defined(__ppc__) || defined (TARGET_DARWIN_EMBEDDED)
 #include <mach-o/arch.h>
-#endif // defined(__ppc__) || defined (TARGET_DARWIN_IOS)
+#endif // defined(__ppc__) || defined (TARGET_DARWIN_EMBEDDED)
 #ifdef TARGET_DARWIN_OSX
 #include "platform/darwin/osx/smc.h"
 #endif
-#include "platform/linux/LinuxResourceCounter.h"
+#include "platform/posix/PosixResourceCounter.h"
 #endif
 
 #if defined(TARGET_FREEBSD)
@@ -93,7 +93,9 @@
 #endif
 
 #ifdef TARGET_POSIX
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #endif
 
 #include "utils/StringUtils.h"
@@ -114,7 +116,7 @@ CCPUInfo::CCPUInfo(void)
   m_cpuFeatures = 0;
 
 #if defined(TARGET_DARWIN)
-  m_pResourceCounter = new CLinuxResourceCounter();
+  m_pResourceCounter = new CPosixResourceCounter();
 
   size_t len = 4;
   std::string cpuVendor;
@@ -124,7 +126,7 @@ CCPUInfo::CCPUInfo(void)
       m_cpuCount = 1;
 
   // The model.
-#if defined(__ppc__) || defined (TARGET_DARWIN_IOS)
+#if defined(__ppc__) || defined (TARGET_DARWIN_EMBEDDED)
   const NXArchInfo *info = NXGetLocalArchInfo();
   if (info != NULL)
     m_cpuModel = info->description;
@@ -629,7 +631,7 @@ bool CCPUInfo::getTemperature(CTemperature& temperature)
 #else
   int         ret   = 0;
   FILE        *p    = NULL;
-  std::string  cmd   = g_advancedSettings.m_cpuTempCmd;
+  std::string  cmd   = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cpuTempCmd;
 
   temperature.SetValid(false);
 
@@ -950,7 +952,7 @@ void CCPUInfo::ReadCPUFeatures()
 #elif defined(TARGET_DARWIN)
   #if defined(__ppc__)
     m_cpuFeatures |= CPU_FEATURE_ALTIVEC;
-  #elif defined(TARGET_DARWIN_IOS)
+  #elif defined(TARGET_DARWIN_EMBEDDED)
   #else
     size_t len = 512 - 1; // '-1' for trailing space
     char buffer[512] ={0};
@@ -998,7 +1000,7 @@ bool CCPUInfo::HasNeon()
   if (has_neon == -1)
     has_neon = (CAndroidFeatures::HasNeon()) ? 1 : 0;
 
-#elif defined(TARGET_DARWIN_IOS)
+#elif defined(TARGET_DARWIN_EMBEDDED)
   has_neon = 1;
 
 #elif defined(TARGET_LINUX) && defined(HAS_NEON)

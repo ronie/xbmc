@@ -8,20 +8,20 @@
 
 #include "GUIEPGGridContainerModel.h"
 
-#include <cmath>
-
 #include "FileItem.h"
 #include "ServiceBroker.h"
-#include "settings/Settings.h"
+#include "pvr/PVRManager.h"
+#include "pvr/channels/PVRChannel.h"
+#include "pvr/channels/PVRChannelGroupsContainer.h"
+#include "pvr/epg/Epg.h"
+#include "pvr/epg/EpgChannelData.h"
+#include "pvr/epg/EpgInfoTag.h"
 #include "utils/Variant.h"
 #include "utils/log.h"
 
-#include "pvr/PVRManager.h"
-#include "pvr/channels/PVRChannel.h"
-#include "pvr/epg/EpgInfoTag.h"
-
-class CGUIListItem;
-typedef std::shared_ptr<CGUIListItem> CGUIListItemPtr;
+#include <cmath>
+#include <memory>
+#include <vector>
 
 using namespace PVR;
 
@@ -37,6 +37,20 @@ void CGUIEPGGridContainerModel::SetInvalid()
     ruler->SetInvalid();
 }
 
+std::shared_ptr<CFileItem> CGUIEPGGridContainerModel::CreateGapItem(int iChannel) const
+{
+  const std::shared_ptr<CPVRChannel> channel = m_channelItems[iChannel]->GetPVRChannelInfoTag();
+
+  std::shared_ptr<CPVREpgInfoTag> gapTag;
+  const std::shared_ptr<CPVREpg> epg = channel->GetEPG();
+  if (epg)
+    gapTag = std::make_shared<CPVREpgInfoTag>(epg->GetChannelData(), epg->EpgID());
+  else
+    gapTag = std::make_shared<CPVREpgInfoTag>(std::make_shared<CPVREpgChannelData>(*channel), -1);
+
+  return std::make_shared<CFileItem>(gapTag);
+}
+
 void CGUIEPGGridContainerModel::Initialize(const std::unique_ptr<CFileItemList> &items, const CDateTime &gridStart, const CDateTime &gridEnd, int iRulerUnit, int iBlocksPerPage, float fBlockSize)
 {
   if (!m_channelItems.empty())
@@ -49,33 +63,36 @@ void CGUIEPGGridContainerModel::Initialize(const std::unique_ptr<CFileItemList> 
   // Create programme & channel items
   m_programmeItems.reserve(items->Size());
   CFileItemPtr fileItem;
-  int iLastChannelID = -1;
+  int iLastChannelUID = -1;
+  int iLastClientUID = -1;
   ItemsPtr itemsPointer;
   itemsPointer.start = 0;
-  CPVRChannelPtr channel;
   int j = 0;
   for (int i = 0; i < items->Size(); ++i)
   {
     fileItem = items->Get(i);
-    if (!fileItem->HasEPGInfoTag() || !fileItem->GetEPGInfoTag()->HasChannel())
+    if (!fileItem->HasEPGInfoTag())
       continue;
 
     m_programmeItems.emplace_back(fileItem);
 
-    channel = fileItem->GetEPGInfoTag()->Channel();
-    if (!channel)
-      continue;
-
-    int iCurrentChannelID = channel->ChannelID();
-    if (iCurrentChannelID != iLastChannelID)
+    int iCurrentChannelUID = fileItem->GetEPGInfoTag()->UniqueChannelID();
+    int iCurrentClientUID = fileItem->GetEPGInfoTag()->ClientID();
+    if (iCurrentChannelUID != iLastChannelUID || iCurrentClientUID != iLastClientUID)
     {
+      iLastChannelUID = iCurrentChannelUID;
+      iLastClientUID = iCurrentClientUID;
+
+      const std::shared_ptr<CPVRChannel> channel = CServiceBroker::GetPVRManager().ChannelGroups()->GetChannelForEpgTag(fileItem->GetEPGInfoTag());
+      if (!channel)
+        continue;
+
       if (j > 0)
       {
         itemsPointer.stop = j - 1;
         m_epgItemsPtr.emplace_back(itemsPointer);
         itemsPointer.start = j;
       }
-      iLastChannelID = iCurrentChannelID;
       m_channelItems.emplace_back(CFileItemPtr(new CFileItem(channel)));
     }
     ++j;
@@ -204,9 +221,7 @@ void CGUIEPGGridContainerModel::Initialize(const std::unique_ptr<CFileItemList> 
         }
         else
         {
-          CPVREpgInfoTagPtr gapTag(CPVREpgInfoTag::CreateDefaultTag());
-          gapTag->SetChannel(m_channelItems[channel]->GetPVRChannelInfoTag());
-          CFileItemPtr gapItem(new CFileItem(gapTag));
+          const std::shared_ptr<CFileItem> gapItem = CreateGapItem(channel);
           for (int i = block + blockDelta; i >= block - itemSize + sizeDelta; --i)
           {
             m_gridIndex[channel][i].item = gapItem;
@@ -229,10 +244,7 @@ void CGUIEPGGridContainerModel::Initialize(const std::unique_ptr<CFileItemList> 
           }
           else
           {
-            CPVREpgInfoTagPtr gapTag(CPVREpgInfoTag::CreateDefaultTag());
-            gapTag->SetChannel(m_channelItems[channel]->GetPVRChannelInfoTag());
-            CFileItemPtr gapItem(new CFileItem(gapTag));
-            m_gridIndex[channel][block].item = gapItem;
+            m_gridIndex[channel][block].item = CreateGapItem(channel);
           }
 
           m_gridIndex[channel][savedBlock].originWidth = fBlockSize; // size always 1 block here
@@ -335,7 +347,7 @@ void CGUIEPGGridContainerModel::FreeProgrammeMemory(int channel, int keepStart, 
     if (keepStart > 0 && keepStart < m_blocks)
     {
       // if item exist and block is not part of visible item
-      CGUIListItemPtr last(m_gridIndex[channel][keepStart].item);
+      std::shared_ptr<CGUIListItem> last = m_gridIndex[channel][keepStart].item;
       for (int i = keepStart - 1; i > 0; --i)
       {
         if (m_gridIndex[channel][i].item && m_gridIndex[channel][i].item != last)
@@ -351,7 +363,7 @@ void CGUIEPGGridContainerModel::FreeProgrammeMemory(int channel, int keepStart, 
 
     if (keepEnd > 0 && keepEnd < m_blocks)
     {
-      CGUIListItemPtr last(m_gridIndex[channel][keepEnd].item);
+      std::shared_ptr<CGUIListItem> last = m_gridIndex[channel][keepEnd].item;
       for (int i = keepEnd + 1; i < m_blocks; ++i)
       {
         // if item exist and block is not part of visible item

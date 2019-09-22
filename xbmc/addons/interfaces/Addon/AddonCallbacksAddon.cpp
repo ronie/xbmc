@@ -6,26 +6,27 @@
  *  SPDX-License-Identifier: GPL-2.0-or-later
  *  See LICENSES/README.md for more information.
  */
-#include <vector>
-#include "Application.h"
 #include "addons/Addon.h"
-#include "addons/settings/AddonSettings.h"
+
 #include "AddonCallbacksAddon.h"
-#include "utils/log.h"
-#include "LangInfo.h"
-#include "dialogs/GUIDialogKaiToast.h"
-#include "filesystem/File.h"
-#include "filesystem/Directory.h"
-#include "guilib/LocalizeStrings.h"
+#include "Application.h"
 #include "FileItem.h"
-#include "network/Network.h"
+#include "LangInfo.h"
 #include "ServiceBroker.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/kodi_vfs_types.h"
+#include "addons/settings/AddonSettings.h"
+#include "dialogs/GUIDialogKaiToast.h"
+#include "filesystem/Directory.h"
+#include "filesystem/File.h"
+#include "filesystem/SpecialProtocol.h"
+#include "guilib/LocalizeStrings.h"
+#include "network/Network.h"
 #include "utils/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
-#include "URL.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/kodi_vfs_types.h"
-#include "filesystem/SpecialProtocol.h"
+#include "utils/log.h"
+
+#include <vector>
 
 using namespace ADDON;
 using namespace XFILE;
@@ -611,6 +612,7 @@ static void CFileItemListToVFSDirEntries(VFSDirEntry* entries,
     entries[i].path = strdup(items[i]->GetPath().c_str());
     entries[i].size = items[i]->m_dwSize;
     entries[i].folder = items[i]->m_bIsFolder;
+    items[i]->m_dateTime.GetAsTime(entries[i].date_time);
   }
 }
 

@@ -10,15 +10,17 @@
 
 #include "ServiceBroker.h"
 #include "Texture.h"
-#include "windowing/GraphicContext.h"
-#include "utils/log.h"
-#include "settings/Settings.h"
-#include "filesystem/SpecialProtocol.h"
-#include "filesystem/XbtManager.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
 #include "XBTF.h"
 #include "XBTFReader.h"
+#include "filesystem/SpecialProtocol.h"
+#include "filesystem/XbtManager.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
 #include <lzo/lzo1x.h>
 
 #ifdef TARGET_WINDOWS_DESKTOP
@@ -45,6 +47,11 @@ CTextureBundleXBT::CTextureBundleXBT(bool themeBundle)
 
 CTextureBundleXBT::~CTextureBundleXBT(void)
 {
+  CloseBundle();
+}
+
+void CTextureBundleXBT::CloseBundle()
+{
   if (m_XBTFReader != nullptr && m_XBTFReader->IsOpen())
   {
     XFILE::CXbtManager::GetInstance().Release(CURL(m_path));
@@ -61,14 +68,14 @@ bool CTextureBundleXBT::OpenBundle()
   {
     mediaDir = CSpecialProtocol::TranslatePath(
       URIUtils::AddFileToFolder("special://home/addons",
-        CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN)));
+        CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN)));
   }
 
   if (m_themeBundle)
   {
     // if we are the theme bundle, we only load if the user has chosen
     // a valid theme (or the skin has a default one)
-    std::string theme = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME);
+    std::string theme = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME);
     if (!theme.empty() && !StringUtils::EqualsNoCase(theme, "SKINDEFAULT"))
     {
       std::string themeXBT(URIUtils::ReplaceExtension(theme, ".xbt"));

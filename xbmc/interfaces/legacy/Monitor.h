@@ -44,13 +44,11 @@ namespace XBMCAddon
       {
 	XBMC_TRACE;
 	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanStarted,library));
-	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseScanStarted,library));
       }
       inline void    OnScanFinished(const String &library)
       {
 	XBMC_TRACE;
 	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanFinished,library));
-	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseUpdated,library));
       }
       inline void    OnCleanStarted(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanStarted,library)); }
       inline void    OnCleanFinished(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanFinished,library)); }
@@ -144,6 +142,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library is being scanned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -164,37 +164,14 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been scanned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
       onScanFinished(...);
 #else
       virtual void onScanFinished(const String library) { XBMC_TRACE; }
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_monitor
-      /// @brief \python_func{ onDatabaseScanStarted(database) }
-      ///-----------------------------------------------------------------------
-      /// @python_v13 New function added.
-      /// @python_v14 Deprecated. Use **onScanStarted()**.
-      ///
-      onDatabaseScanStarted(...);
-#else
-      virtual void onDatabaseScanStarted(const String database) { XBMC_TRACE; }
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_monitor
-      /// @brief \python_func{ onDatabaseUpdated(database) }
-      ///-----------------------------------------------------------------------
-      /// @python_v14 Deprecated. Use **onScanFinished()**.
-      ///
-      onDatabaseUpdated(...);
-#else
-      virtual void onDatabaseUpdated(const String database) { XBMC_TRACE; }
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
@@ -209,6 +186,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been cleaned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -229,6 +208,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been finished
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -261,6 +242,8 @@ namespace XBMCAddon
       /// @param data                JSON-encoded data of the notification
       ///
       /// @note Will be called when Kodi receives or sends a notification
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v13 New function added.
       ///
@@ -280,9 +263,12 @@ namespace XBMCAddon
       ///
       /// @param timeout                 [opt] float - timeout in seconds.
       ///                                Default: no timeout.
+      ///
       /// @return                        True when abort have been requested,
       ///                                False if a timeout is given and the
       ///                                operation times out.
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -298,6 +284,8 @@ namespace XBMCAddon
       /// Returns True if abort has been requested.
       ///
       /// @return                        True if requested
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///

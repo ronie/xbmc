@@ -1,5 +1,6 @@
 xbmc                                            xbmc
 xbmc/addons                                     addons
+xbmc/addons/addoninfo                           addons_addoninfo
 xbmc/addons/binary-addons                       addons_binary-addons
 xbmc/addons/interfaces                          addons_interfaces
 xbmc/addons/interfaces/Addon                    addons_interfaces_addon
@@ -11,6 +12,7 @@ xbmc/addons/kodi-addon-dev-kit/include/kodi/addon-instance addons_kodi-addon-dev
 xbmc/addons/kodi-addon-dev-kit/include/kodi/gui addons_kodi-addon-dev-kit_include_kodi_gui
 xbmc/addons/kodi-addon-dev-kit/include/kodi/gui/controls addons_kodi-addon-dev-kit_include_kodi_gui_controls
 xbmc/addons/kodi-addon-dev-kit/include/kodi/gui/dialogs addons_kodi-addon-dev-kit_include_kodi_gui_dialogs
+xbmc/addons/kodi-addon-dev-kit/include/kodi/gui/gl addons_kodi-addon-dev-kit_include_kodi_gui_gl
 xbmc/addons/kodi-addon-dev-kit/include/kodi/tools addons_kodi-addon-dev-kit_include_kodi_tools
 xbmc/addons/settings                            addons_settings
 xbmc/commons                                    commons
@@ -20,6 +22,7 @@ xbmc/favourites                                 favourites
 xbmc/guilib                                     guilib
 xbmc/guilib/guiinfo                             guilib_guiinfo
 xbmc/input                                      input
+xbmc/input/actions                              input/actions
 xbmc/input/joysticks                            input/joysticks
 xbmc/input/joysticks/dialogs                    input/joysticks/dialogs
 xbmc/input/joysticks/generic                    input/joysticks/generic
@@ -29,7 +32,6 @@ xbmc/input/keyboard/generic                     input/keyboard/generic
 xbmc/input/mouse                                input/mouse
 xbmc/input/mouse/generic                        input/mouse/generic
 xbmc/listproviders                              listproviders
-xbmc/media                                      media
 xbmc/messaging                                  messaging
 xbmc/messaging/helpers                          messagingHelpers
 xbmc/pictures                                   pictures

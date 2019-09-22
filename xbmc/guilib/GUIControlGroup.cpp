@@ -7,12 +7,11 @@
  */
 
 #include "GUIControlGroup.h"
+
 #include "GUIMessage.h"
 
 #include <cassert>
 #include <utility>
-
-#include "guilib/guiinfo/GUIInfoLabels.h"
 
 CGUIControlGroup::CGUIControlGroup()
 {

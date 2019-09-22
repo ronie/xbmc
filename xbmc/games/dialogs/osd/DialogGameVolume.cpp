@@ -7,8 +7,10 @@
  */
 
 #include "DialogGameVolume.h"
+
+#include "Application.h"
+#include "ServiceBroker.h"
 #include "dialogs/GUIDialogVolumeBar.h"
-#include "guilib/GUIComponent.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIDialog.h"
 #include "guilib/GUIMessage.h"
@@ -17,10 +19,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "guilib/WindowIDs.h"
 #include "interfaces/AnnouncementManager.h"
-#include "utils/log.h"
 #include "utils/Variant.h"
-#include "Application.h"
-#include "ServiceBroker.h"
 
 #include <cmath>
 

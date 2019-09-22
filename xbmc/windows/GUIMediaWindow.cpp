@@ -28,7 +28,6 @@
 #include "dialogs/GUIDialogMediaFilter.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogSmartPlaylistEditor.h"
-#include "favourites/FavouritesService.h"
 #include "filesystem/File.h"
 #include "filesystem/DirectoryFactory.h"
 #include "filesystem/FileDirectoryFactory.h"
@@ -45,9 +44,10 @@
 #include "messaging/helpers/DialogOKHelper.h"
 #include "network/Network.h"
 #include "playlists/PlayList.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "storage/MediaManager.h"
 #include "threads/IRunnable.h"
 #include "threads/SystemClock.h"
@@ -86,15 +86,19 @@ public:
   : m_dir(dir), m_url(url), m_items(items), m_useDir(useDir)
   {
   }
+
   void Run() override
   {
     m_result = m_dir.GetDirectory(m_url, m_items, m_useDir, true);
   }
+
   void Cancel() override
   {
     m_dir.CancelDirectory();
   }
-  bool m_result;
+
+  bool m_result = false;
+
 protected:
   XFILE::CVirtualDirectory &m_dir;
   CURL m_url;
@@ -281,7 +285,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
         else
           viewMode = m_viewControl.GetNextViewMode();
 
-        if (m_guiState.get())
+        if (m_guiState)
           m_guiState->SaveViewAsControl(viewMode);
 
         UpdateButtons();
@@ -289,7 +293,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
       }
       else if (iControl == CONTROL_BTNSORTASC) // sort asc
       {
-        if (m_guiState.get())
+        if (m_guiState)
           m_guiState->SetNextSortOrder();
         UpdateFileList();
         return true;
@@ -406,10 +410,14 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
       }
       else if (message.GetParam1()==GUI_MSG_UPDATE_ITEM && message.GetItem())
       {
+        int flag = message.GetParam2();
         CFileItemPtr newItem = std::static_pointer_cast<CFileItem>(message.GetItem());
-        if (IsActive())
+
+        if (IsActive() || (flag & GUI_MSG_FLAG_FORCE_UPDATE))
         {
-          if (m_vecItems->UpdateItem(newItem.get()) && message.GetParam2() == 1)
+          m_vecItems->UpdateItem(newItem.get());
+
+          if (flag & GUI_MSG_FLAG_UPDATE_LIST)
           { // need the list updated as well
             UpdateFileList();
           }
@@ -476,7 +484,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
       else if (message.GetParam2())
         viewMode = m_viewControl.GetNextViewMode(message.GetParam2());
 
-      if (m_guiState.get())
+      if (m_guiState)
         m_guiState->SaveViewAsControl(viewMode);
       UpdateButtons();
       return true;
@@ -484,7 +492,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
     break;
   case GUI_MSG_CHANGE_SORT_METHOD:
     {
-      if (m_guiState.get())
+      if (m_guiState)
       {
         if (message.GetParam1())
           m_guiState->SetCurrentSortMethod(message.GetParam1());
@@ -497,7 +505,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
     break;
   case GUI_MSG_CHANGE_SORT_DIRECTION:
     {
-      if (m_guiState.get())
+      if (m_guiState)
         m_guiState->SetNextSortOrder();
       UpdateFileList();
       return true;
@@ -525,6 +533,9 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
           m_vecItems->SetPath(dir);
           resetHistory = true;
         }
+        else if (m_vecItems->GetPath().empty() && URIUtils::PathEquals(dir, m_startDirectory, true))
+          m_vecItems->SetPath(dir);
+
         // check for network up
         if (URIUtils::IsRemote(m_vecItems->GetPath()) && !WaitForNetwork())
         {
@@ -566,7 +577,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
  */
 void CGUIMediaWindow::UpdateButtons()
 {
-  if (m_guiState.get())
+  if (m_guiState)
   {
     // Update sorting controls
     if (m_guiState->GetSortOrder() == SortOrderNone)
@@ -616,7 +627,7 @@ void CGUIMediaWindow::SortItems(CFileItemList &items)
 {
   std::unique_ptr<CGUIViewState> guiState(CGUIViewState::GetViewState(GetID(), items));
 
-  if (guiState.get())
+  if (guiState)
   {
     SortDescription sorting = guiState->GetSortMethod();
     sorting.sortOrder = guiState->GetSortOrder();
@@ -632,7 +643,7 @@ void CGUIMediaWindow::SortItems(CFileItemList &items)
       {
         sorting.sortBy = sortBy;
         sorting.sortOrder = items.GetProperty(PROPERTY_SORT_ASCENDING).asBoolean() ? SortOrderAscending : SortOrderDescending;
-        sorting.sortAttributes = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone;
+        sorting.sortAttributes = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone;
 
         // if the sort order is descending, we need to switch the original sort order, as we assume
         // in CGUIViewState::AddPlaylistOrder that SortByPlaylistOrder is ascending.
@@ -680,7 +691,7 @@ void CGUIMediaWindow::FormatAndSort(CFileItemList &items)
 {
   std::unique_ptr<CGUIViewState> viewState(CGUIViewState::GetViewState(GetID(), items));
 
-  if (viewState.get())
+  if (viewState)
   {
     LABEL_MASKS labelMasks;
     viewState->GetSortMethodLabelMasks(labelMasks);
@@ -763,11 +774,11 @@ bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemLis
 
   //! @todo Do we want to limit the directories we apply the video ones to?
   if (iWindow == WINDOW_VIDEO_NAV)
-    regexps = g_advancedSettings.m_videoExcludeFromListingRegExps;
+    regexps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoExcludeFromListingRegExps;
   if (iWindow == WINDOW_MUSIC_NAV)
-    regexps = g_advancedSettings.m_audioExcludeFromListingRegExps;
+    regexps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_audioExcludeFromListingRegExps;
   if (iWindow == WINDOW_PICTURES)
-    regexps = g_advancedSettings.m_pictureExcludeFromListingRegExps;
+    regexps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_pictureExcludeFromListingRegExps;
 
   if (regexps.size())
   {
@@ -877,11 +888,11 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
     std::string strLabel = g_localizeStrings.Get(showLabel);
     CFileItemPtr pItem(new CFileItem(strLabel));
     pItem->SetPath("add");
-    pItem->SetIconImage("DefaultAddSource.png");
+    pItem->SetArt("icon", "DefaultAddSource.png");
     pItem->SetLabel(strLabel);
     pItem->SetLabelPreformatted(true);
     pItem->m_bIsFolder = true;
-    pItem->SetSpecialSort(g_advancedSettings.m_addSourceOnTop ?
+    pItem->SetSpecialSort(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_addSourceOnTop ?
                                              SortSpecialOnTop : SortSpecialOnBottom);
     m_vecItems->Add(pItem);
   }
@@ -982,7 +993,7 @@ bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
   if (iItem < 0 || iItem >= m_vecItems->Size())
     return true;
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
   CFileItemPtr pItem = m_vecItems->Get(iItem);
 
@@ -994,12 +1005,12 @@ bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
 
   if (pItem->GetPath() == "add" || pItem->GetPath() == "sources://add/") // 'add source button' in empty root
   {
-    if (profileManager.IsMasterProfile())
+    if (profileManager->IsMasterProfile())
     {
       if (!g_passwordManager.IsMasterLockUnlocked(true))
         return false;
     }
-    else if (!profileManager.GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
+    else if (!profileManager->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
       return false;
 
     if (OnAddMediaSource())
@@ -1040,7 +1051,7 @@ bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
     if ( pItem->m_bIsShareOrDrive )
     {
       const std::string& strLockType=m_guiState->GetLockType();
-      if (profileManager.GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
+      if (profileManager->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
         if (!strLockType.empty() && !g_passwordManager.IsItemUnlocked(pItem.get(), strLockType))
             return true;
 
@@ -1049,8 +1060,8 @@ bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
     }
 
     // check for the partymode playlist items - they may not exist yet
-    if ((pItem->GetPath() == profileManager.GetUserDataItem("PartyMode.xsp")) ||
-        (pItem->GetPath() == profileManager.GetUserDataItem("PartyMode-Video.xsp")))
+    if ((pItem->GetPath() == profileManager->GetUserDataItem("PartyMode.xsp")) ||
+        (pItem->GetPath() == profileManager->GetUserDataItem("PartyMode-Video.xsp")))
     {
       // party mode playlist item - if it doesn't exist, prompt for user to define it
       if (!XFILE::CFile::Exists(pItem->GetPath()))
@@ -1272,8 +1283,7 @@ void CGUIMediaWindow::SaveSelectedItemInHistory()
   if (iItem >= 0 && iItem < m_vecItems->Size())
   {
     CFileItemPtr pItem = m_vecItems->Get(iItem);
-    if (!pItem->IsParentFolder())
-      GetDirectoryHistoryString(pItem.get(), strSelectedItem);
+    GetDirectoryHistoryString(pItem.get(), strSelectedItem);
   }
 
   m_history.SetSelectedItem(strSelectedItem, m_vecItems->GetPath());
@@ -1517,7 +1527,7 @@ bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item, std::string 
     }
 
     // Save current window and directory to know where the selected item was
-    if (m_guiState.get())
+    if (m_guiState)
       m_guiState->SetPlaylistDirectory(m_vecItems->GetPath());
 
     // figure out where we start playback
@@ -1591,9 +1601,9 @@ void CGUIMediaWindow::OnDeleteItem(int iItem)
   if (item->IsPlayList())
     item->m_bIsFolder = false;
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (profileManager.GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE && profileManager.GetCurrentProfile().filesLocked())
+  if (profileManager->GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE && profileManager->GetCurrentProfile().filesLocked())
   {
     if (!g_passwordManager.IsMasterLockUnlocked(true))
       return;
@@ -1617,9 +1627,9 @@ void CGUIMediaWindow::OnRenameItem(int iItem)
   if (iItem < 0 || iItem >= m_vecItems->Size())
     return;
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (profileManager.GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE && profileManager.GetCurrentProfile().filesLocked())
+  if (profileManager->GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE && profileManager->GetCurrentProfile().filesLocked())
   {
     if (!g_passwordManager.IsMasterLockUnlocked(true))
       return;
@@ -1774,18 +1784,6 @@ void CGUIMediaWindow::GetContextButtons(int itemNumber, CContextButtons &buttons
   if (!item || item->IsParentFolder())
     return;
 
-  //! @todo FAVOURITES Conditions on masterlock and localisation
-  if (!item->IsParentFolder() && !item->IsPath("add") && !item->IsPath("newplaylist://") &&
-      !URIUtils::IsProtocol(item->GetPath(), "newsmartplaylist") && !URIUtils::IsProtocol(item->GetPath(), "newtag") &&
-      !URIUtils::IsProtocol(item->GetPath(), "musicsearch") &&
-      !StringUtils::StartsWith(item->GetPath(), "pvr://guide/") && !StringUtils::StartsWith(item->GetPath(), "pvr://timers/"))
-  {
-    if (CServiceBroker::GetFavouritesService().IsFavourited(*item.get(), GetID()))
-      buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
-    else
-      buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
-  }
-
   if (item->IsFileFolder(EFILEFOLDER_MASK_ONBROWSE))
     buttons.Add(CONTEXT_BUTTON_BROWSE_INTO, 37015);
 
@@ -1795,12 +1793,6 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
 {
   switch (button)
   {
-  case CONTEXT_BUTTON_ADD_FAVOURITE:
-    {
-      CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CServiceBroker::GetFavouritesService().AddOrRemove(*item.get(), GetID());
-      return true;
-    }
   case CONTEXT_BUTTON_BROWSE_INTO:
     {
       CFileItemPtr item = m_vecItems->Get(itemNumber);

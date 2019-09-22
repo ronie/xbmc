@@ -10,10 +10,12 @@
 
 #include "FileItem.h"
 #include "ServiceBroker.h"
-
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/epg/EpgInfoTag.h"
+
+#include <memory>
+#include <vector>
 
 using namespace PVR;
 
@@ -42,7 +44,12 @@ void CGUIDialogPVRChannelGuide::OnInitWindow()
 
   Init();
 
-  m_channel->GetEPG(*m_vecItems);
+  const std::vector<std::shared_ptr<CPVREpgInfoTag>> tags = m_channel->GetEpgTags();
+  for (const auto& tag : tags)
+  {
+    m_vecItems->Add(std::make_shared<CFileItem>(tag));
+  }
+
   m_viewControl.SetItems(*m_vecItems);
 
   CGUIDialogPVRItemsViewBase::OnInitWindow();

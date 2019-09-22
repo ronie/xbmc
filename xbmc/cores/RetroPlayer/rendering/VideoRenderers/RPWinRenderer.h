@@ -13,10 +13,11 @@
 #include "cores/RetroPlayer/buffers/video/RenderBufferSysMem.h"
 #include "cores/RetroPlayer/process/RPProcessInfo.h"
 
-#include <dxgi.h>
 #include <memory>
 #include <stdint.h>
 #include <vector>
+
+#include <dxgi.h>
 
 class CD3DTexture;
 struct SwsContext;
@@ -99,7 +100,7 @@ namespace RETRO
   {
   public:
     CRPWinRenderer(const CRenderSettings &renderSettings, CRenderContext &context, std::shared_ptr<IRenderBufferPool> bufferPool);
-    ~CRPWinRenderer() override;
+    ~CRPWinRenderer() override = default;
 
     // implementation of CRPBaseRenderer
     bool Supports(RENDERFEATURE feature) const override;
@@ -118,7 +119,7 @@ namespace RETRO
     void RenderInternal(bool clear, uint8_t alpha) override;
 
   private:
-    void Render(CD3DTexture *target);
+    void Render(CD3DTexture& target);
   };
 }
 }

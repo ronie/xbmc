@@ -10,33 +10,34 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <set>
-#include <Platinum/Source/Platinum/Platinum.h>
-
-#include "threads/SystemClock.h"
 #include "UPnP.h"
+
+#include "FileItem.h"
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
 #include "UPnPInternal.h"
 #include "UPnPRenderer.h"
 #include "UPnPServer.h"
 #include "UPnPSettings.h"
-#include "utils/URIUtils.h"
-#include "ServiceBroker.h"
-#include "messaging/ApplicationMessenger.h"
-#include "network/Network.h"
-#include "utils/log.h"
 #include "URL.h"
+#include "Util.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
-#include "profiles/ProfilesManager.h"
-#include "settings/Settings.h"
-#include "GUIUserMessages.h"
-#include "FileItem.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "utils/TimeUtils.h"
-#include "video/VideoInfoTag.h"
-#include "input/Key.h"
-#include "Util.h"
+#include "messaging/ApplicationMessenger.h"
+#include "network/Network.h"
+#include "profiles/ProfileManager.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/SystemInfo.h"
+#include "utils/TimeUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
+
+#include <set>
+
+#include <Platinum/Source/Platinum/Platinum.h>
 
 using namespace UPNP;
 using namespace KODI::MESSAGING;
@@ -302,8 +303,8 @@ public:
 
   ~CMediaController() override
   {
-    for (std::set<std::string>::const_iterator itRenderer = m_registeredRenderers.begin(); itRenderer != m_registeredRenderers.end(); ++itRenderer)
-      unregisterRenderer(*itRenderer);
+    for (const auto& itRenderer : m_registeredRenderers)
+      unregisterRenderer(itRenderer);
     m_registeredRenderers.clear();
   }
 
@@ -629,7 +630,7 @@ CUPnP::CreateServer(int port /* = 0 */)
     // but it doesn't work anyways as it requires multicast for XP to detect us
     device->m_PresentationURL =
         NPT_HttpUrl(m_IP.c_str(),
-                    CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
+                    CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
                     "/").ToString();
 
     device->m_ModelName        = "Kodi";
@@ -651,10 +652,10 @@ CUPnP::StartServer()
 {
     if (!m_ServerHolder->m_Device.IsNull()) return false;
 
-    const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
     // load upnpserver.xml
-    std::string filename = URIUtils::AddFileToFolder(profileManager.GetUserDataFolder(), "upnpserver.xml");
+    std::string filename = URIUtils::AddFileToFolder(profileManager->GetUserDataFolder(), "upnpserver.xml");
     CUPnPSettings::GetInstance().Load(filename);
 
     // create the server with a XBox compatible friendlyname and UUID from upnpserver.xml if found
@@ -714,7 +715,7 @@ CUPnP::CreateRenderer(int port /* = 0 */)
 
     device->m_PresentationURL =
         NPT_HttpUrl(m_IP.c_str(),
-                    CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
+                    CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
                     "/").ToString();
     device->m_ModelName        = "Kodi";
     device->m_ModelNumber      = CSysInfo::GetVersion().c_str();
@@ -731,11 +732,12 @@ CUPnP::CreateRenderer(int port /* = 0 */)
 +---------------------------------------------------------------------*/
 bool CUPnP::StartRenderer()
 {
-    if (!m_RendererHolder->m_Device.IsNull()) return false;
+    if (!m_RendererHolder->m_Device.IsNull())
+      return false;
 
-    const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+    const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-    std::string filename = URIUtils::AddFileToFolder(profileManager.GetUserDataFolder(), "upnpserver.xml");
+    std::string filename = URIUtils::AddFileToFolder(profileManager->GetUserDataFolder(), "upnpserver.xml");
     CUPnPSettings::GetInstance().Load(filename);
 
     m_RendererHolder->m_Device = CreateRenderer(CUPnPSettings::GetInstance().GetRendererPort());

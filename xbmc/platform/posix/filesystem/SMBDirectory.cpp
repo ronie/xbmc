@@ -18,18 +18,20 @@
 */
 
 #include "SMBDirectory.h"
+
+#include "FileItem.h"
+#include "PasswordManager.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "guilib/LocalizeStrings.h"
-#include "FileItem.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/StringUtils.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
-#include "PasswordManager.h"
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
-#endif
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+
+#include "platform/posix/XTimeUtils.h"
 
 #include <libsmbclient.h>
 
@@ -121,7 +123,7 @@ bool CSMBDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         bIsDir = (aDir.type == SMBC_DIR);
 
         struct stat info = {0};
-        if ((m_flags & DIR_FLAG_NO_FILE_INFO)==0 && g_advancedSettings.m_sambastatfiles)
+        if ((m_flags & DIR_FLAG_NO_FILE_INFO)==0 && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_sambastatfiles)
         {
           // make sure we use the authenticated path wich contains any default username
           const std::string strFullName = strAuth + smb.URLEncode(strFile);

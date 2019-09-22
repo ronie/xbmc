@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include <drm_fourcc.h>
+#include <array>
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <drm_fourcc.h>
 
 #include "system_gl.h"
-
-#include <array>
 
 class CEGLImage
 {
@@ -34,6 +34,8 @@ public:
     int width{0};
     int height{0};
     uint32_t format{0};
+    int colorSpace{0};
+    int colorRange{0};
     std::array<EglPlane, MAX_NUM_PLANES> planes;
   };
 

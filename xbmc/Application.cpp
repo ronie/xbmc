@@ -10,6 +10,7 @@
 #include "network/Network.h"
 #include "threads/SystemClock.h"
 #include "Application.h"
+#include "AppParamParser.h"
 #include "AppInboundProtocol.h"
 #include "dialogs/GUIDialogBusy.h"
 #include "events/EventLog.h"
@@ -24,9 +25,7 @@
 #include "guilib/GUIComponent.h"
 #include "guilib/TextureManager.h"
 #include "cores/IPlayer.h"
-#include "cores/VideoPlayer/DVDFileInfo.h"
 #include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
 #include "PlayListPlayer.h"
 #include "Autorun.h"
@@ -40,15 +39,13 @@
 #include "guilib/GUIFontManager.h"
 #include "guilib/GUIColorManager.h"
 #include "guilib/StereoscopicsManager.h"
-#include "addons/BinaryAddonCache.h"
-#include "addons/LanguageResource.h"
 #include "addons/Skin.h"
 #include "addons/VFSEntry.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #ifdef HAS_PYTHON
 #include "interfaces/python/XBPython.h"
 #endif
-#include "input/ActionTranslator.h"
+#include "input/actions/ActionTranslator.h"
 #include "input/ButtonTranslator.h"
 #include "guilib/GUIAudioManager.h"
 #include "GUIPassword.h"
@@ -72,7 +69,7 @@
 #include "TextureCache.h"
 #include "playlists/SmartPlayList.h"
 #include "playlists/PlayList.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
 #include "windowing/WinSystem.h"
 #include "powermanagement/DPMSSupport.h"
 #include "powermanagement/PowerManager.h"
@@ -81,6 +78,7 @@
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/SkinSettings.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/CPUInfo.h"
@@ -112,7 +110,6 @@
 #include "interfaces/json-rpc/JSONRPC.h"
 #include "interfaces/AnnouncementManager.h"
 #include "peripherals/Peripherals.h"
-#include "peripherals/devices/PeripheralImon.h"
 #include "music/infoscanner/MusicInfoScanner.h"
 #include "music/MusicUtils.h"
 #include "music/MusicThumbLoader.h"
@@ -137,7 +134,6 @@
 #include "pvr/PVRManager.h"
 
 #include "video/dialogs/GUIDialogFullScreenInfo.h"
-#include "guilib/GUIControlFactory.h"
 #include "dialogs/GUIDialogCache.h"
 #include "dialogs/GUIDialogPlayEject.h"
 #include "utils/URIUtils.h"
@@ -146,7 +142,6 @@
 #include "addons/AddonManager.h"
 #include "addons/RepositoryUpdater.h"
 #include "music/tags/MusicInfoTag.h"
-#include "music/tags/MusicInfoTagLoaderFactory.h"
 #include "CompileInfo.h"
 
 #ifdef TARGET_WINDOWS
@@ -173,9 +168,10 @@
 #include "input/InputManager.h"
 
 #ifdef TARGET_POSIX
-#include "XHandle.h"
-#include "XTimeUtils.h"
+#include "platform/posix/XHandle.h"
+#include "platform/posix/XTimeUtils.h"
 #include "platform/posix/filesystem/PosixDirectory.h"
+#include "platform/posix/PlatformPosix.h"
 #endif
 
 #if defined(TARGET_ANDROID)
@@ -188,18 +184,16 @@
 #include "platform/Environment.h"
 #endif
 
-#if defined(HAS_LIBAMCODEC)
-#include "utils/AMLUtils.h"
-#endif
-
 //TODO: XInitThreads
 #ifdef HAVE_X11
-#include "X11/Xlib.h"
+#include <X11/Xlib.h>
 #endif
 
 #include "cores/FFmpeg.h"
 #include "utils/CharsetConverter.h"
 #include "pictures/GUIWindowSlideShow.h"
+#include "addons/AddonSystemSettings.h"
+#include "FileItem.h"
 
 using namespace ADDON;
 using namespace XFILE;
@@ -223,7 +217,6 @@ using KODI::MESSAGING::HELPERS::DialogResponse;
 
 #define MAX_FFWD_SPEED 5
 
-//extern IDirectSoundRenderer* m_pAudioDecoder;
 CApplication::CApplication(void)
 :
 #ifdef HAS_DVD_DRIVE
@@ -246,8 +239,6 @@ CApplication::~CApplication(void)
   delete m_pInertialScrollingHandler;
 
   m_actionListeners.clear();
-
-  CServiceBroker::UnregisterSettings();
 }
 
 bool CApplication::OnEvent(XBMC_Event& newEvent)
@@ -274,13 +265,27 @@ void CApplication::HandlePortEvents()
       case XBMC_VIDEORESIZE:
         if (CServiceBroker::GetGUI()->GetWindowManager().Initialized())
         {
-          if (!g_advancedSettings.m_fullScreen)
+          if (!CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreen)
           {
             CServiceBroker::GetWinSystem()->GetGfxContext().ApplyWindowResize(newEvent.resize.w, newEvent.resize.h);
-            CServiceBroker::GetSettings()->SetInt(CSettings::SETTING_WINDOW_WIDTH, newEvent.resize.w);
-            CServiceBroker::GetSettings()->SetInt(CSettings::SETTING_WINDOW_HEIGHT, newEvent.resize.h);
-            CServiceBroker::GetSettings()->Save();
+
+            const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+            settings->SetInt(CSettings::SETTING_WINDOW_WIDTH, newEvent.resize.w);
+            settings->SetInt(CSettings::SETTING_WINDOW_HEIGHT, newEvent.resize.h);
+            settings->Save();
           }
+#ifdef TARGET_WINDOWS
+          else
+          {
+            // this may occurs when OS tries to resize application window
+            //CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP, true);
+            //auto& gfxContext = CServiceBroker::GetWinSystem()->GetGfxContext();
+            //gfxContext.SetVideoResolution(gfxContext.GetVideoResolution(), true);
+            // try to resize window back to it's full screen size
+            auto& res_info = CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP);
+            CServiceBroker::GetWinSystem()->ResizeWindow(res_info.iScreenWidth, res_info.iScreenHeight, 0, 0);
+          }
+#endif
         }
         break;
       case XBMC_VIDEOMOVE:
@@ -355,8 +360,12 @@ bool CApplication::Create(const CAppParamParser &params)
   // Grab a handle to our thread to be used later in identifying the render thread.
   m_threadID = CThread::GetCurrentThreadId();
 
-  m_pSettings.reset(new CSettings());
-  CServiceBroker::RegisterSettings(m_pSettings);
+  m_bPlatformDirectories = params.m_platformDirectories;
+  m_bTestMode = params.m_testmode;
+  m_bStandalone = params.m_standAlone;
+
+  m_pSettingsComponent.reset(new CSettingsComponent());
+  m_pSettingsComponent->Init(params);
 
   // Announement service
   m_pAnnouncementManager = std::make_shared<ANNOUNCEMENT::CAnnouncementManager>();
@@ -400,13 +409,6 @@ bool CApplication::Create(const CAppParamParser &params)
     }
   #endif
 
-  // only the InitDirectories* for the current platform should return true
-  bool inited = InitDirectoriesLinux();
-  if (!inited)
-    inited = InitDirectoriesOSX();
-  if (!inited)
-    inited = InitDirectoriesWin32();
-
   // copy required files
   CopyUserDataIfNeeded("special://masterprofile/", "RssFeeds.xml");
   CopyUserDataIfNeeded("special://masterprofile/", "favourites.xml");
@@ -423,13 +425,17 @@ bool CApplication::Create(const CAppParamParser &params)
     return false;
   }
 
+#ifdef TARGET_POSIX //! @todo Win32 has no special://home/ mapping by default, so we
+  //!       must create these here. Ideally this should be using special://home/ and
+  //!      be platform agnostic (i.e. unify the InitDirectories*() functions)
+  if (!m_bPlatformDirectories)
+#endif
+  {
+    CDirectory::Create("special://xbmc/addons");
+  }
+
   // Init our DllLoaders emu env
   init_emu_environ();
-
-  if (!m_ServiceManager->InitStageOnePointFive())
-    return false;
-
-  CSpecialProtocol::RegisterProfileManager(m_ServiceManager->GetProfileManager());
 
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
   CLog::Log(LOGNOTICE, "Starting %s (%s). Platform: %s %s %d-bit", CSysInfo::GetAppName().c_str(), CSysInfo::GetVersion().c_str(),
@@ -452,7 +458,7 @@ bool CApplication::Create(const CAppParamParser &params)
 //  specialVersion = " (version for XXXX)";
 #endif
   CLog::Log(LOGNOTICE, "Using %s %s x%d build%s", buildType.c_str(), CSysInfo::GetAppName().c_str(), g_sysinfo.GetXbmcBitness(), specialVersion.c_str());
-  CLog::Log(LOGNOTICE, "%s compiled " __DATE__ " by %s for %s %s %d-bit %s (%s)", CSysInfo::GetAppName().c_str(), g_sysinfo.GetUsedCompilerNameAndVer().c_str(), g_sysinfo.GetBuildTargetPlatformName().c_str(),
+  CLog::Log(LOGNOTICE, "%s compiled %s by %s for %s %s %d-bit %s (%s)", CSysInfo::GetAppName().c_str(), CSysInfo::GetBuildDate(), g_sysinfo.GetUsedCompilerNameAndVer().c_str(), g_sysinfo.GetBuildTargetPlatformName().c_str(),
             g_sysinfo.GetBuildTargetCpuFamily().c_str(), g_sysinfo.GetXbmcBitness(), g_sysinfo.GetBuildTargetPlatformVersionDecoded().c_str(),
             g_sysinfo.GetBuildTargetPlatformVersion().c_str());
 
@@ -505,7 +511,7 @@ bool CApplication::Create(const CAppParamParser &params)
   CLog::Log(LOGNOTICE, "Local hostname: %s", hostname.c_str());
   std::string lowerAppName = CCompileInfo::GetAppName();
   StringUtils::ToLower(lowerAppName);
-  CLog::Log(LOGNOTICE, "Log File is located: %s/%s.log", CSpecialProtocol::TranslatePath("special://logpath").c_str(), lowerAppName.c_str());
+  CLog::Log(LOGNOTICE, "Log File is located: %s.log", CSpecialProtocol::TranslatePath("special://logpath/" + lowerAppName).c_str());
   CRegExp::LogCheckUtf8Support();
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
 
@@ -526,26 +532,19 @@ bool CApplication::Create(const CAppParamParser &params)
   // set avutil callback
   av_log_set_callback(ff_avutil_log);
 
-  // Initialize default Settings - don't move
-  CLog::Log(LOGNOTICE, "load settings...");
-  if (!CServiceBroker::GetSettings()->Initialize())
+  CLog::Log(LOGINFO, "loading settings");
+  if (!m_pSettingsComponent->Load())
     return false;
-
-  // load the actual values
-  if (!CServiceBroker::GetSettings()->Load())
-  {
-    CLog::Log(LOGFATAL, "unable to load settings");
-    return false;
-  }
-  CServiceBroker::GetSettings()->SetLoaded();
 
   CLog::Log(LOGINFO, "creating subdirectories");
-  CLog::Log(LOGINFO, "userdata folder: %s", CURL::GetRedacted(m_ServiceManager->GetProfileManager().GetProfileUserDataFolder()).c_str());
-  CLog::Log(LOGINFO, "recording folder: %s", CURL::GetRedacted(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_AUDIOCDS_RECORDINGPATH)).c_str());
-  CLog::Log(LOGINFO, "screenshots folder: %s", CURL::GetRedacted(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_DEBUG_SCREENSHOTPATH)).c_str());
-  CDirectory::Create(m_ServiceManager->GetProfileManager().GetUserDataFolder());
-  CDirectory::Create(m_ServiceManager->GetProfileManager().GetProfileUserDataFolder());
-  m_ServiceManager->GetProfileManager().CreateProfileFolders();
+  const std::shared_ptr<CProfileManager> profileManager = m_pSettingsComponent->GetProfileManager();
+  const std::shared_ptr<CSettings> settings = m_pSettingsComponent->GetSettings();
+  CLog::Log(LOGINFO, "userdata folder: %s", CURL::GetRedacted(profileManager->GetProfileUserDataFolder()).c_str());
+  CLog::Log(LOGINFO, "recording folder: %s", CURL::GetRedacted(settings->GetString(CSettings::SETTING_AUDIOCDS_RECORDINGPATH)).c_str());
+  CLog::Log(LOGINFO, "screenshots folder: %s", CURL::GetRedacted(settings->GetString(CSettings::SETTING_DEBUG_SCREENSHOTPATH)).c_str());
+  CDirectory::Create(profileManager->GetUserDataFolder());
+  CDirectory::Create(profileManager->GetProfileUserDataFolder());
+  profileManager->CreateProfileFolders();
 
   update_emu_environ();//apply the GUI settings
 
@@ -561,7 +560,7 @@ bool CApplication::Create(const CAppParamParser &params)
   m_pWinSystem = CWinSystemBase::CreateWinSystem();
   CServiceBroker::RegisterWinSystem(m_pWinSystem.get());
 
-  if (!m_ServiceManager->InitStageTwo(params))
+  if (!m_ServiceManager->InitStageTwo(params, m_pSettingsComponent->GetProfileManager()->GetProfileUserDataFolder()))
   {
     return false;
   }
@@ -575,10 +574,10 @@ bool CApplication::Create(const CAppParamParser &params)
   CServiceBroker::GetActiveAE()->SetMute(m_muted);
 
   // initialize m_replayGainSettings
-  m_replayGainSettings.iType = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINTYPE);
-  m_replayGainSettings.iPreAmp = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINPREAMP);
-  m_replayGainSettings.iNoGainPreAmp = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINNOGAINPREAMP);
-  m_replayGainSettings.bAvoidClipping = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICPLAYER_REPLAYGAINAVOIDCLIPPING);
+  m_replayGainSettings.iType = settings->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINTYPE);
+  m_replayGainSettings.iPreAmp = settings->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINPREAMP);
+  m_replayGainSettings.iNoGainPreAmp = settings->GetInt(CSettings::SETTING_MUSICPLAYER_REPLAYGAINNOGAINPREAMP);
+  m_replayGainSettings.bAvoidClipping = settings->GetBool(CSettings::SETTING_MUSICPLAYER_REPLAYGAINAVOIDCLIPPING);
 
   // load the keyboard layouts
   if (!CKeyboardLayoutManager::GetInstance().Load())
@@ -626,9 +625,10 @@ bool CApplication::CreateGUI()
   }
 
   // update the window resolution
-  CServiceBroker::GetWinSystem()->SetWindowResolution(CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_WINDOW_WIDTH), CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_WINDOW_HEIGHT));
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  CServiceBroker::GetWinSystem()->SetWindowResolution(settings->GetInt(CSettings::SETTING_WINDOW_WIDTH), settings->GetInt(CSettings::SETTING_WINDOW_HEIGHT));
 
-  if (g_advancedSettings.m_startFullScreen && CDisplaySettings::GetInstance().GetCurrentResolution() == RES_WINDOW)
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_startFullScreen && CDisplaySettings::GetInstance().GetCurrentResolution() == RES_WINDOW)
   {
     // defer saving resolution after window was created
     CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP);
@@ -648,7 +648,7 @@ bool CApplication::CreateGUI()
   }
 
   // Set default screen saver mode
-  auto screensaverModeSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_SCREENSAVER_MODE));
+  auto screensaverModeSetting = std::static_pointer_cast<CSettingString>(settings->GetSetting(CSettings::SETTING_SCREENSAVER_MODE));
   // Can only set this after windowing has been initialized since it depends on it
   if (CServiceBroker::GetWinSystem()->GetOSScreenSaver())
   {
@@ -660,7 +660,6 @@ bool CApplication::CreateGUI()
     // If OS has no screen saver, use Kodi one by default
     screensaverModeSetting->SetDefault("screensaver.xbmc.builtin.dim");
   }
-  CheckOSScreenSaverInhibitionSetting();
 
   if (sav_res)
     CDisplaySettings::GetInstance().SetCurrentResolution(RES_DESKTOP, true);
@@ -708,268 +707,6 @@ bool CApplication::InitWindow(RESOLUTION res)
   return true;
 }
 
-bool CApplication::DestroyWindow()
-{
-  bool ret = CServiceBroker::GetWinSystem()->DestroyWindow();
-  CServiceBroker::UnregisterWinSystem();
-  m_pWinSystem.reset();
-  return ret;
-}
-
-bool CApplication::InitDirectoriesLinux()
-{
-/*
-   The following is the directory mapping for Platform Specific Mode:
-
-   special://xbmc/          => [read-only] system directory (/usr/share/kodi)
-   special://home/          => [read-write] user's directory that will override special://kodi/ system-wide
-                               installations like skins, screensavers, etc.
-                               ($HOME/.kodi)
-                               NOTE: XBMC will look in both special://xbmc/addons and special://home/addons for addons.
-   special://masterprofile/ => [read-write] userdata of master profile. It will by default be
-                               mapped to special://home/userdata ($HOME/.kodi/userdata)
-   special://profile/       => [read-write] current profile's userdata directory.
-                               Generally special://masterprofile for the master profile or
-                               special://masterprofile/profiles/<profile_name> for other profiles.
-
-   NOTE: All these root directories are lowercase. Some of the sub-directories
-         might be mixed case.
-*/
-
-#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
-  std::string userName;
-  if (getenv("USER"))
-    userName = getenv("USER");
-  else
-    userName = "root";
-
-  std::string userHome;
-  if (getenv("HOME"))
-    userHome = getenv("HOME");
-  else
-    userHome = "/root";
-
-  std::string binaddonAltDir;
-  if (getenv("KODI_BINADDON_PATH"))
-    binaddonAltDir = getenv("KODI_BINADDON_PATH");
-
-  std::string appPath;
-  std::string appName = CCompileInfo::GetAppName();
-  std::string dotLowerAppName = "." + appName;
-  StringUtils::ToLower(dotLowerAppName);
-  const char* envAppHome = "KODI_HOME";
-  const char* envAppBinHome = "KODI_BIN_HOME";
-  const char* envAppTemp = "KODI_TEMP";
-
-  auto appBinPath = CUtil::GetHomePath(envAppBinHome);
-  // overridden by user
-  if (getenv(envAppHome))
-    appPath = getenv(envAppHome);
-  else
-  {
-    // use build time default
-    appPath = INSTALL_PATH;
-    /* Check if binaries and arch independent data files are being kept in
-     * separate locations. */
-    if (!CDirectory::Exists(URIUtils::AddFileToFolder(appPath, "userdata")))
-    {
-      /* Attempt to locate arch independent data files. */
-      appPath = CUtil::GetHomePath(appBinPath);
-      if (!CDirectory::Exists(URIUtils::AddFileToFolder(appPath, "userdata")))
-      {
-        fprintf(stderr, "Unable to find path to %s data files!\n", appName.c_str());
-        exit(1);
-      }
-    }
-  }
-
-  /* Set some environment variables */
-  setenv(envAppBinHome, appBinPath.c_str(), 0);
-  setenv(envAppHome, appPath.c_str(), 0);
-
-  if (m_bPlatformDirectories)
-  {
-    // map our special drives
-    CSpecialProtocol::SetXBMCBinPath(appBinPath);
-    CSpecialProtocol::SetXBMCAltBinAddonPath(binaddonAltDir);
-    CSpecialProtocol::SetXBMCPath(appPath);
-    CSpecialProtocol::SetHomePath(userHome + "/" + dotLowerAppName);
-    CSpecialProtocol::SetMasterProfilePath(userHome + "/" + dotLowerAppName + "/userdata");
-
-    std::string strTempPath = userHome;
-    strTempPath = URIUtils::AddFileToFolder(strTempPath, dotLowerAppName + "/temp");
-    if (getenv(envAppTemp))
-      strTempPath = getenv(envAppTemp);
-    CSpecialProtocol::SetTempPath(strTempPath);
-    CSpecialProtocol::SetLogPath(strTempPath);
-
-    CreateUserDirs();
-
-  }
-  else
-  {
-    URIUtils::AddSlashAtEnd(appPath);
-
-    CSpecialProtocol::SetXBMCBinPath(appBinPath);
-    CSpecialProtocol::SetXBMCAltBinAddonPath(binaddonAltDir);
-    CSpecialProtocol::SetXBMCPath(appPath);
-    CSpecialProtocol::SetHomePath(URIUtils::AddFileToFolder(appPath, "portable_data"));
-    CSpecialProtocol::SetMasterProfilePath(URIUtils::AddFileToFolder(appPath, "portable_data/userdata"));
-
-    std::string strTempPath = appPath;
-    strTempPath = URIUtils::AddFileToFolder(strTempPath, "portable_data/temp");
-    if (getenv(envAppTemp))
-      strTempPath = getenv(envAppTemp);
-    CSpecialProtocol::SetTempPath(strTempPath);
-    CSpecialProtocol::SetLogPath(strTempPath);
-    CreateUserDirs();
-  }
-  CSpecialProtocol::SetXBMCBinAddonPath(appBinPath + "/addons");
-
-  return true;
-#else
-  return false;
-#endif
-}
-
-bool CApplication::InitDirectoriesOSX()
-{
-#if defined(TARGET_DARWIN)
-  std::string userName;
-  if (getenv("USER"))
-    userName = getenv("USER");
-  else
-    userName = "root";
-
-  std::string userHome;
-  if (getenv("HOME"))
-    userHome = getenv("HOME");
-  else
-    userHome = "/root";
-
-  std::string binaddonAltDir;
-  if (getenv("KODI_BINADDON_PATH"))
-    binaddonAltDir = getenv("KODI_BINADDON_PATH");
-
-  std::string appPath = CUtil::GetHomePath();
-  setenv("KODI_HOME", appPath.c_str(), 0);
-
-#if defined(TARGET_DARWIN_IOS)
-  std::string fontconfigPath;
-  fontconfigPath = appPath + "/system/players/VideoPlayer/etc/fonts/fonts.conf";
-  setenv("FONTCONFIG_FILE", fontconfigPath.c_str(), 0);
-#endif
-
-  // setup path to our internal dylibs so loader can find them
-  std::string frameworksPath = CUtil::GetFrameworksPath();
-  CSpecialProtocol::SetXBMCFrameworksPath(frameworksPath);
-
-  // OSX always runs with m_bPlatformDirectories == true
-  if (m_bPlatformDirectories)
-  {
-    // map our special drives
-    CSpecialProtocol::SetXBMCBinPath(appPath);
-    CSpecialProtocol::SetXBMCAltBinAddonPath(binaddonAltDir);
-    CSpecialProtocol::SetXBMCPath(appPath);
-    #if defined(TARGET_DARWIN_IOS)
-      std::string appName = CCompileInfo::GetAppName();
-      CSpecialProtocol::SetHomePath(userHome + "/" + CDarwinUtils::GetAppRootFolder() + "/" + appName);
-      CSpecialProtocol::SetMasterProfilePath(userHome + "/" + CDarwinUtils::GetAppRootFolder() + "/" + appName + "/userdata");
-    #else
-      std::string appName = CCompileInfo::GetAppName();
-      CSpecialProtocol::SetHomePath(userHome + "/Library/Application Support/" + appName);
-      CSpecialProtocol::SetMasterProfilePath(userHome + "/Library/Application Support/" + appName + "/userdata");
-    #endif
-
-    std::string dotLowerAppName = "." + appName;
-    StringUtils::ToLower(dotLowerAppName);
-    // location for temp files
-    #if defined(TARGET_DARWIN_IOS)
-      std::string strTempPath = URIUtils::AddFileToFolder(userHome,  std::string(CDarwinUtils::GetAppRootFolder()) + "/" + appName + "/temp");
-    #else
-      std::string strTempPath = URIUtils::AddFileToFolder(userHome, dotLowerAppName + "/");
-      CDirectory::Create(strTempPath);
-      strTempPath = URIUtils::AddFileToFolder(userHome, dotLowerAppName + "/temp");
-    #endif
-    CSpecialProtocol::SetTempPath(strTempPath);
-
-    // xbmc.log file location
-    #if defined(TARGET_DARWIN_IOS)
-      strTempPath = userHome + "/" + std::string(CDarwinUtils::GetAppRootFolder());
-    #else
-      strTempPath = userHome + "/Library/Logs";
-    #endif
-    CSpecialProtocol::SetLogPath(strTempPath);
-    CreateUserDirs();
-  }
-  else
-  {
-    URIUtils::AddSlashAtEnd(appPath);
-
-    CSpecialProtocol::SetXBMCBinPath(appPath);
-    CSpecialProtocol::SetXBMCAltBinAddonPath(binaddonAltDir);
-    CSpecialProtocol::SetXBMCPath(appPath);
-    CSpecialProtocol::SetHomePath(URIUtils::AddFileToFolder(appPath, "portable_data"));
-    CSpecialProtocol::SetMasterProfilePath(URIUtils::AddFileToFolder(appPath, "portable_data/userdata"));
-
-    std::string strTempPath = URIUtils::AddFileToFolder(appPath, "portable_data/temp");
-    CSpecialProtocol::SetTempPath(strTempPath);
-    CSpecialProtocol::SetLogPath(strTempPath);
-  }
-  CSpecialProtocol::SetXBMCBinAddonPath(appPath + "/addons");
-  return true;
-#else
-  return false;
-#endif
-}
-
-bool CApplication::InitDirectoriesWin32()
-{
-#ifdef TARGET_WINDOWS
-  std::string xbmcPath = CUtil::GetHomePath();
-  CEnvironment::setenv("KODI_HOME", xbmcPath);
-  CSpecialProtocol::SetXBMCBinPath(xbmcPath);
-  CSpecialProtocol::SetXBMCPath(xbmcPath);
-  CSpecialProtocol::SetXBMCBinAddonPath(xbmcPath + "/addons");
-
-  std::string strWin32UserFolder = CWIN32Util::GetProfilePath();
-  CSpecialProtocol::SetLogPath(strWin32UserFolder);
-  CSpecialProtocol::SetHomePath(strWin32UserFolder);
-  CSpecialProtocol::SetMasterProfilePath(URIUtils::AddFileToFolder(strWin32UserFolder, "userdata"));
-  CSpecialProtocol::SetTempPath(URIUtils::AddFileToFolder(strWin32UserFolder,"cache"));
-
-  CEnvironment::setenv("KODI_PROFILE_USERDATA", CSpecialProtocol::TranslatePath("special://masterprofile/"));
-
-  CreateUserDirs();
-
-  return true;
-#else
-  return false;
-#endif
-}
-
-void CApplication::CreateUserDirs() const
-{
-  CDirectory::Create("special://home/");
-  CDirectory::Create("special://home/addons");
-  CDirectory::Create("special://home/addons/packages");
-  CDirectory::Create("special://home/addons/temp");
-  CDirectory::Create("special://home/media");
-  CDirectory::Create("special://home/system");
-  CDirectory::Create("special://masterprofile/");
-  CDirectory::Create("special://temp/");
-  CDirectory::Create("special://logpath");
-  CDirectory::Create("special://temp/temp"); // temp directory for python and dllGetTempPathA
-
-  //Let's clear our archive cache before starting up anything more
-  auto archiveCachePath = CSpecialProtocol::TranslatePath("special://temp/archive_cache/");
-  if (CDirectory::Exists(archiveCachePath))
-    if (!CDirectory::RemoveRecursive(archiveCachePath))
-      CLog::Log(LOGWARNING, "Failed to remove the archive cache at %s", archiveCachePath.c_str());
-  CDirectory::Create(archiveCachePath);
-
-}
-
 bool CApplication::Initialize()
 {
 #if defined(HAS_DVD_DRIVE) && !defined(TARGET_WINDOWS) // somehow this throws an "unresolved external symbol" on win32
@@ -977,20 +714,13 @@ bool CApplication::Initialize()
   cdio_loglevel_default = CDIO_LOG_ERROR;
 #endif
 
-#ifdef TARGET_POSIX //! @todo Win32 has no special://home/ mapping by default, so we
-              //!       must create these here. Ideally this should be using special://home/ and
-              //!      be platform agnostic (i.e. unify the InitDirectories*() functions)
-  if (!m_bPlatformDirectories)
-#endif
-  {
-    CDirectory::Create("special://xbmc/addons");
-  }
-
   // load the language and its translated strings
   if (!LoadLanguage(false))
     return false;
 
-  m_ServiceManager->GetEventLog().Add(EventPtr(new CNotificationEvent(
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
+
+  profileManager->GetEventLog().Add(EventPtr(new CNotificationEvent(
     StringUtils::Format(g_localizeStrings.Get(177).c_str(), g_sysinfo.GetAppName().c_str()),
     StringUtils::Format(g_localizeStrings.Get(178).c_str(), g_sysinfo.GetAppName().c_str()),
     "special://xbmc/media/icon256x256.png", EventLevel::Basic)));
@@ -1025,12 +755,11 @@ bool CApplication::Initialize()
   // GUI depends on seek handler
   m_appPlayer.GetSeekHandler().Configure();
 
-  // Init DPMS, before creating the corresponding setting control.
-  m_dpms.reset(new DPMSSupport());
   bool uiInitializationFinished = false;
+
   if (CServiceBroker::GetGUI()->GetWindowManager().Initialized())
   {
-    CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF)->SetRequirementsMet(m_dpms->IsSupported());
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
 
     CServiceBroker::GetGUI()->GetWindowManager().CreateWindows();
 
@@ -1060,10 +789,10 @@ bool CApplication::Initialize()
     m_incompatibleAddons = incompatibleAddons;
     m_confirmSkinChange = true;
 
-    std::string defaultSkin = std::static_pointer_cast<const CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN))->GetDefault();
-    if (!LoadSkin(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN)))
+    std::string defaultSkin = std::static_pointer_cast<const CSettingString>(settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN))->GetDefault();
+    if (!LoadSkin(settings->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN)))
     {
-      CLog::Log(LOGERROR, "Failed to load skin '%s'", CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN).c_str());
+      CLog::Log(LOGERROR, "Failed to load skin '%s'", settings->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN).c_str());
       if (!LoadSkin(defaultSkin))
       {
         CLog::Log(LOGFATAL, "Default skin '%s' could not be loaded! Terminating..", defaultSkin.c_str());
@@ -1076,15 +805,15 @@ bool CApplication::Initialize()
     // rendered while we load the main window or enter the master lock key
     CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_SPLASH);
 
-    if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MASTERLOCK_STARTUPLOCK) &&
-        m_ServiceManager->GetProfileManager().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
-        !m_ServiceManager->GetProfileManager().GetMasterProfile().getLockCode().empty())
+    if (settings->GetBool(CSettings::SETTING_MASTERLOCK_STARTUPLOCK) &&
+        profileManager->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
+        !profileManager->GetMasterProfile().getLockCode().empty())
     {
       g_passwordManager.CheckStartUpLock();
     }
 
     // check if we should use the login screen
-    if (m_ServiceManager->GetProfileManager().UsingLoginScreen())
+    if (profileManager->UsingLoginScreen())
     {
       CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_LOGIN_SCREEN);
     }
@@ -1110,7 +839,7 @@ bool CApplication::Initialize()
 
   CJSONRPC::Initialize();
 
-  if (!m_ServiceManager->InitStageThree())
+  if (!m_ServiceManager->InitStageThree(profileManager))
   {
     CLog::Log(LOGERROR, "Application - Init3 failed");
   }
@@ -1120,7 +849,7 @@ bool CApplication::Initialize()
   CLog::Log(LOGINFO, "removing tempfiles");
   CUtil::RemoveTempFiles();
 
-  if (!m_ServiceManager->GetProfileManager().UsingLoginScreen())
+  if (!profileManager->UsingLoginScreen())
   {
     UpdateLibraries();
     SetLoggingIn(false);
@@ -1133,11 +862,12 @@ bool CApplication::Initialize()
   RegisterActionListener(&CPlayerController::GetInstance());
 
   CServiceBroker::GetRepositoryUpdater().Start();
-  if (!m_ServiceManager->GetProfileManager().UsingLoginScreen())
+  if (!profileManager->UsingLoginScreen())
     CServiceBroker::GetServiceAddons().Start();
 
   CLog::Log(LOGNOTICE, "initialize done");
 
+  CheckOSScreenSaverInhibitionSetting();
   // reset our screensaver (starts timers etc.)
   ResetScreenSaver();
 
@@ -1154,48 +884,49 @@ bool CApplication::Initialize()
 bool CApplication::StartServer(enum ESERVERS eServer, bool bStart, bool bWait/* = false*/)
 {
   bool ret = false;
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
   switch(eServer)
   {
     case ES_WEBSERVER:
       // the callback will take care of starting/stopping webserver
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_WEBSERVER, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_WEBSERVER, bStart);
       break;
 
     case ES_AIRPLAYSERVER:
       // the callback will take care of starting/stopping airplay
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_AIRPLAY, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_AIRPLAY, bStart);
       break;
 
     case ES_JSONRPCSERVER:
       // the callback will take care of starting/stopping jsonrpc server
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_ESENABLED, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_ESENABLED, bStart);
       break;
 
     case ES_UPNPSERVER:
       // the callback will take care of starting/stopping upnp server
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_UPNPSERVER, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_UPNPSERVER, bStart);
       break;
 
     case ES_UPNPRENDERER:
       // the callback will take care of starting/stopping upnp renderer
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_UPNPRENDERER, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_UPNPRENDERER, bStart);
       break;
 
     case ES_EVENTSERVER:
       // the callback will take care of starting/stopping event server
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_ESENABLED, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_ESENABLED, bStart);
       break;
 
     case ES_ZEROCONF:
       // the callback will take care of starting/stopping zeroconf
-      ret = CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_ZEROCONF, bStart);
+      ret = settings->SetBool(CSettings::SETTING_SERVICES_ZEROCONF, bStart);
       break;
 
     default:
       ret = false;
       break;
   }
-  CServiceBroker::GetSettings()->Save();
+  settings->Save();
 
   return ret;
 }
@@ -1205,7 +936,7 @@ void CApplication::StartServices()
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
   // Start Thread for DVD Mediatype detection
   CLog::Log(LOGNOTICE, "start dvd mediatype detection");
-  m_DetectDVDType.Create(false, THREAD_MINSTACKSIZE);
+  m_DetectDVDType.Create(false);
 #endif
 }
 
@@ -1242,21 +973,22 @@ void CApplication::OnSettingChanged(std::shared_ptr<const CSetting> setting)
     // the it to the default value
     if (settingId == CSettings::SETTING_LOOKANDFEEL_SKIN)
     {
-      SettingPtr skinRelatedSetting = CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS);
+      const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+      SettingPtr skinRelatedSetting = settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS);
       if (!skinRelatedSetting->IsDefault())
       {
         m_ignoreSkinSettingChanges = true;
         skinRelatedSetting->Reset();
       }
 
-      skinRelatedSetting = CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINTHEME);
+      skinRelatedSetting = settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINTHEME);
       if (!skinRelatedSetting->IsDefault())
       {
         m_ignoreSkinSettingChanges = true;
         skinRelatedSetting->Reset();
       }
 
-      skinRelatedSetting = CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_FONT);
+      skinRelatedSetting = settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_FONT);
       if (!skinRelatedSetting->IsDefault())
       {
         m_ignoreSkinSettingChanges = true;
@@ -1265,7 +997,7 @@ void CApplication::OnSettingChanged(std::shared_ptr<const CSetting> setting)
     }
     else if (settingId == CSettings::SETTING_LOOKANDFEEL_SKINTHEME)
     {
-      std::shared_ptr<CSettingString> skinColorsSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS));
+      std::shared_ptr<CSettingString> skinColorsSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettingsComponent()->GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS));
       m_ignoreSkinSettingChanges = true;
 
       // we also need to adjust the skin color setting
@@ -1329,19 +1061,17 @@ void CApplication::OnSettingAction(std::shared_ptr<const CSetting> setting)
   else if (settingId == CSettings::SETTING_SCREENSAVER_SETTINGS)
   {
     AddonPtr addon;
-    if (CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE), addon, ADDON_SCREENSAVER))
+    if (CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE), addon, ADDON_SCREENSAVER))
       CGUIDialogAddonSettings::ShowForAddon(addon);
   }
   else if (settingId == CSettings::SETTING_AUDIOCDS_SETTINGS)
   {
     AddonPtr addon;
-    if (CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_AUDIOCDS_ENCODER), addon, ADDON_AUDIOENCODER))
+    if (CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_AUDIOCDS_ENCODER), addon, ADDON_AUDIOENCODER))
       CGUIDialogAddonSettings::ShowForAddon(addon);
   }
   else if (settingId == CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION)
     CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_SCREEN_CALIBRATION);
-  else if (settingId == CSettings::SETTING_VIDEOSCREEN_TESTPATTERN)
-    CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_TEST_PATTERN);
   else if (settingId == CSettings::SETTING_SOURCE_VIDEOS)
   {
     std::vector<std::string> params{"library://video/files.xml", "return"};
@@ -1361,19 +1091,6 @@ bool CApplication::OnSettingUpdate(std::shared_ptr<CSetting> setting, const char
   if (setting == NULL)
     return false;
 
-#if defined(HAS_LIBAMCODEC)
-  if (setting->GetId() == CSettings::SETTING_VIDEOPLAYER_USEAMCODEC)
-  {
-    // Do not permit amcodec to be used on non-aml platforms.
-    // The setting will be hidden but the default value is true,
-    // so change it to false.
-    if (!aml_present())
-    {
-      std::shared_ptr<CSettingBool> useamcodec = std::static_pointer_cast<CSettingBool>(setting);
-      return useamcodec->SetValue(false);
-    }
-  }
-#endif
 #if defined(TARGET_DARWIN_OSX)
   if (setting->GetId() == CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE)
   {
@@ -1398,10 +1115,7 @@ bool CApplication::OnSettingsSaving() const
   // don't save settings when we're busy stopping the application
   // a lot of screens try to save settings on deinit and deinit is
   // called for every screen when the application is stopping
-  if (m_bStop)
-    return false;
-
-  return true;
+  return !m_bStop;
 }
 
 void CApplication::ReloadSkin(bool confirm/*=false*/)
@@ -1414,7 +1128,8 @@ void CApplication::ReloadSkin(bool confirm/*=false*/)
   CGUIMessage msg(GUI_MSG_LOAD_SKIN, -1, CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow());
   CServiceBroker::GetGUI()->GetWindowManager().SendMessage(msg);
 
-  std::string newSkin = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  std::string newSkin = settings->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
   if (LoadSkin(newSkin))
   {
     /* The Reset() or SetString() below will cause recursion, so the m_confirmSkinChange boolean is set so as to not prompt the
@@ -1425,18 +1140,18 @@ void CApplication::ReloadSkin(bool confirm/*=false*/)
         DialogResponse::YES)
       {
         m_confirmSkinChange = false;
-        CServiceBroker::GetSettings()->SetString(CSettings::SETTING_LOOKANDFEEL_SKIN, oldSkin);
+        settings->SetString(CSettings::SETTING_LOOKANDFEEL_SKIN, oldSkin);
       }
     }
   }
   else
   {
     // skin failed to load - we revert to the default only if we didn't fail loading the default
-    std::string defaultSkin = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN))->GetDefault();
+    std::string defaultSkin = std::static_pointer_cast<CSettingString>(settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN))->GetDefault();
     if (newSkin != defaultSkin)
     {
       m_confirmSkinChange = false;
-      CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN)->Reset();
+      settings->GetSetting(CSettings::SETTING_LOOKANDFEEL_SKIN)->Reset();
       CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(24102), g_localizeStrings.Get(24103));
     }
   }
@@ -1547,17 +1262,18 @@ bool CApplication::LoadSkin(const std::string& skinID)
   CServiceBroker::GetWinSystem()->GetGfxContext().SetMediaDir(skin->Path());
   g_directoryCache.ClearSubPaths(skin->Path());
 
-  CServiceBroker::GetGUI()->GetColorManager().Load(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS));
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  CServiceBroker::GetGUI()->GetColorManager().Load(settings->GetString(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS));
 
   g_SkinInfo->LoadIncludes();
 
-  g_fontManager.LoadFonts(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_FONT));
+  g_fontManager.LoadFonts(settings->GetString(CSettings::SETTING_LOOKANDFEEL_FONT));
 
   // load in the skin strings
   std::string langPath = URIUtils::AddFileToFolder(skin->Path(), "language");
   URIUtils::AddSlashAtEnd(langPath);
 
-  g_localizeStrings.LoadSkinStrings(langPath, CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOCALE_LANGUAGE));
+  g_localizeStrings.LoadSkinStrings(langPath, settings->GetString(CSettings::SETTING_LOCALE_LANGUAGE));
 
 
   int64_t start;
@@ -1577,6 +1293,7 @@ bool CApplication::LoadSkin(const std::string& skinID)
   CServiceBroker::GetGUI()->GetWindowManager().AddMsgTarget(this);
   CServiceBroker::GetGUI()->GetWindowManager().AddMsgTarget(&CServiceBroker::GetPlaylistPlayer());
   CServiceBroker::GetGUI()->GetWindowManager().AddMsgTarget(&g_fontManager);
+  CServiceBroker::GetGUI()->GetWindowManager().AddMsgTarget(&CServiceBroker::GetGUI()->GetStereoscopicsManager());
   CServiceBroker::GetGUI()->GetWindowManager().SetCallback(*this);
   //@todo should be done by GUIComponents
   CServiceBroker::GetGUI()->GetWindowManager().Initialize();
@@ -1638,22 +1355,26 @@ void CApplication::UnloadSkin(bool forReload /* = false */)
   else if (!m_saveSkinOnUnloading)
     m_saveSkinOnUnloading = true;
 
-  CServiceBroker::GetGUI()->GetAudioManager().Enable(false);
+  CGUIComponent *gui = CServiceBroker::GetGUI();
+  if (gui)
+  {
+    gui->GetAudioManager().Enable(false);
 
-  CServiceBroker::GetGUI()->GetWindowManager().DeInitialize();
-  CTextureCache::GetInstance().Deinitialize();
+    gui->GetWindowManager().DeInitialize();
+    CTextureCache::GetInstance().Deinitialize();
 
-  // remove the skin-dependent window
-  CServiceBroker::GetGUI()->GetWindowManager().Delete(WINDOW_DIALOG_FULLSCREEN_INFO);
+    // remove the skin-dependent window
+    gui->GetWindowManager().Delete(WINDOW_DIALOG_FULLSCREEN_INFO);
 
-  CServiceBroker::GetGUI()->GetTextureManager().Cleanup();
-  CServiceBroker::GetGUI()->GetLargeTextureManager().CleanupUnusedImages(true);
+    gui->GetTextureManager().Cleanup();
+    gui->GetLargeTextureManager().CleanupUnusedImages(true);
 
-  g_fontManager.Clear();
+    g_fontManager.Clear();
 
-  CServiceBroker::GetGUI()->GetColorManager().Clear();
+    gui->GetColorManager().Clear();
 
-  CServiceBroker::GetGUI()->GetInfoManager().Clear();
+    gui->GetInfoManager().Clear();
+  }
 
 //  The g_SkinInfo shared_ptr ought to be reset here
 // but there are too many places it's used without checking for NULL
@@ -1788,7 +1509,7 @@ void CApplication::Render()
     return;
 
   // render gui layer
-  if (!m_skipGuiRender)
+  if (m_renderGUI && !m_skipGuiRender)
   {
     if (CServiceBroker::GetWinSystem()->GetGfxContext().GetStereoMode())
     {
@@ -1832,11 +1553,6 @@ void CApplication::Render()
   CServiceBroker::GetWinSystem()->GetGfxContext().Flip(hasRendered, m_appPlayer.IsRenderingVideoLayer());
 
   CTimeUtils::UpdateFrameTime(hasRendered);
-}
-
-void CApplication::SetStandAlone(bool value)
-{
-  g_advancedSettings.m_handleMounting = m_bStandalone = value;
 }
 
 bool CApplication::OnAction(const CAction &action)
@@ -2207,8 +1923,9 @@ bool CApplication::OnAction(const CAction &action)
 
   if (action.GetID() == ACTION_TOGGLE_DIGITAL_ANALOG)
   {
-    bool passthrough = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGH);
-    CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGH, !passthrough);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    bool passthrough = settings->GetBool(CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGH);
+    settings->SetBool(CSettings::SETTING_AUDIOOUTPUT_PASSTHROUGH, !passthrough);
 
     if (CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_SETTINGS_SYSTEM)
     {
@@ -2226,7 +1943,7 @@ bool CApplication::OnAction(const CAction &action)
       if (m_muted)
         UnMute();
       float volume = m_volumeLevel;
-      int volumesteps = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_AUDIOOUTPUT_VOLUMESTEPS);
+      int volumesteps = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_AUDIOOUTPUT_VOLUMESTEPS);
       // sanity check
       if (volumesteps == 0)
         volumesteps = 90;
@@ -2519,7 +2236,7 @@ void CApplication::OnApplicationMessage(ThreadMessage* pMsg)
     {
       if (items.Size() == 0)
       {
-        CServiceBroker::GetSettings()->SetString(CSettings::SETTING_SCREENSAVER_MODE, "screensaver.xbmc.builtin.dim");
+        CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_SCREENSAVER_MODE, "screensaver.xbmc.builtin.dim");
         ActivateScreenSaver();
       }
       else
@@ -2533,7 +2250,7 @@ void CApplication::OnApplicationMessage(ThreadMessage* pMsg)
     {
       const int profile = pMsg->param1;
       if (profile >= 0)
-        m_ServiceManager->GetProfileManager().LoadProfile(static_cast<unsigned int>(profile));
+        CServiceBroker::GetSettingsComponent()->GetProfileManager()->LoadProfile(static_cast<unsigned int>(profile));
     }
 
     break;
@@ -2546,7 +2263,7 @@ void CApplication::OnApplicationMessage(ThreadMessage* pMsg)
 
 void CApplication::HandleShutdownMessage()
 {
-  switch (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE))
+  switch (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE))
   {
   case POWERSTATE_SHUTDOWN:
     CApplicationMessenger::GetInstance().PostMsg(TMSG_POWERDOWN);
@@ -2653,7 +2370,7 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     // This code reduces rendering fps of the GUI layer when playing videos in fullscreen mode
     // it makes only sense on architectures with multiple layers
     if (CServiceBroker::GetWinSystem()->GetGfxContext().IsFullScreenVideo() && !m_appPlayer.IsPausedPlayback() && m_appPlayer.IsRenderingVideoLayer())
-      fps = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_VIDEOPLAYER_LIMITGUIUPDATE);
+      fps = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOPLAYER_LIMITGUIUPDATE);
 
     unsigned int now = XbmcThreads::SystemClockMillis();
     unsigned int frameTime = now - m_lastRenderTime;
@@ -2661,7 +2378,7 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
       m_skipGuiRender = true;
 #endif
 
-    if (g_advancedSettings.m_guiSmartRedraw && m_guiRefreshTimer.IsTimePast())
+    if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_guiSmartRedraw && m_guiRefreshTimer.IsTimePast())
     {
       CServiceBroker::GetGUI()->GetWindowManager().SendMessage(GUI_MSG_REFRESH_TIMER, 0, 0);
       m_guiRefreshTimer.Set(500);
@@ -2703,10 +2420,16 @@ bool CApplication::Cleanup()
     m_globalScreensaverInhibitor.Release();
     m_screensaverInhibitor.Release();
 
-    CServiceBroker::GetRenderSystem()->DestroyRenderSystem();
-    CServiceBroker::GetWinSystem()->DestroyWindow();
-    CServiceBroker::GetWinSystem()->DestroyWindowSystem();
-    CServiceBroker::GetGUI()->GetWindowManager().DestroyWindows();
+    CRenderSystemBase *renderSystem = CServiceBroker::GetRenderSystem();
+    if (renderSystem)
+      renderSystem->DestroyRenderSystem();
+
+    CWinSystemBase *winSystem = CServiceBroker::GetWinSystem();
+    if (winSystem)
+      winSystem->DestroyWindow();
+
+    if (m_pGUI)
+      m_pGUI->GetWindowManager().DestroyWindows();
 
     CLog::Log(LOGNOTICE, "unload sections");
 
@@ -2729,12 +2452,6 @@ bool CApplication::Cleanup()
     if (m_ServiceManager)
       m_ServiceManager->DeinitStageTwo();
 
-    CServiceBroker::GetSettings()->Uninitialize();
-    g_advancedSettings.Clear();
-
-    CSpecialProtocol::UnregisterProfileManager();
-    m_ServiceManager->DeinitStageOnePointFive();
-
 #ifdef TARGET_POSIX
     CXHandle::DumpObjectTracker();
 
@@ -2747,8 +2464,19 @@ bool CApplication::Cleanup()
     while(1); // execution ends
 #endif
 
-    m_pGUI->Deinit();
-    m_pGUI.reset();
+    if (m_pGUI)
+    {
+      m_pGUI->Deinit();
+      m_pGUI.reset();
+    }
+
+    if (winSystem)
+    {
+      winSystem->DestroyWindowSystem();
+      CServiceBroker::UnregisterWinSystem();
+      winSystem = nullptr;
+      m_pWinSystem.reset();
+    }
 
     // Cleanup was called more than once on exit during my tests
     if (m_ServiceManager)
@@ -2757,7 +2485,11 @@ bool CApplication::Cleanup()
       m_ServiceManager.reset();
     }
 
+    m_pAnnouncementManager->Deinitialize();
     m_pAnnouncementManager.reset();
+
+    m_pSettingsComponent->Deinit();
+    m_pSettingsComponent.reset();
 
     return true;
   }
@@ -2770,7 +2502,7 @@ bool CApplication::Cleanup()
 
 void CApplication::Stop(int exitCode)
 {
-  CLog::Log(LOGNOTICE, "stop player");
+  CLog::Log(LOGNOTICE, "Stopping player");
   m_appPlayer.ClosePlayer();
 
   {
@@ -2806,10 +2538,10 @@ void CApplication::Stop(int exitCode)
     g_sysinfo.SetTotalUptime(g_sysinfo.GetTotalUptime() + (int)(CTimeUtils::GetFrameTime() / 60000));
 
     // Update the settings information (volume, uptime etc. need saving)
-    if (CFile::Exists(m_ServiceManager->GetProfileManager().GetSettingsFile()))
+    if (CFile::Exists(CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetSettingsFile()))
     {
       CLog::Log(LOGNOTICE, "Saving settings");
-      CServiceBroker::GetSettings()->Save();
+      CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
     }
     else
       CLog::Log(LOGNOTICE, "Not saving settings (settings.xml is not present)");
@@ -2827,7 +2559,7 @@ void CApplication::Stop(int exitCode)
     CApplicationMessenger::GetInstance().Stop();
     m_AppFocused = false;
     m_ExitCode = exitCode;
-    CLog::Log(LOGNOTICE, "stop all");
+    CLog::Log(LOGNOTICE, "Stopping all");
 
     // cancel any jobs from the jobmanager
     CJobManager::GetInstance().CancelJobs();
@@ -2846,7 +2578,7 @@ void CApplication::Stop(int exitCode)
 #ifdef HAS_ZEROCONF
     if(CZeroconfBrowser::IsInstantiated())
     {
-      CLog::Log(LOGNOTICE, "stop zeroconf browser");
+      CLog::Log(LOGNOTICE, "Stopping zeroconf browser");
       CZeroconfBrowser::GetInstance()->Stop();
       CZeroconfBrowser::ReleaseInstance();
     }
@@ -2882,7 +2614,7 @@ void CApplication::Stop(int exitCode)
     m_pActiveAE->Shutdown();
     m_pActiveAE.reset();
 
-    CLog::Log(LOGNOTICE, "stopped");
+    CLog::Log(LOGNOTICE, "Application stopped");
   }
   catch (...)
   {
@@ -2916,7 +2648,11 @@ bool CApplication::PlayMedia(CFileItem& item, const std::string &player, int iPl
       smartpl.OpenAndReadName(item.GetURL());
       CPlayList playlist;
       playlist.Add(items);
-      return ProcessAndStartPlaylist(smartpl.GetName(), playlist, (smartpl.GetType() == "songs" || smartpl.GetType() == "albums") ? PLAYLIST_MUSIC:PLAYLIST_VIDEO);
+      int iPlaylist = PLAYLIST_VIDEO;
+      if (smartpl.GetType() == "songs" || smartpl.GetType() == "albums" ||
+        smartpl.GetType() == "artists")
+        iPlaylist = PLAYLIST_MUSIC;
+      return ProcessAndStartPlaylist(smartpl.GetName(), playlist, iPlaylist);
     }
   }
   else if (item.IsPlayList() || item.IsInternetStream())
@@ -3061,12 +2797,10 @@ bool CApplication::PlayFile(CFileItem item, const std::string& player, bool bRes
 
   CPlayerOptions options;
 
-  if( item.HasProperty("StartPercent") )
+  if (item.HasProperty("StartPercent"))
   {
-    double fallback = 0.0f;
-    if(item.GetProperty("StartPercent").isString())
-      fallback = atof(item.GetProperty("StartPercent").asString().c_str());
-    options.startpercent = item.GetProperty("StartPercent").asDouble(fallback);
+    options.startpercent = item.GetProperty("StartPercent").asDouble();
+    item.m_lStartOffset = 0;
   }
 
   options.starttime = CUtil::ConvertMilliSecsToSecs(item.m_lStartOffset);
@@ -3168,21 +2902,21 @@ bool CApplication::PlayFile(CFileItem item, const std::string& player, bool bRes
   if (item.IsVideo() && playlist == PLAYLIST_VIDEO && CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlist).size() > 1)
   { // playing from a playlist by the looks
     // don't switch to fullscreen if we are not playing the first item...
-    options.fullscreen = !CServiceBroker::GetPlaylistPlayer().HasPlayedFirstFile() && g_advancedSettings.m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
+    options.fullscreen = !CServiceBroker::GetPlaylistPlayer().HasPlayedFirstFile() && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
   }
   else if(m_stackHelper.IsPlayingRegularStack())
   {
     //! @todo - this will fail if user seeks back to first file in stack
     if(m_stackHelper.GetCurrentPartNumber() == 0 || m_stackHelper.GetRegisteredStack(item)->m_lStartOffset != 0)
-      options.fullscreen = g_advancedSettings.m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
+      options.fullscreen = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
     else
       options.fullscreen = false;
   }
   else
-    options.fullscreen = g_advancedSettings.m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
+    options.fullscreen = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
 
   // stereo streams may have lower quality, i.e. 32bit vs 16 bit
-  options.preferStereo = g_advancedSettings.m_videoPreferStereoStream &&
+  options.preferStereo = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoPreferStereoStream &&
                          CServiceBroker::GetActiveAE()->HasStereoAudioChannelCount();
 
   // reset VideoStartWindowed as it's a temp setting
@@ -3247,14 +2981,14 @@ void CApplication::PlaybackCleanup()
       //  resets to res_desktop or look&feel resolution (including refreshrate)
       CServiceBroker::GetWinSystem()->GetGfxContext().SetFullScreenVideo(false);
     }
-#ifdef TARGET_DARWIN_IOS
+#ifdef TARGET_DARWIN_EMBEDDED
     CDarwinUtils::SetScheduling(false);
 #endif
   }
 
   if (!m_appPlayer.IsPlayingAudio() && CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_NONE && CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_VISUALISATION)
   {
-    CServiceBroker::GetSettings()->Save();  // save vis settings
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Save();  // save vis settings
     WakeUpScreenSaverAndDPMS();
     CServiceBroker::GetGUI()->GetWindowManager().PreviousWindow();
   }
@@ -3263,7 +2997,7 @@ void CApplication::PlaybackCleanup()
   if (!m_appPlayer.IsPlayingAudio() && (m_itemCurrentFile->IsCDDA() || m_itemCurrentFile->IsOnDVD()) && !g_mediaManager.IsDiscInDrive() && CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_VISUALISATION)
   {
     // yes, disable vis
-    CServiceBroker::GetSettings()->Save();    // save vis settings
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Save();    // save vis settings
     WakeUpScreenSaverAndDPMS();
     CServiceBroker::GetGUI()->GetWindowManager().PreviousWindow();
   }
@@ -3271,6 +3005,7 @@ void CApplication::PlaybackCleanup()
   if (!m_appPlayer.IsPlaying())
   {
     m_stackHelper.Clear();
+    m_appPlayer.ResetPlayer();
   }
 
   if (IsEnableTestMode())
@@ -3332,6 +3067,10 @@ void CApplication::OnPlayerCloseFile(const CFileItem &file, const CBookmark &boo
   bool playCountUpdate = false;
   float percent = 0.0f;
 
+  // Make sure we don't reset existing bookmark etc. on eg. player start failure
+  if (bookmark.timeInSeconds == 0.0f)
+    return;
+
   if (m_stackHelper.GetRegisteredStack(fileItem) != nullptr && m_stackHelper.GetRegisteredStackTotalTimeMs(fileItem) > 0)
   {
     // regular stack case: we have to save the bookmark on the stack
@@ -3345,21 +3084,23 @@ void CApplication::OnPlayerCloseFile(const CFileItem &file, const CBookmark &boo
 
   percent = bookmark.timeInSeconds / bookmark.totalTimeInSeconds * 100;
 
-  if ((fileItem.IsAudio() && g_advancedSettings.m_audioPlayCountMinimumPercent > 0 &&
-       percent >= g_advancedSettings.m_audioPlayCountMinimumPercent) ||
-      (fileItem.IsVideo() && g_advancedSettings.m_videoPlayCountMinimumPercent > 0 &&
-       percent >= g_advancedSettings.m_videoPlayCountMinimumPercent))
+  const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
+
+  if ((fileItem.IsAudio() && advancedSettings->m_audioPlayCountMinimumPercent > 0 &&
+       percent >= advancedSettings->m_audioPlayCountMinimumPercent) ||
+      (fileItem.IsVideo() && advancedSettings->m_videoPlayCountMinimumPercent > 0 &&
+       percent >= advancedSettings->m_videoPlayCountMinimumPercent))
   {
     playCountUpdate = true;
   }
 
-  if (g_advancedSettings.m_videoIgnorePercentAtEnd > 0 &&
+  if (advancedSettings->m_videoIgnorePercentAtEnd > 0 &&
       bookmark.totalTimeInSeconds - bookmark.timeInSeconds <
-        0.01f * g_advancedSettings.m_videoIgnorePercentAtEnd * bookmark.totalTimeInSeconds)
+        0.01f * advancedSettings->m_videoIgnorePercentAtEnd * bookmark.totalTimeInSeconds)
   {
     resumeBookmark.timeInSeconds = -1.0f;
   }
-  else if (bookmark.timeInSeconds > g_advancedSettings.m_videoIgnoreSecondsAtStart)
+  else if (bookmark.timeInSeconds > advancedSettings->m_videoIgnoreSecondsAtStart)
   {
     resumeBookmark = bookmark;
     if (m_stackHelper.GetRegisteredStack(file) != nullptr)
@@ -3373,7 +3114,7 @@ void CApplication::OnPlayerCloseFile(const CFileItem &file, const CBookmark &boo
     resumeBookmark.timeInSeconds = 0.0f;
   }
 
-  if (m_ServiceManager->GetProfileManager().GetCurrentProfile().canWriteDatabases())
+  if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteDatabases())
   {
     CSaveFileState::DoWork(fileItem, resumeBookmark, playCountUpdate);
   }
@@ -3396,10 +3137,6 @@ void CApplication::OnQueueNextItem()
 void CApplication::OnPlayBackStopped()
 {
   CLog::LogF(LOGDEBUG, "CApplication::OnPlayBackStopped");
-
-#if defined(TARGET_DARWIN_IOS)
-  CDarwinUtils::EnableOSScreenSaver(true);
-#endif
 
   CServiceBroker::GetPVRManager().OnPlaybackStopped(m_itemCurrentFile);
 
@@ -3425,9 +3162,6 @@ void CApplication::OnPlayBackPaused()
 #ifdef HAS_PYTHON
   g_pythonParser.OnPlayBackPaused();
 #endif
-#if defined(TARGET_DARWIN_IOS)
-  CDarwinUtils::EnableOSScreenSaver(true);
-#endif
 
   CVariant param;
   param["player"]["speed"] = 0;
@@ -3439,10 +3173,6 @@ void CApplication::OnPlayBackResumed()
 {
 #ifdef HAS_PYTHON
   g_pythonParser.OnPlayBackResumed();
-#endif
-#if defined(TARGET_DARWIN_IOS)
-  if (m_appPlayer.IsPlayingVideo())
-    CDarwinUtils::EnableOSScreenSaver(false);
 #endif
 
   CVariant param;
@@ -3562,19 +3292,24 @@ bool CApplication::IsFullScreen()
 
 void CApplication::StopPlaying()
 {
-  int iWin = CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow();
-  if (m_appPlayer.IsPlaying())
+  CGUIComponent *gui = CServiceBroker::GetGUI();
+
+  if (gui)
   {
-    m_appPlayer.ClosePlayer();
+    int iWin = gui->GetWindowManager().GetActiveWindow();
+    if (m_appPlayer.IsPlaying())
+    {
+      m_appPlayer.ClosePlayer();
 
-    // turn off visualisation window when stopping
-    if ((iWin == WINDOW_VISUALISATION ||
-         iWin == WINDOW_FULLSCREEN_VIDEO ||
-         iWin == WINDOW_FULLSCREEN_GAME) &&
-         !m_bStop)
-      CServiceBroker::GetGUI()->GetWindowManager().PreviousWindow();
+      // turn off visualisation window when stopping
+      if ((iWin == WINDOW_VISUALISATION ||
+           iWin == WINDOW_FULLSCREEN_VIDEO ||
+           iWin == WINDOW_FULLSCREEN_GAME) &&
+           !m_bStop)
+        gui->GetWindowManager().PreviousWindow();
 
-    g_partyModeManager.Disable();
+      g_partyModeManager.Disable();
+    }
   }
 }
 
@@ -3582,9 +3317,6 @@ void CApplication::ResetSystemIdleTimer()
 {
   // reset system idle timer
   m_idleTimer.StartZero();
-#if defined(TARGET_DARWIN_IOS)
-  CDarwinUtils::ResetSystemIdleTimer();
-#endif
 }
 
 void CApplication::ResetScreenSaver()
@@ -3610,6 +3342,14 @@ void CApplication::StopScreenSaverTimer()
 
 bool CApplication::ToggleDPMS(bool manual)
 {
+  auto winSystem = CServiceBroker::GetWinSystem();
+  if (!winSystem)
+    return false;
+
+  std::shared_ptr<CDPMSSupport> dpms = winSystem->GetDPMSManager();
+  if (!dpms)
+    return false;
+
   if (manual || (m_dpmsIsManual == manual))
   {
     if (m_dpmsIsActive)
@@ -3617,16 +3357,18 @@ bool CApplication::ToggleDPMS(bool manual)
       m_dpmsIsActive = false;
       m_dpmsIsManual = false;
       SetRenderGUI(true);
+      CheckOSScreenSaverInhibitionSetting();
       CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnDPMSDeactivated");
-      return m_dpms->DisablePowerSaving();
+      return dpms->DisablePowerSaving();
     }
     else
     {
-      if (m_dpms->EnablePowerSaving(m_dpms->GetSupportedModes()[0]))
+      if (dpms->EnablePowerSaving(dpms->GetSupportedModes()[0]))
       {
         m_dpmsIsActive = true;
         m_dpmsIsManual = manual;
         SetRenderGUI(false);
+        CheckOSScreenSaverInhibitionSetting();
         CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::GUI, "xbmc", "OnDPMSActivated");
         return true;
       }
@@ -3673,9 +3415,11 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
   if (m_screensaverActive && !m_screensaverIdInUse.empty())
   {
     if (m_iScreenSaveLock == 0)
-      if (m_ServiceManager->GetProfileManager().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
-          (m_ServiceManager->GetProfileManager().UsingLoginScreen() || CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MASTERLOCK_STARTUPLOCK)) &&
-          m_ServiceManager->GetProfileManager().GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE &&
+    {
+      const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
+      if (profileManager->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
+          (profileManager->UsingLoginScreen() || CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MASTERLOCK_STARTUPLOCK)) &&
+          profileManager->GetCurrentProfile().getLockMode() != LOCK_MODE_EVERYONE &&
           m_screensaverIdInUse != "screensaver.xbmc.builtin.dim" && m_screensaverIdInUse != "screensaver.xbmc.builtin.black" && m_screensaverIdInUse != "visualization")
       {
         m_iScreenSaveLock = 2;
@@ -3685,6 +3429,7 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
         if (pWindow)
           pWindow->OnMessage(msg);
       }
+    }
     if (m_iScreenSaveLock == -1)
     {
       m_iScreenSaveLock = 0;
@@ -3736,7 +3481,10 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
 void CApplication::CheckOSScreenSaverInhibitionSetting()
 {
   // Kodi screen saver overrides OS one: always inhibit OS screen saver then
-  if (!CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE).empty() &&
+  // except when DPMS is active (inhibiting the screen saver then might also
+  // disable DPMS again)
+  if (!m_dpmsIsActive &&
+      !CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE).empty() &&
       CServiceBroker::GetWinSystem()->GetOSScreenSaver())
   {
     if (!m_globalScreensaverInhibitor)
@@ -3757,15 +3505,21 @@ void CApplication::CheckScreenSaverAndDPMS()
     maybeScreensaver = false;
   else if (m_screensaverActive)
     maybeScreensaver = false;
-  else if (CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE).empty())
+  else if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE).empty())
     maybeScreensaver = false;
+
+  auto winSystem = CServiceBroker::GetWinSystem();
+  if (!winSystem)
+    return;
+
+  std::shared_ptr<CDPMSSupport> dpms = winSystem->GetDPMSManager();
 
   bool maybeDPMS = true;
   if (m_dpmsIsActive)
     maybeDPMS = false;
-  else if (!m_dpms->IsSupported())
+  else if (!dpms || !dpms->IsSupported())
     maybeDPMS = false;
-  else if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) <= 0)
+  else if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) <= 0)
     maybeDPMS = false;
 
   // whether the current state of the application should be regarded as active even when there is no
@@ -3779,7 +3533,7 @@ void CApplication::CheckScreenSaverAndDPMS()
   // Are we playing some music in fullscreen vis?
   else if (m_appPlayer.IsPlayingAudio() &&
            CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_VISUALISATION &&
-           !CServiceBroker::GetSettings()->GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty())
+           !CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty())
   {
     haveIdleActivity = true;
   }
@@ -3788,7 +3542,10 @@ void CApplication::CheckScreenSaverAndDPMS()
   if (haveIdleActivity && CServiceBroker::GetWinSystem()->GetOSScreenSaver())
   {
     // Always inhibit OS screen saver during these kinds of activities
-    m_screensaverInhibitor = CServiceBroker::GetWinSystem()->GetOSScreenSaver()->CreateInhibitor();
+    if (!m_screensaverInhibitor)
+    {
+      m_screensaverInhibitor = CServiceBroker::GetWinSystem()->GetOSScreenSaver()->CreateInhibitor();
+    }
   }
   else if (m_screensaverInhibitor)
   {
@@ -3802,7 +3559,7 @@ void CApplication::CheckScreenSaverAndDPMS()
     maybeScreensaver = false;
   }
 
-  if (m_screensaverActive && m_appPlayer.IsPlayingVideo() && !m_appPlayer.IsPaused())
+  if (m_screensaverActive && haveIdleActivity)
   {
     WakeUpScreenSaverAndDPMS();
     return;
@@ -3821,13 +3578,13 @@ void CApplication::CheckScreenSaverAndDPMS()
 
   // DPMS has priority (it makes the screensaver not needed)
   if (maybeDPMS
-      && elapsed > CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) * 60)
+      && elapsed > CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) * 60)
   {
     ToggleDPMS(false);
     WakeUpScreenSaver();
   }
   else if (maybeScreensaver
-           && elapsed > CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_SCREENSAVER_TIME) * 60)
+           && elapsed > CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_SCREENSAVER_TIME) * 60)
   {
     ActivateScreenSaver();
   }
@@ -3838,8 +3595,9 @@ void CApplication::CheckScreenSaverAndDPMS()
 // the type of screensaver displayed
 void CApplication::ActivateScreenSaver(bool forceType /*= false */)
 {
-  if (m_appPlayer.IsPlayingAudio() && CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_SCREENSAVER_USEMUSICVISINSTEAD) &&
-      !CServiceBroker::GetSettings()->GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty())
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (m_appPlayer.IsPlayingAudio() && settings->GetBool(CSettings::SETTING_SCREENSAVER_USEMUSICVISINSTEAD) &&
+      !settings->GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty())
   { // just activate the visualisation if user toggled the usemusicvisinstead option
     CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_VISUALISATION);
     return;
@@ -3857,7 +3615,7 @@ void CApplication::ActivateScreenSaver(bool forceType /*= false */)
   {
     if (CServiceBroker::GetGUI()->GetWindowManager().HasModalDialog(true))
       bUseDim = true;
-    else if (m_appPlayer.IsPlayingVideo() && CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_SCREENSAVER_USEDIMONPAUSE))
+    else if (m_appPlayer.IsPlayingVideo() && settings->GetBool(CSettings::SETTING_SCREENSAVER_USEDIMONPAUSE))
       bUseDim = true;
     else if (CServiceBroker::GetPVRManager().GUIActions()->IsRunningChannelScan())
       bUseDim = true;
@@ -3866,7 +3624,7 @@ void CApplication::ActivateScreenSaver(bool forceType /*= false */)
   if (bUseDim)
     m_screensaverIdInUse = "screensaver.xbmc.builtin.dim";
   else // Get Screensaver Mode
-    m_screensaverIdInUse = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE);
+    m_screensaverIdInUse = settings->GetString(CSettings::SETTING_SCREENSAVER_MODE);
 
   if (m_screensaverIdInUse == "screensaver.xbmc.builtin.dim" ||
       m_screensaverIdInUse == "screensaver.xbmc.builtin.black")
@@ -3910,7 +3668,7 @@ void CApplication::CheckShutdown()
   }
 
   float elapsed = m_shutdownTimer.IsRunning() ? m_shutdownTimer.GetElapsedSeconds() : 0.f;
-  if ( elapsed > CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) * 60 )
+  if ( elapsed > CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) * 60 )
   {
     // Since it is a sleep instead of a shutdown, let's set everything to reset when we wake up.
     m_shutdownTimer.Stop();
@@ -3985,7 +3743,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
 
   case GUI_MSG_PLAYBACK_STARTED:
     {
-#ifdef TARGET_DARWIN_IOS
+#ifdef TARGET_DARWIN_EMBEDDED
       // @TODO move this away to platform code
       CDarwinUtils::SetScheduling(m_appPlayer.IsPlayingVideo());
 #endif
@@ -4125,6 +3883,8 @@ bool CApplication::OnMessage(CGUIMessage& message)
   case GUI_MSG_PLAYLISTPLAYER_STOPPED:
     m_itemCurrentFile->Reset();
     CServiceBroker::GetGUI()->GetInfoManager().ResetCurrentItem();
+    if (m_appPlayer.IsPlaying())
+      StopPlaying();
     PlaybackCleanup();
     return true;
 
@@ -4325,13 +4085,22 @@ void CApplication::ProcessSlow()
 
   // Check if we need to shutdown (if enabled).
 #if defined(TARGET_DARWIN)
-  if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) && g_advancedSettings.m_fullScreen)
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) &&
+      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreen)
 #else
-  if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME))
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME))
 #endif
   {
     CheckShutdown();
   }
+
+#if defined(TARGET_POSIX)
+  if (CPlatformPosix::TestQuitFlag())
+  {
+    CLog::Log(LOGNOTICE, "Quitting due to POSIX signal");
+    CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
+  }
+#endif
 
   // check if we should restart the player
   CheckDelayedPlayerRestart();
@@ -4360,7 +4129,7 @@ void CApplication::ProcessSlow()
 
   // update upnp server/renderer states
 #ifdef HAS_UPNP
-  if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_SERVICES_UPNP) && UPNP::CUPnP::IsInstantiated())
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_SERVICES_UPNP) && UPNP::CUPnP::IsInstantiated())
     UPNP::CUPnP::GetInstance()->UpdateState();
 #endif
 
@@ -4429,7 +4198,7 @@ void CApplication::Restart(bool bSamePosition)
     return ;
 
   // do we want to return to the current position in the file
-  if (false == bSamePosition)
+  if (!bSamePosition)
   {
     // no, then just reopen the file and start at the beginning
     PlayFile(*m_itemCurrentFile, "", true);
@@ -4582,13 +4351,13 @@ void CApplication::VolumeChanged()
 int CApplication::GetSubtitleDelay()
 {
   // converts subtitle delay to a percentage
-  return int(((m_appPlayer.GetVideoSettings().m_SubtitleDelay + g_advancedSettings.m_videoSubsDelayRange)) / (2 * g_advancedSettings.m_videoSubsDelayRange)*100.0f + 0.5f);
+  return int(((m_appPlayer.GetVideoSettings().m_SubtitleDelay + CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoSubsDelayRange)) / (2 * CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoSubsDelayRange)*100.0f + 0.5f);
 }
 
 int CApplication::GetAudioDelay()
 {
   // converts audio delay to a percentage
-  return int(((m_appPlayer.GetVideoSettings().m_AudioDelay + g_advancedSettings.m_videoAudioDelayRange)) / (2 * g_advancedSettings.m_videoAudioDelayRange)*100.0f + 0.5f);
+  return int(((m_appPlayer.GetVideoSettings().m_AudioDelay + CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoAudioDelayRange)) / (2 * CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoAudioDelayRange)*100.0f + 0.5f);
 }
 
 // Returns the total time in seconds of the current media.  Fractional
@@ -4800,16 +4569,17 @@ CApplicationStackHelper& CApplication::GetAppStackHelper()
 
 void CApplication::UpdateLibraries()
 {
-  if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOLIBRARY_UPDATEONSTARTUP))
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (settings->GetBool(CSettings::SETTING_VIDEOLIBRARY_UPDATEONSTARTUP))
   {
     CLog::LogF(LOGNOTICE, "Starting video library startup scan");
-    StartVideoScan("", !CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOLIBRARY_BACKGROUNDUPDATE));
+    StartVideoScan("", !settings->GetBool(CSettings::SETTING_VIDEOLIBRARY_BACKGROUNDUPDATE));
   }
 
-  if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_UPDATEONSTARTUP))
+  if (settings->GetBool(CSettings::SETTING_MUSICLIBRARY_UPDATEONSTARTUP))
   {
     CLog::LogF(LOGNOTICE, "Starting music library startup scan");
-    StartMusicScan("", !CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE));
+    StartMusicScan("", !settings->GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE));
   }
 }
 
@@ -4910,10 +4680,10 @@ void CApplication::StartMusicScan(const std::string &strDirectory, bool userInit
   // Setup default flags
   if (!flags)
   { // Online scraping of additional info during scanning
-    if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_DOWNLOADINFO))
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_DOWNLOADINFO))
       flags |= CMusicInfoScanner::SCAN_ONLINE;
   }
-  if (!userInitiated || CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE))
+  if (!userInitiated || CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE))
     flags |= CMusicInfoScanner::SCAN_BACKGROUND;
 
   CMusicLibraryQueue::GetInstance().ScanLibrary(strDirectory, flags, !(flags & CMusicInfoScanner::SCAN_BACKGROUND));
@@ -4973,7 +4743,7 @@ bool CApplication::ProcessAndStartPlaylist(const std::string& strPlayList, CPlay
 
 bool CApplication::IsCurrentThread() const
 {
-  return CThread::IsCurrentThread(m_threadID);
+  return m_threadID == CThread::GetCurrentThreadId();
 }
 
 void CApplication::SetRenderGUI(bool renderGUI)
@@ -4990,10 +4760,10 @@ void CApplication::SetRenderGUI(bool renderGUI)
 bool CApplication::SetLanguage(const std::string &strLanguage)
 {
   // nothing to be done if the language hasn't changed
-  if (strLanguage == CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOCALE_LANGUAGE))
+  if (strLanguage == CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOCALE_LANGUAGE))
     return true;
 
-  return CServiceBroker::GetSettings()->SetString(CSettings::SETTING_LOCALE_LANGUAGE, strLanguage);
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_LOCALE_LANGUAGE, strLanguage);
 }
 
 bool CApplication::LoadLanguage(bool reload)
@@ -5003,8 +4773,9 @@ bool CApplication::LoadLanguage(bool reload)
     return false;
 
   // set the proper audio and subtitle languages
-  g_langInfo.SetAudioLanguage(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOCALE_AUDIOLANGUAGE));
-  g_langInfo.SetSubtitleLanguage(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE));
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  g_langInfo.SetAudioLanguage(settings->GetString(CSettings::SETTING_LOCALE_AUDIOLANGUAGE));
+  g_langInfo.SetSubtitleLanguage(settings->GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE));
 
   return true;
 }

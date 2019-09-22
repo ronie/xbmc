@@ -7,9 +7,11 @@
  */
 
 #include "DVDFileInfo.h"
+#include "ServiceBroker.h"
 #include "threads/SystemClock.h"
 #include "FileItem.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "pictures/Picture.h"
 #include "video/VideoInfoTag.h"
 #include "filesystem/StackDirectory.h"
@@ -25,16 +27,14 @@
 #include "DVDDemuxers/DVDDemux.h"
 #include "DVDDemuxers/DVDDemuxUtils.h"
 #include "DVDDemuxers/DVDFactoryDemuxer.h"
-#include "DVDDemuxers/DVDDemuxFFmpeg.h"
-#include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDFactoryCodec.h"
 #include "DVDCodecs/Video/DVDVideoCodec.h"
 #include "DVDCodecs/Video/DVDVideoCodecFFmpeg.h"
 #include "DVDDemuxers/DVDDemuxVobsub.h"
 #include "Process/ProcessInfo.h"
 
-#include "libavcodec/avcodec.h"
-#include "libswscale/swscale.h"
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
 #include "filesystem/File.h"
 #include "cores/FFmpeg.h"
 #include "TextureCache.h"
@@ -45,7 +45,7 @@
 #include <memory>
 
 extern "C" {
-#include "libavformat/avformat.h"
+#include <libavformat/avformat.h>
 }
 
 bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
@@ -61,7 +61,7 @@ bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
     return false;
 
   demux.reset(CDVDFactoryDemuxer::CreateDemuxer(input, true));
-  if (!demux.get())
+  if (!demux)
     return false;
 
   duration = demux->GetStreamLength();
@@ -244,7 +244,7 @@ bool CDVDFileInfo::ExtractThumb(const CFileItem& fileItem,
         if (iDecoderState == CDVDVideoCodec::VC_PICTURE && !(picture.iFlags & DVP_FLAG_DROPPED))
         {
           {
-            unsigned int nWidth = std::min(picture.iDisplayWidth, g_advancedSettings.m_imageRes);
+            unsigned int nWidth = std::min(picture.iDisplayWidth, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_imageRes);
             double aspect = (double)picture.iDisplayWidth / (double)picture.iDisplayHeight;
             if(hint.forced_aspect && hint.aspect != 0)
               aspect = hint.aspect;

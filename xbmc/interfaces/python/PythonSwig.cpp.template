@@ -47,7 +47,7 @@ Helper.setup(this,classes,
     [ 'void' : 'Py_INCREF(Py_None);\n    ${result} = Py_None;',
       'long': '${result} = PyInt_FromLong(${api});',
       'unsigned long': '${result} = PyInt_FromLong(${api});',
-      'bool': '${result} = Py_BuildValue("b", ${api});',
+      'bool': '${result} = ${api} ? Py_True : Py_False; Py_INCREF(${result});',
       'long long': '${result} = Py_BuildValue("L", ${api});',
       'int': '${result} = Py_BuildValue("i", ${api});',
       'unsigned int': '${result} = Py_BuildValue("I", ${api});',
@@ -749,6 +749,7 @@ Helper.getInsertNodes(module, 'begin').each { %>${Helper.unescape(it)}<% }
 
 #include <Python.h>
 #include <string>
+#include "CompileInfo.h"
 #include "interfaces/python/LanguageHook.h"
 #include "interfaces/python/swig.h"
 #include "interfaces/python/PyContext.h"
@@ -916,8 +917,8 @@ namespace PythonBindings
 
    // constants
    PyModule_AddStringConstant(module, "__author__", "Team Kodi <http://kodi.tv>");
-   PyModule_AddStringConstant(module, "__date__", "${new Date().toString()}");
-   PyModule_AddStringConstant(module, "__version__", "2.25.0");
+   PyModule_AddStringConstant(module, "__date__", CCompileInfo::GetBuildDate().c_str());
+   PyModule_AddStringConstant(module, "__version__", "2.26.0");
    PyModule_AddStringConstant(module, "__credits__", "Team Kodi");
    PyModule_AddStringConstant(module, "__platform__", "ALL");
 

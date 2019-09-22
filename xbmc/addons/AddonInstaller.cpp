@@ -21,7 +21,7 @@
 #include "filesystem/Directory.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "messaging/ApplicationMessenger.h"
+#include "settings/SettingsComponent.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "messaging/helpers/DialogOKHelper.h"
 #include "favourites/FavouritesService.h"
@@ -36,7 +36,7 @@
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "URL.h"
 #ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 
 #include <functional>
@@ -85,7 +85,8 @@ void CAddonInstaller::OnJobProgress(unsigned int jobID, unsigned int progress, u
   if (i != m_downloadJobs.end())
   {
     // update job progress
-    i->second.progress = progress;
+    i->second.progress = 100 / total * progress;
+    i->second.downloadFinshed = std::string(job->GetType()) == CAddonInstallJob::TYPE_INSTALL;
     CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_ITEM);
     msg.SetStringParam(i->first);
     lock.Leave();
@@ -120,13 +121,14 @@ void CAddonInstaller::GetInstallList(VECADDONS &addons) const
   }
 }
 
-bool CAddonInstaller::GetProgress(const std::string &addonID, unsigned int &percent) const
+bool CAddonInstaller::GetProgress(const std::string& addonID, unsigned int& percent, bool& downloadFinshed) const
 {
   CSingleLock lock(m_critSection);
   JobMap::const_iterator i = m_downloadJobs.find(addonID);
   if (i != m_downloadJobs.end())
   {
     percent = i->second.progress;
+    downloadFinshed = i->second.downloadFinshed;
     return true;
   }
   return false;
@@ -361,7 +363,7 @@ void CAddonInstaller::PrunePackageCache()
 {
   std::map<std::string,CFileItemList*> packs;
   int64_t size = EnumeratePackageFolder(packs);
-  int64_t limit = (int64_t)g_advancedSettings.m_addonPackageFolderSize * 1024 * 1024;
+  int64_t limit = static_cast<int64_t>(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_addonPackageFolderSize) * 1024 * 1024;
   if (size < limit)
     return;
 
@@ -485,6 +487,8 @@ bool CAddonInstallJob::GetAddon(const std::string& addonID, RepositoryPtr& repo,
 
 bool CAddonInstallJob::DoWork()
 {
+  m_currentType = CAddonInstallJob::TYPE_DOWNLOAD;
+
   SetTitle(StringUtils::Format(g_localizeStrings.Get(24057).c_str(), m_addon->Name().c_str()));
   SetProgress(0);
 
@@ -505,9 +509,6 @@ bool CAddonInstallJob::DoWork()
     // packages folder, then extracting from the local .zip package into the addons folder
     // Both these functions are achieved by "copying" using the vfs.
 
-    std::string dest = "special://home/addons/packages/";
-    std::string package = URIUtils::AddFileToFolder("special://home/addons/packages/",
-                                                    URIUtils::GetFileName(m_addon->Path()));
     if (!m_repo && URIUtils::HasSlashAtEnd(m_addon->Path()))
     { // passed in a folder - all we need do is copy it across
       installFrom = m_addon->Path();
@@ -537,6 +538,18 @@ bool CAddonInstallJob::DoWork()
         return false;
       }
 
+      std::string packageOriginalPath, packageFileName;
+      URIUtils::Split(path, packageOriginalPath, packageFileName);
+      // Use ChangeBasePath so the URL is decoded if necessary
+      const std::string packagePath = "special://home/addons/packages/";
+      //!@todo fix design flaw in file copying: We use CFileOperationJob to download the package from the internet
+      // to the local cache. It tries to be "smart" and decode the URL. But it never tells us what the result is,
+      // so if we try for example to download "http://localhost/a+b.zip" the result ends up in "a b.zip".
+      // First bug is that it actually decodes "+", which is not necessary except in query parts. Second bug
+      // is that we cannot know that it does this and what the result is so the package will not be found without
+      // using ChangeBasePath here (which is the same function the copying code uses and performs the translation).
+      std::string package = URIUtils::ChangeBasePath(packageOriginalPath, packageFileName, packagePath);
+
       // check that we don't already have a valid copy
       if (!hash.Empty())
       {
@@ -554,7 +567,7 @@ bool CAddonInstallJob::DoWork()
       // zip passed in - download + extract
       if (!CFile::Exists(package))
       {
-        if (!DownloadPackage(path, dest))
+        if (!DownloadPackage(path, packagePath))
         {
           CFile::Delete(package);
 
@@ -602,6 +615,8 @@ bool CAddonInstallJob::DoWork()
     }
   }
 
+  m_currentType = CAddonInstallJob::TYPE_INSTALL;
+
   // run any pre-install functions
   ADDON::OnPreInstall(m_addon);
 
@@ -624,7 +639,7 @@ bool CAddonInstallJob::DoWork()
   }
 
   g_localizeStrings.LoadAddonStrings(URIUtils::AddFileToFolder(m_addon->Path(), "resources/language/"),
-      CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOCALE_LANGUAGE), m_addon->ID());
+      CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOCALE_LANGUAGE), m_addon->ID());
 
   ADDON::OnPostInstall(m_addon, m_isUpdate, IsModal());
 
@@ -636,12 +651,12 @@ bool CAddonInstallJob::DoWork()
       database.SetLastUpdated(m_addon->ID(), CDateTime::GetCurrentDateTime());
   }
 
-  bool notify = (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_ADDONS_NOTIFICATIONS)
+  bool notify = (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_ADDONS_NOTIFICATIONS)
         || !m_isAutoUpdate) && !IsModal();
   CServiceBroker::GetEventLog().Add(
       EventPtr(new CAddonManagementEvent(m_addon, m_isUpdate ? 24065 : 24084)), notify, false);
 
-  if (m_isAutoUpdate && !m_addon->Broken().empty())
+  if (m_isAutoUpdate && m_addon->IsBroken())
   {
     CLog::Log(LOGDEBUG, "CAddonInstallJob[%s]: auto-disabling due to being marked as broken", m_addon->ID().c_str());
     CServiceBroker::GetAddonMgr().DisableAddon(m_addon->ID());
@@ -708,7 +723,7 @@ bool CAddonInstallJob::Install(const std::string &installFrom, const RepositoryP
   SetText(g_localizeStrings.Get(24079));
   auto deps = m_addon->GetDependencies();
 
-  unsigned int totalSteps = static_cast<unsigned int>(deps.size());
+  unsigned int totalSteps = static_cast<unsigned int>(deps.size()) + 1;
   if (ShouldCancel(0, totalSteps))
     return false;
 
@@ -780,7 +795,7 @@ bool CAddonInstallJob::Install(const std::string &installFrom, const RepositoryP
   }
 
   SetText(g_localizeStrings.Get(24086));
-  SetProgress(0);
+  SetProgress(static_cast<unsigned int>(100.0 * (totalSteps - 1.0) / totalSteps));
 
   CFilesystemInstaller fsInstaller;
   if (!fsInstaller.InstallToFilesystem(installFrom, m_addon->ID()))

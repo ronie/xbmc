@@ -11,8 +11,7 @@
 #include "RenderSystemTypes.h"
 #include "utils/Color.h"
 #include "utils/Geometry.h"
-#include "utils/TransformMatrix.h"
-#include "guilib/DirtyRegion.h"
+
 #include <memory>
 #include <string>
 

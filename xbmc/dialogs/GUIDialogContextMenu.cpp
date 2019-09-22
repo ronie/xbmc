@@ -7,32 +7,34 @@
  */
 
 #include "GUIDialogContextMenu.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIButtonControl.h"
-#include "guilib/GUIControlGroupList.h"
-#include "GUIDialogFileBrowser.h"
-#include "GUIUserMessages.h"
-#include "GUIPassword.h"
-#include "ServiceBroker.h"
-#include "Util.h"
-#include "utils/URIUtils.h"
-#include "settings/MediaSourceSettings.h"
-#include "settings/Settings.h"
-#include "GUIDialogMediaSource.h"
-#include "profiles/ProfilesManager.h"
-#include "profiles/dialogs/GUIDialogLockSettings.h"
-#include "storage/MediaManager.h"
-#include "guilib/GUIWindowManager.h"
-#include "input/Key.h"
-#include "GUIDialogYesNo.h"
+
 #include "FileItem.h"
-#include "filesystem/File.h"
-#include "guilib/LocalizeStrings.h"
+#include "GUIDialogFileBrowser.h"
+#include "GUIDialogMediaSource.h"
+#include "GUIDialogYesNo.h"
+#include "GUIPassword.h"
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
 #include "TextureCache.h"
 #include "URL.h"
-#include "utils/StringUtils.h"
-#include "utils/Variant.h"
+#include "Util.h"
 #include "addons/Scraper.h"
+#include "filesystem/File.h"
+#include "guilib/GUIButtonControl.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIControlGroupList.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "profiles/ProfileManager.h"
+#include "profiles/dialogs/GUIDialogLockSettings.h"
+#include "settings/MediaSourceSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "storage/MediaManager.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
 
 #define BACKGROUND_IMAGE       999
 #define GROUP_LIST             996
@@ -42,16 +44,16 @@
 
 void CContextButtons::Add(unsigned int button, const std::string &label)
 {
-  for (const_iterator i = begin(); i != end(); ++i)
-    if (i->first == button)
+  for (const auto& i : *this)
+    if (i.first == button)
       return; // already have this button
   push_back(std::pair<unsigned int, std::string>(button, label));
 }
 
 void CContextButtons::Add(unsigned int button, int label)
 {
-  for (const_iterator i = begin(); i != end(); ++i)
-    if (i->first == button)
+  for (const auto& i : *this)
+    if (i.first == button)
       return; // already have added this button
   push_back(std::pair<unsigned int, std::string>(button, g_localizeStrings.Get(label)));
 }
@@ -207,10 +209,23 @@ bool CGUIDialogContextMenu::SourcesMenu(const std::string &strType, const CFileI
 
 void CGUIDialogContextMenu::GetContextButtons(const std::string &type, const CFileItemPtr& item, CContextButtons &buttons)
 {
+  // Add buttons to the ContextMenu that should be visible for both sources and autosourced items
+  if (item && item->IsRemovable())
+  {
+    if (item->IsDVD() || item->IsCDDA())
+    {
+      buttons.Add(CONTEXT_BUTTON_EJECT_DISC, 13391); // Eject / Load
+    }
+    else // Must be HDD
+    {
+      buttons.Add(CONTEXT_BUTTON_EJECT_DRIVE, 13420); // Remove safely
+    }
+  }
+
   // Next, Add buttons to the ContextMenu that should ONLY be visible for sources and not autosourced items
   CMediaSource *share = GetShare(type, item.get());
 
-  if (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() || g_passwordManager.bMasterUser)
+  if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() || g_passwordManager.bMasterUser)
   {
     if (share)
     {
@@ -232,9 +247,9 @@ void CGUIDialogContextMenu::GetContextButtons(const std::string &type, const CFi
     if (!GetDefaultShareNameByType(type).empty())
       buttons.Add(CONTEXT_BUTTON_CLEAR_DEFAULT, 13403); // Clear Default
   }
-  if (share && LOCK_MODE_EVERYONE != CServiceBroker::GetProfileManager().GetMasterProfile().getLockMode())
+  if (share && LOCK_MODE_EVERYONE != CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetMasterProfile().getLockMode())
   {
-    if (share->m_iHasLock == 0 && (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() || g_passwordManager.bMasterUser))
+    if (share->m_iHasLock == 0 && (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() || g_passwordManager.bMasterUser))
       buttons.Add(CONTEXT_BUTTON_ADD_LOCK, 12332);
     else if (share->m_iHasLock == 1)
       buttons.Add(CONTEXT_BUTTON_REMOVE_LOCK, 12335);
@@ -243,8 +258,8 @@ void CGUIDialogContextMenu::GetContextButtons(const std::string &type, const CFi
       buttons.Add(CONTEXT_BUTTON_REMOVE_LOCK, 12335);
 
       bool maxRetryExceeded = false;
-      if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
-        maxRetryExceeded = (share->m_iBadPwdCount >= CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
+      if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
+        maxRetryExceeded = (share->m_iBadPwdCount >= CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
 
       if (maxRetryExceeded)
         buttons.Add(CONTEXT_BUTTON_RESET_LOCK, 12334);
@@ -259,15 +274,31 @@ void CGUIDialogContextMenu::GetContextButtons(const std::string &type, const CFi
 bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFileItemPtr& item, CONTEXT_BUTTON button)
 {
   // buttons that are available on both sources and autosourced items
-  if (!item) return false;
+  if (!item)
+    return false;
+
+  switch (button)
+  {
+    case CONTEXT_BUTTON_EJECT_DRIVE:
+      return g_mediaManager.Eject(item->GetPath());
+#ifdef HAS_DVD_DRIVE
+    case CONTEXT_BUTTON_EJECT_DISC:
+      g_mediaManager.ToggleTray(g_mediaManager.TranslateDevicePath(item->GetPath())[0]);
+#endif
+      return true;
+    default:
+      break;
+  }
 
   // the rest of the operations require a valid share
   CMediaSource *share = GetShare(type, item.get());
-  if (!share) return false;
+  if (!share)
+    return false;
+
   switch (button)
   {
   case CONTEXT_BUTTON_EDIT_SOURCE:
-    if (CServiceBroker::GetProfileManager().IsMasterProfile())
+    if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->IsMasterProfile())
     {
       if (!g_passwordManager.IsMasterLockUnlocked(true))
         return false;
@@ -279,16 +310,16 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
 
   case CONTEXT_BUTTON_REMOVE_SOURCE:
   {
-    if (CServiceBroker::GetProfileManager().IsMasterProfile())
+    if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->IsMasterProfile())
     {
       if (!g_passwordManager.IsMasterLockUnlocked(true))
         return false;
     }
     else
     {
-      if (!CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() && !g_passwordManager.IsMasterLockUnlocked(false))
+      if (!CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsMasterLockUnlocked(false))
         return false;
-      if (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
+      if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
         return false;
     }
     // prompt user if they want to really delete the source
@@ -306,7 +337,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
     return true;
   }
   case CONTEXT_BUTTON_SET_DEFAULT:
-    if (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
+    if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
       return false;
     else if (!g_passwordManager.IsMasterLockUnlocked(true))
       return false;
@@ -316,7 +347,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
     return true;
 
   case CONTEXT_BUTTON_CLEAR_DEFAULT:
-    if (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
+    if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
       return false;
     else if (!g_passwordManager.IsMasterLockUnlocked(true))
       return false;
@@ -326,7 +357,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
 
   case CONTEXT_BUTTON_SET_THUMB:
     {
-      if (CServiceBroker::GetProfileManager().GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
+      if (CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().canWriteSources() && !g_passwordManager.IsProfileLockUnlocked())
         return false;
       else if (!g_passwordManager.IsMasterLockUnlocked(true))
         return false;
@@ -360,7 +391,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
       }
       // and add a "no thumb" entry as well
       CFileItemPtr nothumb(new CFileItem("thumb://None", false));
-      nothumb->SetIconImage(item->GetIconImage());
+      nothumb->SetArt("icon", item->GetArt("icon"));
       nothumb->SetLabel(g_localizeStrings.Get(20018));
       items.Add(nothumb);
 
@@ -449,8 +480,8 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
   case CONTEXT_BUTTON_REACTIVATE_LOCK:
     {
       bool maxRetryExceeded = false;
-      if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
-        maxRetryExceeded = (share->m_iBadPwdCount >= CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
+      if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
+        maxRetryExceeded = (share->m_iBadPwdCount >= CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
       if (!maxRetryExceeded)
       {
         // don't prompt user for mastercode when reactivating a lock

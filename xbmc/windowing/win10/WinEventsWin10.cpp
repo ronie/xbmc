@@ -7,25 +7,29 @@
  */
 
 #include "WinEventsWin10.h"
-#include "Application.h"
+
 #include "AppInboundProtocol.h"
+#include "Application.h"
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
 #include "input/mouse/MouseStat.h"
 #include "input/touch/generic/GenericTouchInputHandler.h"
-#include "input/Action.h"
-#include "input/ActionIDs.h"
 #include "interfaces/AnnouncementManager.h"
 #include "messaging/ApplicationMessenger.h"
-#include "platform/win10/input/RemoteControlXbox.h"
 #include "rendering/dx/DeviceResources.h"
 #include "rendering/dx/RenderContext.h"
-#include "ServiceBroker.h"
-#include "utils/log.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/SystemInfo.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 #include "windowing/windows/WinKeyMap.h"
-#include "xbmc/GUIUserMessages.h"
+
+#include "platform/win10/input/RemoteControlXbox.h"
 
 #include <winrt/Windows.Devices.Input.h>
 
@@ -107,6 +111,8 @@ size_t CWinEventsWin10::GetQueueSize()
 
 void CWinEventsWin10::InitEventHandlers(const CoreWindow& window)
 {
+  CWinEventsWin10::InitOSKeymap();
+
   //window->SetPointerCapture();
 
   // window
@@ -165,14 +171,14 @@ void CWinEventsWin10::UpdateWindowSize()
 {
   auto size = DX::DeviceResources::Get()->GetOutputSize();
 
-  CLog::Log(LOGDEBUG, __FUNCTION__": window resize event %f x %f (as:%s)", size.Width, size.Height, g_advancedSettings.m_fullScreen ? "true" : "false");
+  CLog::Log(LOGDEBUG, __FUNCTION__": window resize event %f x %f (as:%s)", size.Width, size.Height, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreen ? "true" : "false");
 
   auto appView = ApplicationView::GetForCurrentView();
   appView.SetDesiredBoundsMode(ApplicationViewBoundsMode::UseCoreWindow);
 
   // seems app has lost FS mode it may occurs if an user use core window's button
-  if (g_advancedSettings.m_fullScreen && !appView.IsFullScreenMode())
-    g_advancedSettings.m_fullScreen = false;
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreen && !appView.IsFullScreenMode())
+    CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fullScreen = false;
 
   XBMC_Event newEvent;
   memset(&newEvent, 0, sizeof(newEvent));

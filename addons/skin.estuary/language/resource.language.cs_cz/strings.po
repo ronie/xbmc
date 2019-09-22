@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -126,7 +126,7 @@ msgstr "Časový posun"
 
 msgctxt "#31028"
 msgid "Show fanart"
-msgstr "Zobrazit fanouškovské umění"
+msgstr "Zobrazit fanart"
 
 msgctxt "#31029"
 msgid "Last logged in"
@@ -230,7 +230,7 @@ msgstr "Položky hlavní nabídky"
 
 msgctxt "#31062"
 msgid "Choose weather fanart pack"
-msgstr "Zvolte balíček fanatrů počasí"
+msgstr "Zvolte balíček fanartů počasí"
 
 msgctxt "#31063"
 msgid "Sections"
@@ -442,7 +442,7 @@ msgstr "Nastavení související s hlavní nabídkou: Konfigurujte domovskou obr
 
 msgctxt "#31131"
 msgid "Choose skin fanart pack"
-msgstr "Zvolte balíček fanatrů vzhledu"
+msgstr "Zvolte balíček fanartů vzhledu"
 
 msgctxt "#31132"
 msgid "Select Program"
@@ -502,7 +502,7 @@ msgstr "Kategorie"
 
 msgctxt "#31149"
 msgid "Select genre fanart pack"
-msgstr "Zvolte balíček fanatrů žánru"
+msgstr "Zvolte balíček fanartů žánru"
 
 msgctxt "#31150"
 msgid "Repository"
@@ -571,3 +571,7 @@ msgstr "Název profilu"
 msgctxt "#31166"
 msgid "Profile avatar"
 msgstr "Avatar profilu"
+
+msgctxt "#31167"
+msgid "Animate background"
+msgstr "Animovat pozadí"

@@ -22,8 +22,8 @@ namespace ADDON
   class CAddonDll : public CAddon
   {
   public:
-    CAddonDll(CAddonInfo addonInfo, BinaryAddonBasePtr addonBase);
-    explicit CAddonDll(CAddonInfo addonInfo);
+    CAddonDll(const AddonInfoPtr& addonInfo, BinaryAddonBasePtr addonBase);
+    explicit CAddonDll(const AddonInfoPtr& addonInfo, TYPE addonType);
     ~CAddonDll() override;
 
     virtual ADDON_STATUS GetStatus();
@@ -35,7 +35,6 @@ namespace ADDON
 
     // addon settings
     void SaveSettings() override;
-    std::string GetSetting(const std::string& key) override;
 
     ADDON_STATUS Create(ADDON_TYPE type, void* funcTable, void* info);
     void Destroy();

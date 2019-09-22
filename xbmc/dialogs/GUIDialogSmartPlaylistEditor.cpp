@@ -8,26 +8,27 @@
 
 #include "GUIDialogSmartPlaylistEditor.h"
 
-#include <utility>
-
 #include "FileItem.h"
-#include "ServiceBroker.h"
-#include "filesystem/File.h"
 #include "GUIDialogContextMenu.h"
-#include "GUIDialogSmartPlaylistRule.h"
 #include "GUIDialogSelect.h"
+#include "GUIDialogSmartPlaylistRule.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "filesystem/File.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/Key.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
 #include "settings/Settings.h"
-#include "Util.h"
+#include "settings/SettingsComponent.h"
 #include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+
+#include <utility>
 
 #define CONTROL_HEADING         2
 #define CONTROL_RULE_LIST       10
@@ -143,9 +144,9 @@ bool CGUIDialogSmartPlaylistEditor::OnMessage(CGUIMessage& message)
       if (!startupList.empty())
       {
         int party = 0;
-        if (URIUtils::PathEquals(startupList, CServiceBroker::GetProfileManager().GetUserDataItem("PartyMode.xsp")))
+        if (URIUtils::PathEquals(startupList, CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetUserDataItem("PartyMode.xsp")))
           party = 1;
-        else if (URIUtils::PathEquals(startupList, CServiceBroker::GetProfileManager().GetUserDataItem("PartyMode-Video.xsp")))
+        else if (URIUtils::PathEquals(startupList, CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetUserDataItem("PartyMode-Video.xsp")))
           party = 2;
 
         if ((party && !XFILE::CFile::Exists(startupList)) ||
@@ -216,7 +217,7 @@ void CGUIDialogSmartPlaylistEditor::OnRuleList(int item)
 
 void CGUIDialogSmartPlaylistEditor::OnOK()
 {
-  std::string systemPlaylistsPath = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
+  std::string systemPlaylistsPath = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
   // save our playlist
   if (m_path.empty())
   {
@@ -613,9 +614,9 @@ bool CGUIDialogSmartPlaylistEditor::EditPlaylist(const std::string &path, const 
   if (!editor) return false;
 
   editor->m_mode = type;
-  if (URIUtils::PathEquals(path, CServiceBroker::GetProfileManager().GetUserDataItem("PartyMode.xsp")))
+  if (URIUtils::PathEquals(path, CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetUserDataItem("PartyMode.xsp")))
     editor->m_mode = "partymusic";
-  if (URIUtils::PathEquals(path, CServiceBroker::GetProfileManager().GetUserDataItem("PartyMode-Video.xsp")))
+  if (URIUtils::PathEquals(path, CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetUserDataItem("PartyMode-Video.xsp")))
     editor->m_mode = "partyvideo";
 
   CSmartPlaylist playlist;

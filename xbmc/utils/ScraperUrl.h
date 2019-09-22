@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include <vector>
 #include <map>
 #include <string>
+#include <vector>
 
 class TiXmlElement;
 namespace XFILE { class CCurlFile; }
@@ -45,7 +45,7 @@ public:
   bool ParseString(std::string); // copies by intention
   bool ParseElement(const TiXmlElement*);
   bool ParseEpisodeGuide(std::string strUrls); // copies by intention
-  void AddElement(std::string url, std::string aspect = "", std::string referrer = "", std::string cache = "", bool post = false, bool isgz = false, int season = -1);
+  void AddElement(std::string url, std::string aspect = "", std::string preview = "", std::string referrer = "", std::string cache = "", bool post = false, bool isgz = false, int season = -1);
 
   const SUrlEntry GetFirstThumb(const std::string &type = "") const;
   const SUrlEntry GetSeasonThumb(int season, const std::string &type = "") const;
@@ -61,8 +61,9 @@ public:
    \param thumbs [out] vector of thumb URLs to fill
    \param type the type of thumb URLs to fetch, if empty (the default) picks any
    \param season number of season that we want thumbs for, -1 indicates no season (the default)
+   \param unique avoid adding duplicate URLs when adding to a thumbs vector with existing items
    */
-  void GetThumbURLs(std::vector<std::string> &thumbs, const std::string &type = "", int season = -1) const;
+  void GetThumbURLs(std::vector<std::string> &thumbs, const std::string &type = "", int season = -1, bool unique = false) const;
   void Clear();
   static bool Get(const SUrlEntry&, std::string&, XFILE::CCurlFile& http,
                  const std::string& cacheContext);

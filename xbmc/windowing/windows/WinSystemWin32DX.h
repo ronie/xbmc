@@ -8,9 +8,10 @@
 
 #pragma once
 
-#include "easyhook/easyhook.h"
 #include "rendering/dx/RenderSystemDX.h"
 #include "windowing/windows/WinSystemWin32.h"
+
+#include <easyhook/easyhook.h>
 
 struct D3D10DDIARG_CREATERESOURCE;
 
@@ -30,6 +31,7 @@ public:
   bool DPIChanged(WORD dpi, RECT windowRect) const override;
   void SetWindow(HWND hWnd) const;
   bool DestroyRenderSystem() override;
+  void* GetHWContext() override { return m_deviceResources->GetD3DContext(); }
 
   void UninitHooks();
   void InitHooks(IDXGIOutput* pOutput);

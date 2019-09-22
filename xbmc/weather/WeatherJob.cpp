@@ -17,11 +17,12 @@
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "network/Network.h"
 #ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 #include "ServiceBroker.h"
 #include "settings/lib/Setting.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/log.h"
 #include "utils/POUtils.h"
 #include "utils/StringUtils.h"
@@ -51,7 +52,7 @@ bool CWeatherJob::DoWork()
     return false;
 
   AddonPtr addon;
-  if (!CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER))
+  if (!CServiceBroker::GetAddonMgr().GetAddon(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER))
     return false;
 
   // initialize our sys.argv variables
@@ -127,11 +128,11 @@ void CWeatherJob::LoadLocalizedToken()
 {
   // We load the english strings in to get our tokens
   std::string language = LANGUAGE_DEFAULT;
-  std::shared_ptr<CSettingString> languageSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOCALE_LANGUAGE));
+  std::shared_ptr<CSettingString> languageSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettingsComponent()->GetSettings()->GetSetting(CSettings::SETTING_LOCALE_LANGUAGE));
   if (languageSetting != NULL)
     language = languageSetting->GetDefault();
 
-  // Try the strings PO file first
+  // Load the strings.po file
   CPODocument PODoc;
   if (PODoc.LoadFile(URIUtils::AddFileToFolder(CLangInfo::GetLanguagePath(language), "strings.po")))
   {
@@ -161,48 +162,6 @@ void CWeatherJob::LoadLocalizedToken()
 
     CLog::Log(LOGDEBUG, "POParser: loaded %i weather tokens", counter);
     return;
-  }
-
-  CLog::Log(LOGDEBUG,
-            "Weather: no PO string file available, to load English tokens, "
-            "fallback to strings.xml file");
-
-  // We load the tokens from the strings.xml file
-  std::string strLanguagePath = URIUtils::AddFileToFolder(CLangInfo::GetLanguagePath(language), "strings.xml");
-
-  CXBMCTinyXML xmlDoc;
-  if (!xmlDoc.LoadFile(strLanguagePath) || !xmlDoc.RootElement())
-  {
-    CLog::Log(LOGERROR, "Weather: unable to load %s: %s at line %d", strLanguagePath.c_str(), xmlDoc.ErrorDesc(), xmlDoc.ErrorRow());
-    return;
-  }
-
-  TiXmlElement* pRootElement = xmlDoc.RootElement();
-  if (pRootElement->ValueStr() != "strings")
-    return;
-
-  const TiXmlElement *pChild = pRootElement->FirstChildElement();
-  while (pChild)
-  {
-    std::string strValue = pChild->ValueStr();
-    if (strValue == "string")
-    { // Load new style language file with id as attribute
-      const char* attrId = pChild->Attribute("id");
-      if (attrId && !pChild->NoChildren())
-      {
-        int id = atoi(attrId);
-        if ((LOCALIZED_TOKEN_FIRSTID  <= id && id <= LOCALIZED_TOKEN_LASTID)  ||
-            (LOCALIZED_TOKEN_FIRSTID2 <= id && id <= LOCALIZED_TOKEN_LASTID2) ||
-            (LOCALIZED_TOKEN_FIRSTID3 <= id && id <= LOCALIZED_TOKEN_LASTID3) ||
-            (LOCALIZED_TOKEN_FIRSTID4 <= id && id <= LOCALIZED_TOKEN_LASTID4))
-        {
-          std::string utf8Label(pChild->FirstChild()->ValueStr());
-          if (!utf8Label.empty())
-            m_localizedTokens.insert(make_pair(utf8Label, id));
-        }
-      }
-    }
-    pChild = pChild->NextSiblingElement();
   }
 }
 

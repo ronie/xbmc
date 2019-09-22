@@ -10,38 +10,36 @@
 #include "filesystem/File.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "test/TestUtils.h"
 #include "utils/StringUtils.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 class TestFileFactory : public testing::Test
 {
 protected:
   TestFileFactory()
   {
-    if (CServiceBroker::GetSettings()->Initialize())
-    {
-      std::vector<std::string> advancedsettings =
-        CXBMCTestUtils::Instance().getAdvancedSettingsFiles();
-      std::vector<std::string> guisettings =
-        CXBMCTestUtils::Instance().getGUISettingsFiles();
+    std::vector<std::string> advancedsettings =
+      CXBMCTestUtils::Instance().getAdvancedSettingsFiles();
+    std::vector<std::string> guisettings =
+      CXBMCTestUtils::Instance().getGUISettingsFiles();
 
-      for (const auto& it : guisettings)
-        CServiceBroker::GetSettings()->Load(it);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    for (const auto& it : guisettings)
+      settings->Load(it);
 
-      for (const auto& it : advancedsettings)
-        g_advancedSettings.ParseSettingsFile(it);
+    const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
+    for (const auto& it : advancedsettings)
+      advancedSettings->ParseSettingsFile(it);
 
-      CServiceBroker::GetSettings()->SetLoaded();
-    }
+    settings->SetLoaded();
   }
 
   ~TestFileFactory() override
   {
-    g_advancedSettings.Clear();
-    CServiceBroker::GetSettings()->Unload();
-    CServiceBroker::GetSettings()->Uninitialize();
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Unload();
   }
 };
 
@@ -54,7 +52,7 @@ TEST_F(TestFileFactory, Read)
 {
   XFILE::CFile file;
   std::string str;
-  unsigned int size, i;
+  ssize_t size, i;
   unsigned char buf[16];
   int64_t count = 0;
 
@@ -84,7 +82,7 @@ TEST_F(TestFileFactory, Read)
         str = StringUtils::Format("%02X ", buf[i]);
         std::cout << str;
       }
-      while (i++ < sizeof(buf))
+      while (i++ < static_cast<ssize_t> (sizeof(buf)))
         std::cout << "   ";
       std::cout << " [";
       for (i = 0; i < size; i++)
@@ -104,7 +102,7 @@ TEST_F(TestFileFactory, Write)
 {
   XFILE::CFile file, inputfile;
   std::string str;
-  unsigned int size, i;
+  size_t size, i;
   unsigned char buf[16];
   int64_t count = 0;
 

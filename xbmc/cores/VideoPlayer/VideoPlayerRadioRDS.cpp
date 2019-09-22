@@ -18,40 +18,35 @@
  * not required.
  */
 
+#include "VideoPlayerRadioRDS.h"
+
 #include "Application.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "DVDStreamInfo.h"
-#include "GUIInfoManager.h"
-#include "GUIUserMessages.h"
-#include "ServiceBroker.h"
 #include "DVDCodecs/DVDCodecs.h"
-#include "DVDCodecs/DVDFactoryCodec.h"
 #include "DVDCodecs/Video/DVDVideoCodecFFmpeg.h"
 #include "DVDDemuxers/DVDDemuxUtils.h"
 #include "DVDDemuxers/DVDFactoryDemuxer.h"
 #include "DVDInputStreams/DVDInputStream.h"
-#include "DVDInputStreams/DVDFactoryInputStream.h"
+#include "DVDStreamInfo.h"
+#include "GUIInfoManager.h"
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
 #include "cores/FFmpeg.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "dialogs/GUIDialogKaiToast.h"
-#include "filesystem/Directory.h"
-#include "filesystem/File.h"
-#include "filesystem/SpecialProtocol.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "interfaces/AnnouncementManager.h"
-#include "messaging/ApplicationMessenger.h"
 #include "music/tags/MusicInfoTag.h"
 #include "pictures/Picture.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/channels/PVRRadioRDSInfoTag.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "utils/log.h"
-
-#include "VideoPlayerRadioRDS.h"
 
 using namespace XFILE;
 using namespace PVR;
@@ -540,7 +535,8 @@ bool CDVDRadioRDSData::OpenStream(CDVDStreamInfo hints)
 void CDVDRadioRDSData::CloseStream(bool bWaitForBuffers)
 {
   // wait until buffers are empty
-  if (bWaitForBuffers) m_messageQueue.WaitUntilEmpty();
+  if (bWaitForBuffers)
+    m_messageQueue.WaitUntilEmpty();
 
   m_messageQueue.Abort();
 
@@ -551,6 +547,8 @@ void CDVDRadioRDSData::CloseStream(bool bWaitForBuffers)
 
   m_messageQueue.End();
   m_currentInfoTag.reset();
+  m_currentChannel->SetRadioRDSInfoTag(m_currentInfoTag);
+  m_currentChannel.reset();
 }
 
 void CDVDRadioRDSData::ResetRDSCache()
@@ -614,10 +612,10 @@ void CDVDRadioRDSData::ResetRDSCache()
   m_RTPlus_Starttime = time(NULL);
   m_RTPlus_GenrePresent = false;
 
-  m_currentInfoTag = CPVRRadioRDSInfoTag::CreateDefaultTag();
+  m_currentInfoTag = std::make_shared<CPVRRadioRDSInfoTag>();
   m_currentChannel = g_application.CurrentFileItem().GetPVRChannelInfoTag();
-  g_application.CurrentFileItem().SetPVRRadioRDSInfoTag(m_currentInfoTag);
-  CServiceBroker::GetGUI()->GetInfoManager().SetCurrentItem(g_application.CurrentFileItem());
+  if (m_currentChannel)
+    m_currentChannel->SetRadioRDSInfoTag(m_currentInfoTag);
 
   // send a message to all windows to tell them to update the radiotext
   CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_RADIOTEXT);
@@ -785,7 +783,7 @@ void CDVDRadioRDSData::ProcessUECP(const unsigned char *data, unsigned int len)
       else
       {
         //! crc16-check
-        unsigned short crc16 = crc16_ccitt(m_UECPData, m_UECPDataIndex-3, 1);
+        unsigned short crc16 = crc16_ccitt(m_UECPData, m_UECPDataIndex-3, true);
         if (crc16 != (m_UECPData[m_UECPDataIndex-2]<<8) + m_UECPData[m_UECPDataIndex-1])
         {
           CLog::Log(LOGERROR, "Radio UECP (RDS) Processor - Error(TS): wrong CRC # calc = %04x <> transmit = %02x%02x",
@@ -929,12 +927,12 @@ unsigned int CDVDRadioRDSData::DecodeTA_TP(uint8_t *msgElement)
   bool traffic_announcement = (msgElement[3] & 1) != 0;
   bool traffic_programme    = (msgElement[3] & 2) != 0;
 
-  if (traffic_announcement && !m_TA_TP_TrafficAdvisory && traffic_programme && dsn == 0 && CServiceBroker::GetSettings()->GetBool("pvrplayback.trafficadvisory"))
+  if (traffic_announcement && !m_TA_TP_TrafficAdvisory && traffic_programme && dsn == 0 && CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool("pvrplayback.trafficadvisory"))
   {
     CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(19021), g_localizeStrings.Get(29930));
     m_TA_TP_TrafficAdvisory = true;
     m_TA_TP_TrafficVolume = g_application.GetVolume();
-    float trafAdvVol = (float)CServiceBroker::GetSettings()->GetInt("pvrplayback.trafficadvisoryvolume");
+    float trafAdvVol = (float)CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt("pvrplayback.trafficadvisoryvolume");
     if (trafAdvVol)
       g_application.SetVolume(m_TA_TP_TrafficVolume+trafAdvVol);
 
@@ -943,7 +941,7 @@ unsigned int CDVDRadioRDSData::DecodeTA_TP(uint8_t *msgElement)
     CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::PVR, "xbmc", "RDSRadioTA", data);
   }
 
-  if (!traffic_announcement && m_TA_TP_TrafficAdvisory && CServiceBroker::GetSettings()->GetBool("pvrplayback.trafficadvisory"))
+  if (!traffic_announcement && m_TA_TP_TrafficAdvisory && CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool("pvrplayback.trafficadvisory"))
   {
     m_TA_TP_TrafficAdvisory = false;
     g_application.SetVolume(m_TA_TP_TrafficVolume);
@@ -1493,8 +1491,6 @@ unsigned int CDVDRadioRDSData::DecodeRTPlus(uint8_t *msgElement, unsigned int le
 
     if (!str.empty())
       g_charsetConverter.unknownToUTF8(str);
-    else if (m_currentChannel)
-      str = m_currentChannel->ChannelName();
     currentMusic->SetArtist(str);
 
     str = m_RTPlus_Title;

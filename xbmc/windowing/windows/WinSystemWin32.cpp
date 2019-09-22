@@ -7,32 +7,36 @@
  */
 
 #include "WinSystemWin32.h"
+
 #include "Application.h"
+#include "ServiceBroker.h"
+#include "VideoSyncD3D.h"
+#include "WinEventsWin32.h"
 #include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Sinks/AESinkDirectSound.h"
 #include "cores/AudioEngine/Sinks/AESinkWASAPI.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
-#include "guilib/gui3d.h"
 #include "messaging/ApplicationMessenger.h"
 #include "platform/Environment.h"
-#include "platform/win32/CharsetConverter.h"
-#include "platform/win32/input/IRServerSuite.h"
-#include "platform/win32/powermanagement/Win32PowerSyscall.h"
+#include "rendering/dx/ScreenshotSurfaceWindows.h"
 #include "resource.h"
-#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "utils/CharsetConverter.h"
 #include "utils/SystemInfo.h"
-#include "VideoSyncD3D.h"
+#include "utils/log.h"
 #include "windowing/GraphicContext.h"
-#include "WinEventsWin32.h"
+#include "windowing/windows/Win32DPMSSupport.h"
+
+#include "platform/win32/CharsetConverter.h"
+#include "platform/win32/input/IRServerSuite.h"
+#include "platform/win32/powermanagement/Win32PowerSyscall.h"
 
 #include <algorithm>
+
 #include <tpcshrd.h>
 
 CWinSystemWin32::CWinSystemWin32()
@@ -69,11 +73,14 @@ CWinSystemWin32::CWinSystemWin32()
   CAESinkDirectSound::Register();
   CAESinkWASAPI::Register();
   CWin32PowerSyscall::Register();
-  if (g_advancedSettings.m_bScanIRServer)
+  CScreenshotSurfaceWindows::Register();
+
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bScanIRServer)
   {
     m_irss.reset(new CIRServerSuite());
     m_irss->Initialize();
   }
+  m_dpms = std::make_shared<CWin32DPMSSupport>();
 }
 
 CWinSystemWin32::~CWinSystemWin32()
@@ -267,7 +274,7 @@ bool CWinSystemWin32::BlankNonActiveMonitors(bool bBlank)
   }
 
   // Move a blank window in front of every display, except the current display.
-  for (size_t i = 0; i < m_displays.size(); ++i)
+  for (size_t i = 0, j = 0; i < m_displays.size(); ++i)
   {
     MONITOR_DETAILS& details = m_displays[i];
     if (details.hMonitor == m_hMonitor)
@@ -275,11 +282,12 @@ bool CWinSystemWin32::BlankNonActiveMonitors(bool bBlank)
 
     RECT rBounds = ScreenRect(details.hMonitor);
     // move and resize the window
-    SetWindowPos(m_hBlankWindows[i], nullptr, rBounds.left, rBounds.top,
+    SetWindowPos(m_hBlankWindows[j], nullptr, rBounds.left, rBounds.top,
       rBounds.right - rBounds.left, rBounds.bottom - rBounds.top,
       SWP_NOACTIVATE);
 
-    ShowWindow(m_hBlankWindows[i], SW_SHOW | SW_SHOWNOACTIVATE);
+    ShowWindow(m_hBlankWindows[j], SW_SHOW | SW_SHOWNOACTIVATE);
+    j++;
   }
 
   if (m_hWnd)
@@ -343,7 +351,7 @@ void CWinSystemWin32::AdjustWindow(bool forceResize)
   }
   else // m_state == WINDOW_STATE_WINDOWED
   {
-    windowAfter = g_advancedSettings.m_alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+    windowAfter = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
 
     rc.left = m_nLeft;
     rc.right = m_nLeft + m_nWidth;
@@ -442,11 +450,8 @@ bool CWinSystemWin32::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool 
   bool changeScreen = false;   // display is changed
   bool stereoChange = IsStereoEnabled() != (CServiceBroker::GetWinSystem()->GetGfxContext().GetStereoMode() == RENDER_STEREO_MODE_HARDWAREBASED);
 
-  if ( m_nWidth != res.iWidth
-    || m_nHeight != res.iHeight
-    || m_fRefreshRate != res.fRefreshRate
-    || oldMonitor->hMonitor != newMonitor->hMonitor
-    || stereoChange)
+  if ( m_nWidth != res.iWidth || m_nHeight != res.iHeight  || m_fRefreshRate != res.fRefreshRate ||
+      oldMonitor->hMonitor != newMonitor->hMonitor || stereoChange || m_bFirstResChange)
   {
     if (oldMonitor->hMonitor != newMonitor->hMonitor)
       changeScreen = true;
@@ -454,12 +459,17 @@ bool CWinSystemWin32::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool 
   }
 
   if (state == m_state && !forceChange)
+  {
+    m_bBlankOtherDisplay = blankOtherDisplays;
+    BlankNonActiveMonitors(m_bBlankOtherDisplay);
     return true;
+  }
 
   // entering to stereo mode, limit resolution to 1080p@23.976
   if (stereoChange && !IsStereoEnabled() && res.iWidth > 1280)
   {
-    res = CDisplaySettings::GetInstance().GetResolutionInfo(CResolutionUtils::ChooseBestResolution(24.f / 1.001f, 1920, 1080, true));
+    res = CDisplaySettings::GetInstance().GetResolutionInfo(
+        CResolutionUtils::ChooseBestResolution(24.f / 1.001f, 1920, 1080, true));
   }
 
   if (m_state == WINDOW_STATE_WINDOWED)
@@ -491,6 +501,7 @@ bool CWinSystemWin32::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool 
     OnScreenChange(newMonitor->hMonitor);
   }
 
+  m_bFirstResChange = false;
   m_bFullScreen = fullScreen;
   m_hMonitor = newMonitor->hMonitor;
   m_nWidth = res.iWidth;
@@ -542,7 +553,10 @@ bool CWinSystemWin32::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool 
     CenterCursor();
 
   CreateBackBuffer();
+
+  BlankNonActiveMonitors(m_bBlankOtherDisplay);
   m_IsAlteringWindow = false;
+
   return true;
 }
 
@@ -560,22 +574,31 @@ bool CWinSystemWin32::DPIChanged(WORD dpi, RECT windowRect) const
   {
     MONITORINFOEX monitorInfo;
     monitorInfo.cbSize = sizeof(MONITORINFOEX);
-    GetMonitorInfo(hMon, &monitorInfo);
-    RECT wr = monitorInfo.rcWork;
-    long wrWidth = wr.right - wr.left;
-    long wrHeight = wr.bottom - wr.top;
-    long resizeWidth = resizeRect.right - resizeRect.left;
-    long resizeHeight = resizeRect.bottom - resizeRect.top;
+    GetMonitorInfoW(hMon, &monitorInfo);
 
-    if (resizeWidth > wrWidth)
+    if (m_state == WINDOW_STATE_FULLSCREEN_WINDOW ||
+        m_state == WINDOW_STATE_FULLSCREEN)
     {
-      resizeRect.right = resizeRect.left + wrWidth;
+      resizeRect = monitorInfo.rcMonitor; // the whole screen
     }
-
-    // make sure suggested windows size is not taller or wider than working area of new monitor (considers the toolbar)
-    if (resizeHeight > wrHeight)
+    else
     {
-      resizeRect.bottom = resizeRect.top + wrHeight;
+      RECT wr = monitorInfo.rcWork; // it excludes task bar
+      long wrWidth = wr.right - wr.left;
+      long wrHeight = wr.bottom - wr.top;
+      long resizeWidth = resizeRect.right - resizeRect.left;
+      long resizeHeight = resizeRect.bottom - resizeRect.top;
+
+      if (resizeWidth > wrWidth)
+      {
+        resizeRect.right = resizeRect.left + wrWidth;
+      }
+
+      // make sure suggested windows size is not taller or wider than working area of new monitor (considers the toolbar)
+      if (resizeHeight > wrHeight)
+      {
+        resizeRect.bottom = resizeRect.top + wrHeight;
+      }
     }
   }
 
@@ -860,7 +883,7 @@ void CWinSystemWin32::UpdateResolutions()
   CWinSystemBase::UpdateResolutions();
   GetConnectedDisplays(m_displays);
 
-  MONITOR_DETAILS* details = GetDisplayDetails(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
+  MONITOR_DETAILS* details = GetDisplayDetails(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
   if (!details)
     return;
 
@@ -871,19 +894,20 @@ void CWinSystemWin32::UpdateResolutions()
     refreshRate = static_cast<float>(details->RefreshRate + 1) / 1.001f;
   else
     refreshRate = static_cast<float>(details->RefreshRate);
-  std::string strOuput = FromW(details->DeviceNameW);
+
+  std::string strOutput = FromW(details->DeviceNameW);
+  std::string monitorName = FromW(details->MonitorNameW);
 
   uint32_t dwFlags = details->Interlaced ? D3DPRESENTFLAG_INTERLACED : 0;
 
   RESOLUTION_INFO& info = CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP);
-  UpdateDesktopResolution(info, w, h, refreshRate, dwFlags);
-  info.strOutput = strOuput;
+  UpdateDesktopResolution(info, monitorName, w, h, refreshRate, dwFlags);
+  info.strOutput = strOutput;
 
   CLog::Log(LOGNOTICE, "Primary mode: %s", info.strMode.c_str());
 
   // erase previous stored modes
   CDisplaySettings::GetInstance().ClearCustomResolutions();
-  std::string monitorName = FromW(details->MonitorNameW);
 
   for(int mode = 0;; mode++)
   {
@@ -914,7 +938,7 @@ void CWinSystemWin32::UpdateResolutions()
     res.strMode = StringUtils::Format("%s: %dx%d @ %.2fHz", monitorName.c_str(), res.iWidth,
                                       res.iHeight, res.fRefreshRate);
     GetGfxContext().ResetOverscan(res);
-    res.strOutput = strOuput;
+    res.strOutput = strOutput;
 
     if (AddResolution(res))
       CLog::Log(LOGNOTICE, "Additional mode: %s", res.strMode.c_str());
@@ -971,7 +995,7 @@ bool CWinSystemWin32::Show(bool raise)
     if (m_bFullScreen)
       windowAfter = HWND_TOP;
     else
-      windowAfter = g_advancedSettings.m_alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+      windowAfter = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
   }
 
   SetWindowPos(m_hWnd, windowAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS);
@@ -1023,7 +1047,7 @@ void CWinSystemWin32::OnDisplayReset()
 
 void CWinSystemWin32::OnDisplayBack()
 {
-  int delay = CServiceBroker::GetSettings()->GetInt("videoscreen.delayrefreshchange");
+  int delay = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt("videoscreen.delayrefreshchange");
   if (delay > 0)
   {
     m_delayDispReset = true;
@@ -1111,7 +1135,7 @@ std::string CWinSystemWin32::GetClipboardText()
 
 bool CWinSystemWin32::UseLimitedColor()
 {
-  return CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
 }
 
 void CWinSystemWin32::NotifyAppFocusChange(bool bGaining)
@@ -1142,7 +1166,7 @@ void CWinSystemWin32::NotifyAppFocusChange(bool bGaining)
 
 void CWinSystemWin32::UpdateStates(bool fullScreen)
 {
-  m_fullscreenState = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN)
+  m_fullscreenState = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN)
     ? WINDOW_FULLSCREEN_STATE_FULLSCREEN_WINDOW
     : WINDOW_FULLSCREEN_STATE_FULLSCREEN;
   m_windowState = WINDOW_WINDOW_STATE_WINDOWED; // currently only this allowed

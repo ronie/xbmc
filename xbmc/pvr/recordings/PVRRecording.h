@@ -24,20 +24,25 @@
  *
  */
 
+#include "XBDateTime.h"
+#include "pvr/PVRTypes.h"
+#include "threads/SystemClock.h"
+#include "video/Bookmark.h"
+#include "video/VideoInfoTag.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "XBDateTime.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "video/VideoInfoTag.h"
-
-#include "pvr/PVRTypes.h"
-
 class CVideoDatabase;
-class CVariant;
+
+struct PVR_EDL_ENTRY;
+struct PVR_RECORDING;
 
 namespace PVR
 {
+  class CPVRTimerInfoTag;
+
   /*!
    * @brief Representation of a CPVRRecording unique ID.
    */
@@ -92,11 +97,6 @@ namespace PVR
      * @return True if it was deleted successfully, false otherwise.
      */
     bool Delete(void);
-
-    /*!
-     * @brief Called when this recording has been deleted
-     */
-    void OnDelete(void);
 
     /*!
      * @brief Undelete this recording on the client (if supported).
@@ -280,12 +280,42 @@ namespace PVR
     bool IsInProgress() const;
 
     /*!
+     * @brief return the timer for an in-progress recording, if any
+     * @return the timer if the recording is in progress, nullptr otherwise
+     */
+    std::shared_ptr<CPVRTimerInfoTag> GetRecordingTimer() const;
+
+    /*!
     * @brief set the genre for this recording.
     * @param iGenreType The genre type ID. If set to EPG_GENRE_USE_STRING, set genre to the value provided with strGenre. Otherwise, compile the genre string from the values given by iGenreType and iGenreSubType
     * @param iGenreSubType The genre subtype ID
     * @param strGenre The genre
     */
    void SetGenre(int iGenreType, int iGenreSubType, const std::string &strGenre);
+
+    /*!
+     * @brief Get the genre type ID of this event.
+     * @return The genre type ID.
+     */
+    int GenreType(void) const { return m_iGenreType; }
+
+    /*!
+     * @brief Get the genre subtype ID of this event.
+     * @return The genre subtype ID.
+     */
+    int GenreSubType(void) const { return m_iGenreSubType; }
+
+    /*!
+     * @brief Get the genre as human readable string.
+     * @return The genre.
+     */
+    const std::vector<std::string> Genre(void) const { return m_genre; }
+
+    /*!
+     * @brief Get the genre(s) of this event as formatted string.
+     * @return The genres label.
+     */
+   const std::string GetGenresLabel() const;
 
   private:
     CDateTime    m_recordingTime; /*!< start time of the recording */
@@ -294,6 +324,9 @@ namespace PVR
     unsigned int m_iEpgEventId;   /*!< epg broadcast id associated with this recording */
     int          m_iChannelUid;   /*!< channel uid associated with this recording */
     bool         m_bRadio;        /*!< radio or tv recording */
+    int          m_iGenreType = 0;    /*!< genre type */
+    int          m_iGenreSubType = 0; /*!< genre subtype */
+    mutable XbmcThreads::EndTime m_resumePointRefetchTimeout;
 
     void UpdatePath(void);
   };

@@ -25,12 +25,12 @@
 #include "CPUInfo.h"
 #include "CompileInfo.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "platform/Filesystem.h"
 #include "utils/log.h"
-#include "utils/SysfsUtils.h"
 
 #ifdef TARGET_WINDOWS
-#include "dwmapi.h"
+#include <dwmapi.h>
 #include "utils/CharsetConverter.h"
 #include <VersionHelpers.h>
 
@@ -48,16 +48,12 @@ using namespace winrt::Windows::System::Profile;
 #endif
 #if defined(TARGET_DARWIN)
 #include "platform/darwin/DarwinUtils.h"
-#include "platform/darwin/osx/CocoaInterface.h"
 #endif
 #include "powermanagement/PowerManager.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
 #if defined(TARGET_ANDROID)
 #include <androidjni/Build.h>
-#if defined(HAS_LIBAMCODEC)
-#include "utils/AMLUtils.h"
-#endif
 #endif
 
 /* Platform identification */
@@ -73,6 +69,7 @@ using namespace winrt::Windows::System::Profile;
 #include <sys/param.h>
 #elif defined(TARGET_LINUX)
 #include <linux/version.h>
+#include "utils/SysfsUtils.h"
 #endif
 
 #include <system_error>
@@ -521,6 +518,11 @@ std::string CSysInfo::GetCPUSerial()
   return "Serial: " + g_cpuInfo.getCPUSerial();
 }
 
+int CSysInfo::GetCPUCount()
+{
+  return g_cpuInfo.getCPUCount();
+}
+
 std::string CSysInfo::GetKernelName(bool emptyIfUnknown /*= false*/)
 {
   static std::string kernelName;
@@ -637,10 +639,8 @@ std::string CSysInfo::GetOsVersion(void)
 
 #if defined(TARGET_WINDOWS) || defined(TARGET_FREEBSD)
   osVersion = GetKernelVersion(); // FIXME: for Win32 and FreeBSD OS version is a kernel version
-#elif defined(TARGET_DARWIN_IOS)
-  osVersion = CDarwinUtils::GetIOSVersionString();
-#elif defined(TARGET_DARWIN_OSX)
-  osVersion = CDarwinUtils::GetOSXVersionString();
+#elif defined(TARGET_DARWIN)
+  osVersion = CDarwinUtils::GetVersionString();
 #elif defined(TARGET_ANDROID)
   char versionCStr[PROP_VALUE_MAX];
   int propLen = __system_property_get("ro.build.version.release", versionCStr);
@@ -729,7 +729,7 @@ std::string CSysInfo::GetOsPrettyNameWithVersion(void)
     osNameVer.append(" unknown");
 #elif defined(TARGET_WINDOWS_STORE)
   osNameVer = GetKernelName() + " " + GetOsVersion();
-#elif defined(TARGET_FREEBSD) || defined(TARGET_DARWIN_IOS) || defined(TARGET_DARWIN_OSX)
+#elif defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
   osNameVer = GetOsName() + " " + GetOsVersion();
 #elif defined(TARGET_ANDROID)
   osNameVer = GetOsName() + " " + GetOsVersion() + " API level " +   StringUtils::Format("%d", CJNIBuild::SDK_INT);
@@ -805,7 +805,7 @@ std::string CSysInfo::GetModelName(void)
     char deviceCStr[PROP_VALUE_MAX];
     int propLen = __system_property_get("ro.product.model", deviceCStr);
     modelName.assign(deviceCStr, (propLen > 0 && propLen <= PROP_VALUE_MAX) ? propLen : 0);
-#elif defined(TARGET_DARWIN_IOS)
+#elif defined(TARGET_DARWIN_EMBEDDED)
     modelName = CDarwinUtils::getIosPlatformString();
 #elif defined(TARGET_DARWIN_OSX)
     size_t nameLen = 0; // 'nameLen' should include terminating null
@@ -926,7 +926,7 @@ int CSysInfo::GetKernelBitness(void)
       if (IsWow64Process(GetCurrentProcess(), &isWow64) && isWow64) // fallback
         kernelBitness = 64;
     }
-#elif defined(TARGET_DARWIN_IOS)
+#elif defined(TARGET_DARWIN_EMBEDDED)
     // Note: OS X return x86 CPU type without CPU_ARCH_ABI64 flag
     const NXArchInfo* archInfo = NXGetLocalArchInfo();
     if (archInfo)
@@ -1097,7 +1097,7 @@ std::string CSysInfo::GetUserAgent()
       result.append("; ARM");
   }
 #elif defined(TARGET_DARWIN)
-#if defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_EMBEDDED)
   std::string iDevStr(GetModelName()); // device model name with number of model version
   size_t iDevStrDigit = iDevStr.find_first_of("0123456789");
   std::string iDev(iDevStr, 0, iDevStrDigit);  // device model name without number
@@ -1179,7 +1179,7 @@ std::string CSysInfo::GetUserAgent()
 
 #ifdef TARGET_RASPBERRY_PI
   result += " HW_RaspberryPi/1.0";
-#elif defined (TARGET_DARWIN_IOS)
+#elif defined (TARGET_DARWIN_EMBEDDED)
   std::string iDevVer;
   if (iDevStrDigit == std::string::npos)
     iDevVer = "0.0";
@@ -1214,7 +1214,7 @@ std::string CSysInfo::GetUserAgent()
 
 std::string CSysInfo::GetDeviceName()
 {
-  std::string friendlyName = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SERVICES_DEVICENAME);
+  std::string friendlyName = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SERVICES_DEVICENAME);
   if (StringUtils::EqualsNoCase(friendlyName, CCompileInfo::GetAppName()))
   {
     std::string hostname("[unknown]");
@@ -1242,16 +1242,7 @@ std::string CSysInfo::GetVersion()
 
 std::string CSysInfo::GetBuildDate()
 {
-  return StringUtils::Format("%s", __DATE__);
-}
-
-bool CSysInfo::HasVideoToolBoxDecoder()
-{
-#if defined(HAVE_VIDEOTOOLBOXDECODER)
-  return CDarwinUtils::HasVideoToolboxDecoder();
-#else
-  return false;
-#endif
+  return CCompileInfo::GetBuildDate();
 }
 
 std::string CSysInfo::GetBuildTargetPlatformName(void)

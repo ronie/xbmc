@@ -13,7 +13,7 @@
 #include "utils/Geometry.h"
 
 extern "C" {
-#include "libavutil/pixfmt.h"
+#include <libavutil/pixfmt.h>
 }
 
 #include <array>
@@ -56,14 +56,13 @@ namespace RETRO
 
     // Public renderer interface
     virtual void Flush();
-    virtual void Deinitialize() { }
 
     // Get render settings
     const CRenderSettings &GetRenderSettings() const { return m_renderSettings; }
 
     // Set render settings
     void SetScalingMethod(SCALINGMETHOD method);
-    void SetViewMode(VIEWMODE viewMode);
+    void SetStretchMode(STRETCHMODE stretchMode);
     void SetRenderRotation(unsigned int rotationDegCCW);
 
     bool IsVisible() const;

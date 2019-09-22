@@ -6,19 +6,20 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "FileItem.h"
 #include "ServiceBroker.h"
+#include "URL.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "test/TestUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "FileItem.h"
-#include "settings/Settings.h"
-#include "test/TestUtils.h"
-#include "URL.h"
 
 #include <errno.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 class TestZipFile : public testing::Test
 {
@@ -30,12 +31,12 @@ protected:
      */
     //! @todo implement
     /*
-    CSettingsCategory *loc = CServiceBroker::GetSettings()->AddCategory(7, "locale", 14090);
-    CServiceBroker::GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_LANGUAGE,248,"english",
+    CSettingsCategory *loc = CServiceBroker::GetSettingsComponent()->GetSettings()->AddCategory(7, "locale", 14090);
+    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_LANGUAGE,248,"english",
                             SPIN_CONTROL_TEXT);
-    CServiceBroker::GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_COUNTRY, 20026, "USA",
+    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_COUNTRY, 20026, "USA",
                             SPIN_CONTROL_TEXT);
-    CServiceBroker::GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_CHARSET, 14091, "DEFAULT",
+    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_CHARSET, 14091, "DEFAULT",
                             SPIN_CONTROL_TEXT); // charset is set by the
                                                 // language file
     */
@@ -43,7 +44,7 @@ protected:
 
   ~TestZipFile() override
   {
-    CServiceBroker::GetSettings()->Unload();
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Unload();
   }
 };
 
@@ -143,7 +144,7 @@ TEST_F(TestZipFile, CorruptedFile)
   memset(&buf, 0, sizeof(buf));
   std::string reffilepath, strpathinzip, str;
   CFileItemList itemlist;
-  unsigned int size, i;
+  ssize_t size, i;
   int64_t count = 0;
 
   reffilepath = XBMC_REF_FILE_PATH("xbmc/filesystem/test/reffile.txt.zip");
@@ -191,7 +192,7 @@ TEST_F(TestZipFile, CorruptedFile)
       str = StringUtils::Format("%02X ", buf[i]);
       std::cout << str;
     }
-    while (i++ < sizeof(buf))
+    while (i++ < static_cast<ssize_t> (sizeof(buf)))
       std::cout << "   ";
     std::cout << " [";
     for (i = 0; i < size; i++)

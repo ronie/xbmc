@@ -8,10 +8,13 @@
 
 #pragma once
 
-#include "utils/EGLUtils.h"
-#include "rendering/gles/RenderSystemGLES.h"
-#include "utils/GlobalsHandling.h"
 #include "WinSystemAndroid.h"
+#include "rendering/gles/RenderSystemGLES.h"
+#include "utils/EGLUtils.h"
+#include "utils/GlobalsHandling.h"
+
+struct AVMasteringDisplayMetadata;
+struct AVContentLightMetadata;
 
 class CWinSystemAndroidGLESContext : public CWinSystemAndroid, public CRenderSystemGLES
 {
@@ -31,6 +34,10 @@ public:
 
   virtual std::unique_ptr<CVideoSync> GetVideoSync(void *clock) override;
 
+  float GetFrameLatencyAdjustment() override;
+  bool IsHDRDisplay() override;
+  bool SetHDR(const VideoPicture* videoPicture) override;
+
   EGLDisplay GetEGLDisplay() const;
   EGLSurface GetEGLSurface() const;
   EGLContext GetEGLContext() const;
@@ -40,6 +47,13 @@ protected:
   void PresentRenderImpl(bool rendered) override;
 
 private:
-  CEGLContextUtils m_pGLContext;
+  bool CreateSurface();
 
+  CEGLContextUtils m_pGLContext;
+  bool m_hasHDRConfig = false;
+
+  std::unique_ptr<AVMasteringDisplayMetadata> m_displayMetadata;
+  std::unique_ptr<AVContentLightMetadata> m_lightMetadata;
+  EGLint m_HDRColorSpace = EGL_NONE;
+  bool m_hasEGLHDRExtensions = false;
 };

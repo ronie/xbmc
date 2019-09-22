@@ -19,7 +19,7 @@ namespace dbiplus {
 
 class DatabaseSettings; // forward
 class CDbUrl;
-class CProfilesManager;
+class CProfileManager;
 struct SortDescription;
 
 class CDatabase
@@ -104,7 +104,6 @@ public:
   void BeginTransaction();
   virtual bool CommitTransaction();
   void RollbackTransaction();
-  bool InTransaction();
   void CopyDB(const std::string& latestDb);
   void DropAnalytics();
 
@@ -243,7 +242,7 @@ protected:
 
 protected:
   // Construction parameters
-  const CProfilesManager &m_profileManager;
+  const CProfileManager &m_profileManager;
 
 private:
   void InitSettings(DatabaseSettings &dbSettings);

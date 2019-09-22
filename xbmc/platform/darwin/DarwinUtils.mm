@@ -13,8 +13,7 @@
 #include "utils/URIUtils.h"
 #include "CompileInfo.h"
 
-#if defined(TARGET_DARWIN)
-#if defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_EMBEDDED)
   #import <Foundation/Foundation.h>
   #import <UIKit/UIKit.h>
   #import <mach/mach_host.h>
@@ -23,12 +22,11 @@
   #import <Cocoa/Cocoa.h>
   #import <CoreFoundation/CoreFoundation.h>
   #import <IOKit/IOKitLib.h>
-  #import <IOKit/ps/IOPowerSources.h>
-  #import <IOKit/ps/IOPSKeys.h>
 #endif
 
-#import "AutoPool.h"
 #import "DarwinUtils.h"
+
+#include <mutex>
 
 
 enum iosPlatform
@@ -81,16 +79,23 @@ enum iosPlatform
   iPhoneSE,
   iPhone7,
   iPhone8,
+  iPhoneXR,
   iPadAir2Wifi,
   iPadAir2Cellular,
   iPadPro9_7InchWifi,
   iPadPro9_7InchCellular,
+  iPad6thGeneration9_7InchWifi,
+  iPad6thGeneration9_7InchCellular,
   iPadPro12_9InchWifi,
   iPadPro12_9InchCellular,
   iPadPro2_12_9InchWifi,
   iPadPro2_12_9InchCellular,
+  iPadPro3_12_9InchWifi,
+  iPadPro3_12_9InchCellular,
   iPadPro_10_5InchWifi,
   iPadPro_10_5InchCellular,
+  iPadPro11InchWifi,
+  iPadPro11InchCellular,
   iPadMini3Wifi,
   iPadMini3Cellular,
   iPadMini4Wifi,
@@ -100,38 +105,37 @@ enum iosPlatform
   iPhone7Plus,
   iPhone8Plus,
   iPhoneX,
+  iPhoneXS,
+  iPhoneXSMax,
 };
 
 // platform strings are based on http://theiphonewiki.com/wiki/Models
 const char* CDarwinUtils::getIosPlatformString(void)
 {
   static std::string iOSPlatformString;
-  if (iOSPlatformString.empty())
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
-#if defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_EMBEDDED)
     // Gets a string with the device model
     size_t size;
     sysctlbyname("hw.machine", NULL, &size, NULL, 0);
-    char *machine = new char[size];
+    char machine[size];
     if (sysctlbyname("hw.machine", machine, &size, NULL, 0) == 0 && machine[0])
-      iOSPlatformString.assign(machine, size -1);
-   else
+      iOSPlatformString.assign(machine, size-1);
+    else
 #endif
       iOSPlatformString = "unknown0,0";
-
-#if defined(TARGET_DARWIN_IOS)
-    delete [] machine;
-#endif
-  }
-
+  });
   return iOSPlatformString.c_str();
 }
 
 enum iosPlatform getIosPlatform()
 {
   static enum iosPlatform eDev = iDeviceUnknown;
-#if defined(TARGET_DARWIN_IOS)
-  if (eDev == iDeviceUnknown)
+#if defined(TARGET_DARWIN_EMBEDDED)
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
     std::string devStr(CDarwinUtils::getIosPlatformString());
 
@@ -163,6 +167,9 @@ enum iosPlatform getIosPlatform()
     else if (devStr == "iPhone10,4") eDev = iPhone8;
     else if (devStr == "iPhone10,5") eDev = iPhone8Plus;
     else if (devStr == "iPhone10,6") eDev = iPhoneX;
+    else if (devStr == "iPhone11,2") eDev = iPhoneXS;
+    else if (devStr == "iPhone11,6") eDev = iPhoneXSMax;
+    else if (devStr == "iPhone11,8") eDev = iPhoneXR;
     else if (devStr == "iPod1,1") eDev = iPodTouch1G;
     else if (devStr == "iPod2,1") eDev = iPodTouch2G;
     else if (devStr == "iPod3,1") eDev = iPodTouch3G;
@@ -207,186 +214,138 @@ enum iosPlatform getIosPlatform()
     else if (devStr == "iPad7,2") eDev = iPadPro2_12_9InchCellular;
     else if (devStr == "iPad7,3") eDev = iPadPro_10_5InchWifi;
     else if (devStr == "iPad7,4") eDev = iPadPro_10_5InchCellular;
+    else if (devStr == "iPad7,5") eDev = iPad6thGeneration9_7InchWifi;
+    else if (devStr == "iPad7,6") eDev = iPad6thGeneration9_7InchCellular;
+    else if (devStr == "iPad8,1") eDev = iPadPro11InchWifi;
+    else if (devStr == "iPad8,2") eDev = iPadPro11InchWifi;
+    else if (devStr == "iPad8,3") eDev = iPadPro11InchCellular;
+    else if (devStr == "iPad8,4") eDev = iPadPro11InchCellular;
+    else if (devStr == "iPad8,5") eDev = iPadPro3_12_9InchWifi;
+    else if (devStr == "iPad8,6") eDev = iPadPro3_12_9InchWifi;
+    else if (devStr == "iPad8,7") eDev = iPadPro3_12_9InchCellular;
+    else if (devStr == "iPad8,8") eDev = iPadPro3_12_9InchCellular;
     else if (devStr == "AppleTV2,1") eDev = AppleTV2;
     else if (devStr == "AppleTV5,3") eDev = AppleTV4;
     else if (devStr == "AppleTV6,2") eDev = AppleTV4K;
-  }
+  });
 #endif
   return eDev;
 }
 
 bool CDarwinUtils::DeviceHasRetina(double &scale)
 {
-  static enum iosPlatform platform = iDeviceUnknown;
-
+  scale = 1.0; // no retina
 #if defined(TARGET_DARWIN_IOS)
-  if( platform == iDeviceUnknown )
+  static bool hasRetina;
+  static double _scale;
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
-    platform = getIosPlatform();
-  }
+    iosPlatform platform = getIosPlatform();
+    hasRetina = platform >= iPhone4;
+
+    // see http://www.paintcodeapp.com/news/iphone-6-screens-demystified
+    if (hasRetina && platform < iPhone6Plus)
+      _scale = 2.0; // 2x render retina
+
+    if (platform >= iPhone6Plus)
+      _scale = 3.0; //3x render retina + downscale
+  });
+
+  scale = _scale;
+  return hasRetina;
+#else
+  return false;
 #endif
-  scale = 1.0; //no retina
-
-  // see http://www.paintcodeapp.com/news/iphone-6-screens-demystified
-  if (platform >= iPhone4 && platform < iPhone6Plus)
-  {
-    scale = 2.0; // 2x render retina
-  }
-
-  if (platform >= iPhone6Plus)
-  {
-    scale = 3.0; //3x render retina + downscale
-  }
-
-  return (platform >= iPhone4);
 }
 
 const char *CDarwinUtils::GetOSReleaseString(void)
 {
   static std::string osreleaseStr;
-  if (osreleaseStr.empty())
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
     size_t size;
     sysctlbyname("kern.osrelease", NULL, &size, NULL, 0);
-    char *osrelease = new char[size];
+    char osrelease[size];
     sysctlbyname("kern.osrelease", osrelease, &size, NULL, 0);
-    osreleaseStr = osrelease;
-    delete [] osrelease;
-  }
+    osreleaseStr.assign(osrelease);
+  });
   return osreleaseStr.c_str();
 }
 
 const char *CDarwinUtils::GetOSVersionString(void)
 {
-  CCocoaAutoPool pool;
-  return [[[NSProcessInfo processInfo] operatingSystemVersionString] UTF8String];
-}
-
-float CDarwinUtils::GetIOSVersion(void)
-{
-  CCocoaAutoPool pool;
-  float version;
-#if defined(TARGET_DARWIN_IOS)
-  version = [[[UIDevice currentDevice] systemVersion] floatValue];
-#else
-  version = 0.0f;
-#endif
-
-  return(version);
-}
-
-const char *CDarwinUtils::GetIOSVersionString(void)
-{
-#if defined(TARGET_DARWIN_IOS)
-  static std::string iOSVersionString;
-  if (iOSVersionString.empty())
+  @autoreleasepool
   {
-    CCocoaAutoPool pool;
-    iOSVersionString.assign((const char*)[[[UIDevice currentDevice] systemVersion] UTF8String]);
+    return [[[NSProcessInfo processInfo] operatingSystemVersionString] UTF8String];
   }
-  return iOSVersionString.c_str();
-#else
-  return "0.0";
-#endif
 }
 
-const char *CDarwinUtils::GetOSXVersionString(void)
+const char* CDarwinUtils::GetVersionString()
 {
-#if defined(TARGET_DARWIN_OSX)
-  static std::string OSXVersionString;
-  if (OSXVersionString.empty())
+  static std::string versionString;
+  static std::once_flag flag;
+#if defined(TARGET_DARWIN_EMBEDDED)
+  std::call_once(flag, []
   {
-    CCocoaAutoPool pool;
-    OSXVersionString.assign((const char*)[[[NSDictionary dictionaryWithContentsOfFile:
-                         @"/System/Library/CoreServices/SystemVersion.plist"] objectForKey:@"ProductVersion"] UTF8String]);
-  }
-
-  return OSXVersionString.c_str();
+    versionString.assign([[[UIDevice currentDevice] systemVersion] UTF8String]);
+  });
 #else
-  return "0.0";
+  std::call_once(flag, []
+  {
+    versionString.assign([[[NSDictionary dictionaryWithContentsOfFile:
+                            @"/System/Library/CoreServices/SystemVersion.plist"] objectForKey:@"ProductVersion"] UTF8String]);
+  });
 #endif
+  return versionString.c_str();
 }
 
-int  CDarwinUtils::GetFrameworkPath(bool forPython, char* path, size_t *pathsize)
+std::string CDarwinUtils::GetFrameworkPath(bool forPython)
 {
-  CCocoaAutoPool pool;
-  // see if we can figure out who we are
-  NSString *pathname;
-
-  path[0] = 0;
-  *pathsize = 0;
-
-  // 1) Kodi application running under IOS
-  pathname = [[NSBundle mainBundle] executablePath];
-  std::string appName = std::string(CCompileInfo::GetAppName()) + ".app/" + std::string(CCompileInfo::GetAppName());
-  if (pathname && strstr([pathname UTF8String], appName.c_str()))
+  @autoreleasepool
   {
-    strcpy(path, [pathname UTF8String]);
-    // Move backwards to last "/"
-    for (int n=strlen(path)-1; path[n] != '/'; n--)
-      path[n] = '\0';
-    strcat(path, "Frameworks");
-    *pathsize = strlen(path);
-    //CLog::Log(LOGDEBUG, "DarwinFrameworkPath(c) -> %s", path);
-    return 0;
-  }
-
-  // 2) Kodi application running under OSX
-  pathname = [[NSBundle mainBundle] executablePath];
-  if (pathname && strstr([pathname UTF8String], "Contents"))
-  {
-    strcpy(path, [pathname UTF8String]);
-    // ExecutablePath is <product>.app/Contents/MacOS/<executable>
-    char *lastSlash = strrchr(path, '/');
-    if (lastSlash)
+    auto mainBundle = NSBundle.mainBundle;
+#if defined(TARGET_DARWIN_EMBEDDED)
+    return std::string{mainBundle.privateFrameworksPath.UTF8String};
+#else
+    if ([mainBundle.executablePath containsString:@"Contents"])
     {
-      *lastSlash = '\0';//remove /<executable>
-      lastSlash = strrchr(path, '/');
-      if (lastSlash)
-        *lastSlash = '\0';//remove /MacOS
+      // ExecutablePath is <product>.app/Contents/MacOS/<executable>
+      // we should have <product>.app/Contents/Libraries
+      return std::string{[[mainBundle.bundlePath stringByAppendingPathComponent:@"Contents"]
+                             stringByAppendingPathComponent:@"Libraries"]
+                             .UTF8String};
     }
-    strcat(path, "/Libraries");//add /Libraries
-    //we should have <product>.app/Contents/Libraries now
-    *pathsize = strlen(path);
-    //CLog::Log(LOGDEBUG, "DarwinFrameworkPath(d) -> %s", path);
-    return 0;
+#endif
   }
 
-  // e) Kodi OSX binary running under xcode or command-line
+  // Kodi OSX binary running under xcode or command-line
   // but only if it's not for python. In this case, let python
   // use it's internal compiled paths.
+#if defined(TARGET_DARWIN_OSX)
   if (!forPython)
-  {
-    strcpy(path, PREFIX_USR_PATH);
-    strcat(path, "/lib");
-    *pathsize = strlen(path);
-    //CLog::Log(LOGDEBUG, "DarwinFrameworkPath(e) -> %s", path);
-    return 0;
-  }
-
-  return -1;
+    return std::string{PREFIX_USR_PATH"/lib"};
+  return std::string{};
+#endif
 }
 
 int  CDarwinUtils::GetExecutablePath(char* path, size_t *pathsize)
 {
-  CCocoaAutoPool pool;
-  // see if we can figure out who we are
-  NSString *pathname;
-
-  // 1) Kodi application running under IOS
-  // 2) Kodi application running under OSX
-  pathname = [[NSBundle mainBundle] executablePath];
-  strcpy(path, [pathname UTF8String]);
+  @autoreleasepool
+  {
+    strcpy(path, NSBundle.mainBundle.executablePath.UTF8String);
+  }
   *pathsize = strlen(path);
-  //CLog::Log(LOGDEBUG, "DarwinExecutablePath(b/c) -> %s", path);
 
   return 0;
 }
 
 const char* CDarwinUtils::GetAppRootFolder(void)
 {
-  static std::string rootFolder = "";
-  if ( rootFolder.length() == 0)
+  static std::string rootFolder;
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
     if (IsIosSandboxed())
     {
@@ -399,29 +358,28 @@ const char* CDarwinUtils::GetAppRootFolder(void)
     {
       rootFolder = "Library/Preferences";
     }
-  }
+  });
   return rootFolder.c_str();
 }
 
 bool CDarwinUtils::IsIosSandboxed(void)
 {
-  static int ret = -1;
-  if (ret == -1)
+  static bool ret = false;
+  static std::once_flag flag;
+  std::call_once(flag, []
   {
     size_t path_size = 2*MAXPATHLEN;
-    char     given_path[2*MAXPATHLEN];
-    int      result = -1;
-    ret = 0;
+    char given_path[path_size];
     memset(given_path, 0x0, path_size);
     /* Get Application directory */
-    result = GetExecutablePath(given_path, &path_size);
+    int result = GetExecutablePath(given_path, &path_size);
     if (result == 0)
     {
-      // we re sandboxed if we are installed in /var/mobile/Applications
+      // we're sandboxed if we are installed in /var/mobile/Applications
       if (strlen("/var/mobile/Applications/") < path_size &&
         strncmp(given_path, "/var/mobile/Applications/", strlen("/var/mobile/Applications/")) == 0)
       {
-        ret = 1;
+        ret = true;
       }
 
       // since ios8 the sandbox filesystem has moved to container approach
@@ -429,64 +387,18 @@ bool CDarwinUtils::IsIosSandboxed(void)
       if (strlen("/var/mobile/Containers/Bundle/") < path_size &&
         strncmp(given_path, "/var/mobile/Containers/Bundle/", strlen("/var/mobile/Containers/Bundle/")) == 0)
       {
-        ret = 1;
+        ret = true;
       }
 
       // Some time after ios8, Apple decided to change this yet again
       if (strlen("/var/containers/Bundle/") < path_size &&
         strncmp(given_path, "/var/containers/Bundle/", strlen("/var/containers/Bundle/")) == 0)
       {
-        ret = 1;
+        ret = true;
       }
     }
-  }
-  return ret == 1;
-}
-
-int CDarwinUtils::BatteryLevel(void)
-{
-  float batteryLevel = 0;
-#if defined(TARGET_DARWIN_IOS)
-  batteryLevel = [[UIDevice currentDevice] batteryLevel];
-#else
-  CFTypeRef powerSourceInfo = IOPSCopyPowerSourcesInfo();
-  CFArrayRef powerSources = IOPSCopyPowerSourcesList(powerSourceInfo);
-
-  CFDictionaryRef powerSource = NULL;
-  const void *powerSourceVal;
-
-  for (int i = 0 ; i < CFArrayGetCount(powerSources) ; i++)
-  {
-    powerSource = IOPSGetPowerSourceDescription(powerSourceInfo, CFArrayGetValueAtIndex(powerSources, i));
-    if (!powerSource) break;
-
-    powerSourceVal = (CFStringRef)CFDictionaryGetValue(powerSource, CFSTR(kIOPSNameKey));
-
-    int curLevel = 0;
-    int maxLevel = 0;
-
-    powerSourceVal = CFDictionaryGetValue(powerSource, CFSTR(kIOPSCurrentCapacityKey));
-    CFNumberGetValue((CFNumberRef)powerSourceVal, kCFNumberSInt32Type, &curLevel);
-
-    powerSourceVal = CFDictionaryGetValue(powerSource, CFSTR(kIOPSMaxCapacityKey));
-    CFNumberGetValue((CFNumberRef)powerSourceVal, kCFNumberSInt32Type, &maxLevel);
-
-    batteryLevel = (double)curLevel/(double)maxLevel;
-  }
-  CFRelease(powerSources);
-  CFRelease(powerSourceInfo);
-#endif
-  return batteryLevel * 100;
-}
-
-void CDarwinUtils::EnableOSScreenSaver(bool enable)
-{
-
-}
-
-void CDarwinUtils::ResetSystemIdleTimer()
-{
-
+  });
+  return ret;
 }
 
 void CDarwinUtils::SetScheduling(bool realtime)
@@ -563,7 +475,7 @@ const std::string& CDarwinUtils::GetManufacturer(void)
   static std::string manufName;
   if (manufName.empty())
   {
-#ifdef TARGET_DARWIN_IOS
+#ifdef TARGET_DARWIN_EMBEDDED
     // to avoid dlloading of IOIKit, hardcode return value
 	// until other than Apple devices with iOS will be released
     manufName = "Apple Inc.";
@@ -577,9 +489,10 @@ const std::string& CDarwinUtils::GetManufacturer(void)
         CFTypeRef manufacturer = IORegistryEntryCreateCFProperty(servExpDev, CFSTR("manufacturer"), kCFAllocatorDefault, 0);
         if (manufacturer)
         {
-          if (CFGetTypeID(manufacturer) == CFStringGetTypeID())
-            manufName = (const char*)[[NSString stringWithString:(NSString *)manufacturer] UTF8String];
-          else if (CFGetTypeID(manufacturer) == CFDataGetTypeID())
+          auto typeId = CFGetTypeID(manufacturer);
+          if (typeId == CFStringGetTypeID())
+            manufName = static_cast<const char*>([NSString stringWithString:(__bridge NSString*)manufacturer].UTF8String);
+          else if (typeId == CFDataGetTypeID())
           {
             manufName.assign((const char*)CFDataGetBytePtr((CFDataRef)manufacturer), CFDataGetLength((CFDataRef)manufacturer));
             if (!manufName.empty() && manufName[manufName.length() - 1] == 0)
@@ -600,31 +513,27 @@ bool CDarwinUtils::IsAliasShortcut(const std::string& path, bool isdirectory)
   bool ret = false;
 
 #if defined(TARGET_DARWIN_OSX)
-  CCocoaAutoPool pool;
-
-  NSURL *nsUrl;
-  if (isdirectory)
+  @autoreleasepool
   {
-    std::string cleanpath = path;
-    URIUtils::RemoveSlashAtEnd(cleanpath);
-    NSString *nsPath = [NSString stringWithUTF8String:cleanpath.c_str()];
-    nsUrl = [NSURL fileURLWithPath:nsPath isDirectory:TRUE];
-  }
-  else
-  {
-    NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
-    nsUrl = [NSURL fileURLWithPath:nsPath isDirectory:FALSE];
-  }
-
-  NSNumber* wasAliased = nil;
-
-  if (nsUrl != nil)
-  {
-    NSError *error = nil;
-
-    if ([nsUrl getResourceValue:&wasAliased forKey:NSURLIsAliasFileKey error:&error])
+    NSURL* nsUrl;
+    if (isdirectory)
     {
-      ret = [wasAliased boolValue];
+      std::string cleanpath = path;
+      URIUtils::RemoveSlashAtEnd(cleanpath);
+      NSString* nsPath = [NSString stringWithUTF8String:cleanpath.c_str()];
+      nsUrl = [NSURL fileURLWithPath:nsPath isDirectory:YES];
+    }
+    else
+    {
+      NSString* nsPath = [NSString stringWithUTF8String:path.c_str()];
+      nsUrl = [NSURL fileURLWithPath:nsPath isDirectory:NO];
+    }
+
+    if (nsUrl != nil)
+    {
+      NSNumber* wasAliased;
+      if ([nsUrl getResourceValue:&wasAliased forKey:NSURLIsAliasFileKey error:nil])
+        ret = [wasAliased boolValue];
     }
   }
 #endif
@@ -683,5 +592,3 @@ bool CDarwinUtils::CreateAliasShortcut(const std::string& fromPath, const std::s
 #endif
   return ret;
 }
-
-#endif

@@ -12,6 +12,7 @@
 #include "../DVDDemuxSPU.h"
 #include "DVDStateSerializer.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "LangInfo.h"
 #include "ServiceBroker.h"
 #include "utils/Geometry.h"
@@ -19,7 +20,7 @@
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
 #include "guilib/LocalizeStrings.h"
-#if defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_OSX)
 #include "platform/darwin/osx/CocoaInterface.h"
 #endif
 #if defined(TARGET_WINDOWS_STORE)
@@ -124,7 +125,7 @@ bool CDVDInputStreamNavigator::Open()
     return false;
   }
 
-  int region = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_DVDS_PLAYERREGION);
+  int region = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_DVDS_PLAYERREGION);
   int mask = 0;
   if(region > 0)
     mask = 1 << (region-1);
@@ -202,7 +203,7 @@ bool CDVDInputStreamNavigator::Open()
   }
 
   // jump directly to title menu
-  if(CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_DVDS_AUTOMENU))
+  if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_DVDS_AUTOMENU))
   {
     int len, event;
     uint8_t buf[2048];

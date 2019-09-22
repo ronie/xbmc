@@ -8,14 +8,14 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include "utils/BitstreamStats.h"
-#include "filesystem/IFileTypes.h"
-
 #include "FileItem.h"
 #include "URL.h"
+#include "filesystem/IFileTypes.h"
+#include "utils/BitstreamStats.h"
 #include "utils/Geometry.h"
+
+#include <string>
+#include <vector>
 
 enum DVDStreamType
 {
@@ -128,6 +128,7 @@ public:
     virtual bool OpenStream(int iStreamId) { return false; };
     virtual int GetNrOfStreams() const = 0;
     virtual void SetSpeed(int iSpeed) = 0;
+    virtual void FillBuffer(bool mode) {};
     virtual bool SeekTime(double time, bool backward = false, double* startpts = NULL) = 0;
     virtual void AbortDemux() = 0;
     virtual void FlushDemux() = 0;

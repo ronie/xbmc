@@ -10,147 +10,20 @@
 
 #include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
+#include "cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "windowing/gbm/WinSystemGbm.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavutil/pixdesc.h"
+#include <libavcodec/avcodec.h>
+#include <libavutil/pixdesc.h>
 }
 
-//------------------------------------------------------------------------------
-// Video Buffers
-//------------------------------------------------------------------------------
-
-CVideoBufferDRMPRIME::CVideoBufferDRMPRIME(IVideoBufferPool& pool, int id)
-  : CVideoBuffer(id)
-{
-  m_pFrame = av_frame_alloc();
-}
-
-CVideoBufferDRMPRIME::~CVideoBufferDRMPRIME()
-{
-  Unref();
-  av_frame_free(&m_pFrame);
-}
-
-void CVideoBufferDRMPRIME::SetRef(AVFrame* frame)
-{
-  av_frame_move_ref(m_pFrame, frame);
-}
-
-void CVideoBufferDRMPRIME::Unref()
-{
-  av_frame_unref(m_pFrame);
-}
-
-int CVideoBufferDRMPRIME::GetColorEncoding() const
-{
-  switch (m_pFrame->colorspace)
-  {
-    case AVCOL_SPC_BT2020_CL:
-    case AVCOL_SPC_BT2020_NCL:
-      return DRM_COLOR_YCBCR_BT2020;
-    case AVCOL_SPC_SMPTE170M:
-    case AVCOL_SPC_BT470BG:
-    case AVCOL_SPC_FCC:
-      return DRM_COLOR_YCBCR_BT601;
-    case AVCOL_SPC_BT709:
-      return DRM_COLOR_YCBCR_BT709;
-    case AVCOL_SPC_RESERVED:
-    case AVCOL_SPC_UNSPECIFIED:
-    default:
-      if (m_pFrame->width > 1024 || m_pFrame->height >= 600)
-        return DRM_COLOR_YCBCR_BT709;
-      else
-        return DRM_COLOR_YCBCR_BT601;
-  }
-}
-
-int CVideoBufferDRMPRIME::GetColorRange() const
-{
-  switch (m_pFrame->color_range)
-  {
-    case AVCOL_RANGE_JPEG:
-      return DRM_COLOR_YCBCR_FULL_RANGE;
-    case AVCOL_RANGE_MPEG:
-    default:
-      return DRM_COLOR_YCBCR_LIMITED_RANGE;
-  }
-}
-
-//------------------------------------------------------------------------------
-
-class CVideoBufferPoolDRMPRIME
-  : public IVideoBufferPool
-{
-public:
-  ~CVideoBufferPoolDRMPRIME();
-  void Return(int id) override;
-  CVideoBuffer* Get() override;
-
-protected:
-  CCriticalSection m_critSection;
-  std::vector<CVideoBufferDRMPRIME*> m_all;
-  std::deque<int> m_used;
-  std::deque<int> m_free;
-};
-
-CVideoBufferPoolDRMPRIME::~CVideoBufferPoolDRMPRIME()
-{
-  for (auto buf : m_all)
-    delete buf;
-}
-
-CVideoBuffer* CVideoBufferPoolDRMPRIME::Get()
-{
-  CSingleLock lock(m_critSection);
-
-  CVideoBufferDRMPRIME* buf = nullptr;
-  if (!m_free.empty())
-  {
-    int idx = m_free.front();
-    m_free.pop_front();
-    m_used.push_back(idx);
-    buf = m_all[idx];
-  }
-  else
-  {
-    int id = m_all.size();
-    buf = new CVideoBufferDRMPRIME(*this, id);
-    m_all.push_back(buf);
-    m_used.push_back(id);
-  }
-
-  buf->Acquire(GetPtr());
-  return buf;
-}
-
-void CVideoBufferPoolDRMPRIME::Return(int id)
-{
-  CSingleLock lock(m_critSection);
-
-  m_all[id]->Unref();
-  auto it = m_used.begin();
-  while (it != m_used.end())
-  {
-    if (*it == id)
-    {
-      m_used.erase(it);
-      break;
-    }
-    else
-      ++it;
-  }
-  m_free.push_back(id);
-}
-
-//------------------------------------------------------------------------------
-// main class
-//------------------------------------------------------------------------------
+using namespace KODI::WINDOWING::GBM;
 
 CDVDVideoCodecDRMPRIME::CDVDVideoCodecDRMPRIME(CProcessInfo& processInfo)
   : CDVDVideoCodec(processInfo)
@@ -167,14 +40,14 @@ CDVDVideoCodecDRMPRIME::~CDVDVideoCodecDRMPRIME()
 
 CDVDVideoCodec* CDVDVideoCodecDRMPRIME::Create(CProcessInfo& processInfo)
 {
-  if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEPRIMEDECODER))
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEPRIMEDECODER))
     return new CDVDVideoCodecDRMPRIME(processInfo);
   return nullptr;
 }
 
 void CDVDVideoCodecDRMPRIME::Register()
 {
-  CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_VIDEOPLAYER_USEPRIMEDECODER)->SetVisible(true);
+  CServiceBroker::GetSettingsComponent()->GetSettings()->GetSetting(CSettings::SETTING_VIDEOPLAYER_USEPRIMEDECODER)->SetVisible(true);
   CDVDFactoryCodec::RegisterHWVideoCodec("drm_prime", CDVDVideoCodecDRMPRIME::Create);
 }
 
@@ -217,11 +90,17 @@ static const AVCodec* FindDecoder(CDVDStreamInfo& hints)
   return nullptr;
 }
 
-static enum AVPixelFormat GetFormat(struct AVCodecContext* avctx, const enum AVPixelFormat* fmt)
+enum AVPixelFormat CDVDVideoCodecDRMPRIME::GetFormat(struct AVCodecContext* avctx, const enum AVPixelFormat* fmt)
 {
   for (int n = 0; fmt[n] != AV_PIX_FMT_NONE; n++)
+  {
     if (fmt[n] == AV_PIX_FMT_DRM_PRIME)
+    {
+      CDVDVideoCodecDRMPRIME* ctx = static_cast<CDVDVideoCodecDRMPRIME*>(avctx->opaque);
+      ctx->UpdateProcessInfo(avctx, fmt[n]);
       return fmt[n];
+    }
+  }
 
   return AV_PIX_FMT_NONE;
 }
@@ -247,7 +126,7 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
       pConfig->device_type == AV_HWDEVICE_TYPE_DRM)
   {
     CWinSystemGbm* winSystem = dynamic_cast<CWinSystemGbm*>(CServiceBroker::GetWinSystem());
-    if (av_hwdevice_ctx_create(&m_pCodecContext->hw_device_ctx, AV_HWDEVICE_TYPE_DRM, winSystem->GetDevicePath().c_str(), nullptr, 0) < 0)
+    if (av_hwdevice_ctx_create(&m_pCodecContext->hw_device_ctx, AV_HWDEVICE_TYPE_DRM, drmGetDeviceNameFromFd2(winSystem->GetDrm()->GetFileDescriptor()), nullptr, 0) < 0)
     {
       CLog::Log(LOGNOTICE, "CDVDVideoCodecDRMPRIME::%s - unable to create hwdevice context", __FUNCTION__);
       avcodec_free_context(&m_pCodecContext);
@@ -256,6 +135,7 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
   }
 
   m_pCodecContext->pix_fmt = AV_PIX_FMT_DRM_PRIME;
+  m_pCodecContext->opaque = static_cast<void*>(this);
   m_pCodecContext->get_format = GetFormat;
   m_pCodecContext->codec_tag = hints.codec_tag;
   m_pCodecContext->coded_width = hints.width;
@@ -278,27 +158,25 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
     return false;
   }
 
-  if (m_pCodecContext->pix_fmt != AV_PIX_FMT_DRM_PRIME)
-  {
-    CLog::Log(LOGNOTICE, "CDVDVideoCodecDRMPRIME::%s - unexpected pix fmt %s", __FUNCTION__, av_get_pix_fmt_name(m_pCodecContext->pix_fmt));
-    avcodec_free_context(&m_pCodecContext);
-    return false;
-  }
-
-  const char* pixFmtName = av_get_pix_fmt_name(m_pCodecContext->pix_fmt);
-  m_processInfo.SetVideoPixelFormat(pixFmtName ? pixFmtName : "");
-  m_processInfo.SetVideoDimensions(hints.width, hints.height);
+  UpdateProcessInfo(m_pCodecContext, m_pCodecContext->pix_fmt);
   m_processInfo.SetVideoDeintMethod("none");
   m_processInfo.SetVideoDAR(hints.aspect);
 
-  if (pCodec->name)
-    m_name = std::string("ff-") + pCodec->name;
+  return true;
+}
+
+void CDVDVideoCodecDRMPRIME::UpdateProcessInfo(struct AVCodecContext* avctx, const enum AVPixelFormat pix_fmt)
+{
+  const char* pixFmtName = av_get_pix_fmt_name(pix_fmt);
+  m_processInfo.SetVideoPixelFormat(pixFmtName ? pixFmtName : "");
+  m_processInfo.SetVideoDimensions(avctx->coded_width, avctx->coded_height);
+
+  if (avctx->codec && avctx->codec->name)
+    m_name = std::string("ff-") + avctx->codec->name;
   else
     m_name = "ffmpeg";
 
-  m_processInfo.SetVideoDecoderName(m_name, true);
-
-  return true;
+  m_processInfo.SetVideoDecoderName(m_name, pix_fmt == AV_PIX_FMT_DRM_PRIME);
 }
 
 bool CDVDVideoCodecDRMPRIME::AddData(const DemuxPacket& packet)
@@ -409,9 +287,18 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
 
   SetPictureParams(pVideoPicture);
 
-  CVideoBufferDRMPRIME* buffer = dynamic_cast<CVideoBufferDRMPRIME*>(m_videoBufferPool->Get());
-  buffer->SetRef(m_pFrame);
-  pVideoPicture->videoBuffer = buffer;
+  if (m_pFrame->format == AV_PIX_FMT_DRM_PRIME)
+  {
+    CVideoBufferDRMPRIME* buffer = dynamic_cast<CVideoBufferDRMPRIME*>(m_videoBufferPool->Get());
+    buffer->SetRef(m_pFrame);
+    pVideoPicture->videoBuffer = buffer;
+  }
+
+  if (!pVideoPicture->videoBuffer)
+  {
+    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - videoBuffer:nullptr format:{}", __FUNCTION__, av_get_pix_fmt_name(static_cast<AVPixelFormat>(m_pFrame->format)));
+    return VC_ERROR;
+  }
 
   return VC_PICTURE;
 }

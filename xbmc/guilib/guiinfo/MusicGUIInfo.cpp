@@ -15,17 +15,17 @@
 #include "URL.h"
 #include "Util.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/guiinfo/GUIInfo.h"
+#include "guilib/guiinfo/GUIInfoHelper.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "music/MusicInfoLoader.h"
 #include "music/MusicThumbLoader.h"
 #include "music/tags/MusicInfoTag.h"
 #include "playlists/PlayList.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/URIUtils.h"
 #include "utils/log.h"
-
-#include "guilib/guiinfo/GUIInfo.h"
-#include "guilib/guiinfo/GUIInfoHelper.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
 
 using namespace KODI::GUILIB;
 using namespace KODI::GUILIB::GUIINFO;
@@ -48,7 +48,7 @@ bool CMusicGUIInfo::InitCurrentItem(CFileItem *item)
     tag->SetLoaded(true);
 
     // find a thumb for this file.
-    if (item->IsInternetStream())
+    if (item->IsInternetStream() && !item->IsMusicDb())
     {
       if (!g_application.m_strPlayListFile.empty())
       {
@@ -95,9 +95,15 @@ bool CMusicGUIInfo::GetLabel(std::string& value, const CFileItem *item, int cont
         value = GUIINFO::GetFileInfoLabelValueFromPath(info.m_info, value);
         return true;
       case PLAYER_TITLE:
-      case MUSICPLAYER_TITLE:
         value = tag->GetTitle();
         return !value.empty();
+      case MUSICPLAYER_TITLE:
+        value = tag->GetTitle();
+        if (value.empty())
+          value = item->GetLabel();
+        if (value.empty())
+          value = CUtil::GetTitleFromPath(item->GetPath());
+        return true;
       case LISTITEM_TITLE:
         value = tag->GetTitle();
         return true;
@@ -170,7 +176,7 @@ bool CMusicGUIInfo::GetLabel(std::string& value, const CFileItem *item, int cont
         return true;
       case MUSICPLAYER_GENRE:
       case LISTITEM_GENRE:
-        value =  StringUtils::Join(tag->GetGenre(), g_advancedSettings.m_musicItemSeparator);
+        value =  StringUtils::Join(tag->GetGenre(), CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
         return true;
       case MUSICPLAYER_LYRICS:
         value = tag->GetLyrics();
@@ -243,7 +249,10 @@ bool CMusicGUIInfo::GetLabel(std::string& value, const CFileItem *item, int cont
         int iDuration = tag->GetDuration();
         if (iDuration > 0)
         {
-          value = StringUtils::SecondsToTimeString(iDuration, static_cast<TIME_FORMAT>(info.GetData4()));
+          value = StringUtils::SecondsToTimeString(iDuration,
+                                                   static_cast<TIME_FORMAT>(info.m_info == LISTITEM_DURATION
+                                                                            ? info.GetData4()
+                                                                            : info.GetData1()));
           return true;
         }
         break;

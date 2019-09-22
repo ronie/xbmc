@@ -7,34 +7,34 @@
  */
 
 #include "GameClient.h"
+
+#include "FileItem.h"
 #include "GameClientCallbacks.h"
 #include "GameClientInGameSaves.h"
 #include "GameClientProperties.h"
 #include "GameClientTranslator.h"
+#include "ServiceBroker.h"
+#include "URL.h"
 #include "addons/AddonManager.h"
 #include "addons/BinaryAddonCache.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "games/GameServices.h"
 #include "games/addons/input/GameClientInput.h"
 #include "games/addons/streams/GameClientStreams.h"
 #include "games/addons/streams/IGameClientStream.h"
-#include "games/GameServices.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/WindowIDs.h"
-#include "input/Action.h"
-#include "input/ActionIDs.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
 #include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogOKHelper.h"
-#include "settings/Settings.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
-#include "URL.h"
+#include "utils/log.h"
 
 #include <algorithm>
 #include <cstring>
@@ -77,61 +77,29 @@ namespace
 
 // --- CGameClient -------------------------------------------------------------
 
-std::unique_ptr<CGameClient> CGameClient::FromExtension(ADDON::CAddonInfo addonInfo, const cp_extension_t* ext)
-{
-  using namespace ADDON;
-
-  static const std::vector<std::string> properties = {
-      GAME_PROPERTY_EXTENSIONS,
-      GAME_PROPERTY_SUPPORTS_VFS,
-      GAME_PROPERTY_SUPPORTS_STANDALONE,
-  };
-
-  for (const auto& property : properties)
-  {
-    std::string strProperty = CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, property.c_str());
-    if (!strProperty.empty())
-      addonInfo.AddExtraInfo(property, strProperty);
-  }
-
-  return std::unique_ptr<CGameClient>(new CGameClient(std::move(addonInfo)));
-}
-
-CGameClient::CGameClient(ADDON::CAddonInfo addonInfo) :
-  CAddonDll(std::move(addonInfo)),
+CGameClient::CGameClient(const ADDON::AddonInfoPtr& addonInfo) :
+  CAddonDll(addonInfo, ADDON::ADDON_GAMEDLL),
   m_subsystems(CGameClientSubsystem::CreateSubsystems(*this, m_struct, m_critSection)),
-  m_bSupportsVFS(false),
-  m_bSupportsStandalone(false),
   m_bSupportsAllExtensions(false),
   m_bIsPlaying(false),
   m_serializeSize(0),
   m_region(GAME_REGION_UNKNOWN)
 {
-  const ADDON::InfoMap& extraInfo = m_addonInfo.ExtraInfo();
-  ADDON::InfoMap::const_iterator it;
+  using namespace ADDON;
 
-  it = extraInfo.find(GAME_PROPERTY_EXTENSIONS);
-  if (it != extraInfo.end())
+  std::vector<std::string> extensions = StringUtils::Split(Type(ADDON_GAMEDLL)->GetValue(GAME_PROPERTY_EXTENSIONS).asString(), EXTENSION_SEPARATOR);
+  std::transform(extensions.begin(), extensions.end(),
+                 std::inserter(m_extensions, m_extensions.begin()), NormalizeExtension);
+
+  // Check for wildcard extension
+  if (m_extensions.find(EXTENSION_WILDCARD) != m_extensions.end())
   {
-    std::vector<std::string> extensions = StringUtils::Split(it->second, EXTENSION_SEPARATOR);
-    std::transform(extensions.begin(), extensions.end(),
-      std::inserter(m_extensions, m_extensions.begin()), NormalizeExtension);
-
-    // Check for wildcard extension
-    if (m_extensions.find(EXTENSION_WILDCARD) != m_extensions.end())
-    {
-      m_bSupportsAllExtensions = true;
-      m_extensions.clear();
-    }
+    m_bSupportsAllExtensions = true;
+    m_extensions.clear();
   }
 
-  it = extraInfo.find(GAME_PROPERTY_SUPPORTS_VFS);
-  if (it != extraInfo.end())
-    m_bSupportsVFS = (it->second == "true");
-
-  it = extraInfo.find(GAME_PROPERTY_SUPPORTS_STANDALONE);
-  if (it != extraInfo.end())
-    m_bSupportsStandalone = (it->second == "true");
+  m_bSupportsVFS = addonInfo->Type(ADDON_GAMEDLL)->GetValue(GAME_PROPERTY_SUPPORTS_VFS).asBoolean();
+  m_bSupportsStandalone = addonInfo->Type(ADDON_GAMEDLL)->GetValue(GAME_PROPERTY_SUPPORTS_STANDALONE).asBoolean();
 }
 
 CGameClient::~CGameClient(void)
@@ -253,8 +221,6 @@ bool CGameClient::OpenFile(const CFileItem& file, RETRO::IStreamManager& streamM
 
   CloseFile();
 
-  Streams().Initialize(streamManager);
-
   GAME_ERROR error = GAME_ERROR_FAILED;
 
   try { LogError(error = m_struct.toAddon.LoadGame(path.c_str()), "LoadGame()"); }
@@ -263,13 +229,11 @@ bool CGameClient::OpenFile(const CFileItem& file, RETRO::IStreamManager& streamM
   if (error != GAME_ERROR_NO_ERROR)
   {
     NotifyError(error);
-    Streams().Deinitialize();
     return false;
   }
 
   if (!InitializeGameplay(file.GetPath(), streamManager, input))
   {
-    Streams().Deinitialize();
     return false;
   }
 
@@ -287,8 +251,6 @@ bool CGameClient::OpenStandalone(RETRO::IStreamManager& streamManager, IGameInpu
 
   CloseFile();
 
-  Streams().Initialize(streamManager);
-
   GAME_ERROR error = GAME_ERROR_FAILED;
 
   try { LogError(error = m_struct.toAddon.LoadStandalone(), "LoadStandalone()"); }
@@ -297,13 +259,11 @@ bool CGameClient::OpenStandalone(RETRO::IStreamManager& streamManager, IGameInpu
   if (error != GAME_ERROR_NO_ERROR)
   {
     NotifyError(error);
-    Streams().Deinitialize();
     return false;
   }
 
   if (!InitializeGameplay("", streamManager, input))
   {
-    Streams().Deinitialize();
     return false;
   }
 
@@ -314,6 +274,7 @@ bool CGameClient::InitializeGameplay(const std::string& gamePath, RETRO::IStream
 {
   if (LoadGameInfo())
   {
+    Streams().Initialize(streamManager);
     Input().Start(input);
 
     m_bIsPlaying      = true;

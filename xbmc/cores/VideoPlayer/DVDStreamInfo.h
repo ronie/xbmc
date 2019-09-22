@@ -11,7 +11,7 @@
 #include "DVDDemuxers/DVDDemux.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
+#include <libavcodec/avcodec.h>
 }
 
 #define CODEC_FORCE_SOFTWARE 0x01
@@ -59,6 +59,12 @@ public:
   bool forced_aspect; // aspect is forced from container
   int orientation; // orientation of the video in degrees counter clockwise
   int bitsperpixel;
+  AVColorSpace colorSpace;
+  AVColorRange colorRange;
+  AVColorPrimaries colorPrimaries;
+  AVColorTransferCharacteristic colorTransferCharacteristic;
+  std::shared_ptr<AVMasteringDisplayMetadata> masteringMetadata;
+  std::shared_ptr<AVContentLightMetadata> contentLightMetadata;
   std::string stereo_mode; // stereoscopic 3d mode
 
   // AUDIO

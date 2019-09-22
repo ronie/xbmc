@@ -8,16 +8,19 @@
 
 #include "WinSystem.h"
 #include "ServiceBroker.h"
-#include "guilib/gui3d.h"
 #include "guilib/DispResource.h"
+#include "powermanagement/DPMSSupport.h"
 #include "windowing/GraphicContext.h"
 #include "settings/DisplaySettings.h"
 #include "settings/lib/Setting.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #if HAS_GLES
 #include "guilib/GUIFontTTFGL.h"
 #endif
+
+const char* CWinSystemBase::SETTING_WINSYSTEM_IS_HDR_DISPLAY = "winsystem.ishdrdisplay";
 
 CWinSystemBase::CWinSystemBase()
 {
@@ -42,7 +45,7 @@ bool CWinSystemBase::DestroyWindowSystem()
   return false;
 }
 
-void CWinSystemBase::UpdateDesktopResolution(RESOLUTION_INFO& newRes, int width, int height, float refreshRate, uint32_t dwFlags)
+void CWinSystemBase::UpdateDesktopResolution(RESOLUTION_INFO& newRes, const std::string &output, int width, int height, float refreshRate, uint32_t dwFlags)
 {
   newRes.Overscan.left = 0;
   newRes.Overscan.top = 0;
@@ -57,15 +60,16 @@ void CWinSystemBase::UpdateDesktopResolution(RESOLUTION_INFO& newRes, int width,
   newRes.iHeight = height;
   newRes.iScreenWidth = width;
   newRes.iScreenHeight = height;
-  newRes.strMode = StringUtils::Format("%dx%d", width, height);
+  newRes.strMode = StringUtils::Format("%s: %dx%d", output.c_str(), width, height);
   if (refreshRate > 1)
-    newRes.strMode += StringUtils::Format("@ %.2f", refreshRate);
+    newRes.strMode += StringUtils::Format(" @ %.2fHz", refreshRate);
   if (dwFlags & D3DPRESENTFLAG_INTERLACED)
     newRes.strMode += "i";
   if (dwFlags & D3DPRESENTFLAG_MODE3DTB)
     newRes.strMode += "tab";
   if (dwFlags & D3DPRESENTFLAG_MODE3DSBS)
     newRes.strMode += "sbs";
+  newRes.strOutput = output;
 }
 
 void CWinSystemBase::UpdateResolutions()
@@ -217,7 +221,7 @@ std::string CWinSystemBase::GetClipboardText(void)
 
 int CWinSystemBase::NoOfBuffers(void)
 {
-  int buffers = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_VIDEOSCREEN_NOOFBUFFERS);
+  int buffers = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOSCREEN_NOOFBUFFERS);
   return buffers;
 }
 
@@ -262,4 +266,9 @@ void CWinSystemBase::DriveRenderLoop()
 CGraphicContext& CWinSystemBase::GetGfxContext()
 {
   return *m_gfxContext;
+}
+
+std::shared_ptr<CDPMSSupport> CWinSystemBase::GetDPMSManager()
+{
+  return m_dpms;
 }

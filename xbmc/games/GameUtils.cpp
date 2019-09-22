@@ -7,19 +7,20 @@
  */
 
 #include "GameUtils.h"
-#include "addons/Addon.h"
-#include "addons/AddonManager.h"
-#include "addons/BinaryAddonCache.h"
-#include "games/addons/GameClient.h"
-#include "games/dialogs/GUIDialogSelectGameClient.h"
-#include "games/tags/GameInfoTag.h"
-#include "filesystem/SpecialProtocol.h"
-#include "messaging/helpers/DialogOKHelper.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
+
 #include "FileItem.h"
 #include "ServiceBroker.h"
 #include "URL.h"
+#include "addons/Addon.h"
+#include "addons/AddonManager.h"
+#include "addons/BinaryAddonCache.h"
+#include "filesystem/SpecialProtocol.h"
+#include "games/addons/GameClient.h"
+#include "games/dialogs/GUIDialogSelectGameClient.h"
+#include "games/tags/GameInfoTag.h"
+#include "messaging/helpers/DialogOKHelper.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 
 #include <algorithm>
 
@@ -163,7 +164,7 @@ bool CGameUtils::HasGameExtension(const std::string &path)
   // Look for a game client that supports this extension
   VECADDONS gameClients;
   CBinaryAddonCache& addonCache = CServiceBroker::GetBinaryAddonCache();
-  addonCache.GetAddons(gameClients, ADDON_GAMEDLL);
+  addonCache.GetInstalledAddons(gameClients, ADDON_GAMEDLL);
   for (auto& gameClient : gameClients)
   {
     GameClientPtr gc(std::static_pointer_cast<CGameClient>(gameClient));

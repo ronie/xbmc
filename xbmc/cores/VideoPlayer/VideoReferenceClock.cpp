@@ -6,13 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 #include "VideoReferenceClock.h"
+
 #include "ServiceBroker.h"
-#include "utils/MathUtils.h"
-#include "utils/log.h"
-#include "utils/TimeUtils.h"
-#include "threads/SingleLock.h"
-#include "windowing/GraphicContext.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "threads/SingleLock.h"
+#include "utils/MathUtils.h"
+#include "utils/TimeUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 #include "windowing/VideoSync.h"
 #include "windowing/WinSystem.h"
 
@@ -41,7 +43,7 @@ CVideoReferenceClock::~CVideoReferenceClock()
 
 void CVideoReferenceClock::Start()
 {
-  if(CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) && !IsRunning())
+  if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) && !IsRunning())
     Create();
 }
 
@@ -203,7 +205,7 @@ void CVideoReferenceClock::SetSpeed(double Speed)
     if (Speed != m_ClockSpeed)
     {
       m_ClockSpeed = Speed;
-      CLog::Log(LOGDEBUG, "CVideoReferenceClock: Clock speed %f%%", m_ClockSpeed * 100.0);
+      CLog::Log(LOGDEBUG, "CVideoReferenceClock: Clock speed %0.2f %%", m_ClockSpeed * 100.0);
     }
   }
 }

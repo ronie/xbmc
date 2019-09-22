@@ -55,8 +55,13 @@
 #include "utils/URIUtils.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "utils/Base64.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+
+#if TAGLIB_MAJOR_VERSION <= 1 && TAGLIB_MINOR_VERSION < 11
+#include "utils/Base64.h"
+#endif
 
 using namespace TagLib;
 using namespace MUSIC_INFO;
@@ -211,7 +216,7 @@ bool CTagLoaderTagLib::ParseTag(ASF::Tag *asf, EmbeddedArt *art, CMusicInfoTag& 
       if (art)
         art->Set(reinterpret_cast<const uint8_t *>(pic.picture().data()), pic.picture().size(), pic.mimeType().toCString());
     }
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
+    else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel == LOG_LEVEL_MAX)
       CLog::Log(LOGDEBUG, "unrecognized ASF tag name: %s", it->first.toCString(true));
   }
   // artist may be specified in the ContentDescription block rather than using the 'Author' attribute.
@@ -365,7 +370,7 @@ bool CTagLoaderTagLib::ParseTag(ID3v2::Tag *id3v2, EmbeddedArt *art, MUSIC_INFO:
           SetComposerSort(tag, StringListToVectorString(stringList));
         else if (desc == "MOOD")
           tag.SetMood(stringList.front().to8Bit(true));
-        else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
+        else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel == LOG_LEVEL_MAX)
           CLog::Log(LOGDEBUG, "unrecognized user text tag detected: TXXX:%s", frame->description().toCString(true));
       }
     else if (it->first == "TIPL")
@@ -392,8 +397,8 @@ bool CTagLoaderTagLib::ParseTag(ID3v2::Tag *id3v2, EmbeddedArt *art, MUSIC_INFO:
       // Loop through any UFID frames and set them
       for (ID3v2::FrameList::ConstIterator ut = it->second.begin(); ut != it->second.end(); ++ut)
       {
-        auto ufid = reinterpret_cast<ID3v2::UniqueFileIdentifierFrame*> (*ut);
-        if (ufid->owner() == "http://musicbrainz.org")
+        auto ufid = dynamic_cast<ID3v2::UniqueFileIdentifierFrame*> (*ut);
+        if (ufid && ufid->owner() == "http://musicbrainz.org")
         {
           // MusicBrainz pads with a \0, but the spec requires binary, be cautious
           char cUfid[64];
@@ -435,7 +440,7 @@ bool CTagLoaderTagLib::ParseTag(ID3v2::Tag *id3v2, EmbeddedArt *art, MUSIC_INFO:
           tag.SetUserrating(POPMtoXBMC(popFrame->rating()));
         }
       }
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
+    else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel == LOG_LEVEL_MAX)
       CLog::Log(LOGDEBUG, "unrecognized ID3 frame detected: %c%c%c%c", it->first[0], it->first[1], it->first[2], it->first[3]);
   } // for
 
@@ -560,7 +565,30 @@ bool CTagLoaderTagLib::ParseTag(APE::Tag *ape, EmbeddedArt *art, CMusicInfoTag& 
       tag.SetMusicBrainzTrackID(it->second.toString().to8Bit(true));
     else if (it->first == "MUSICBRAINZ_ALBUMTYPE")
       SetReleaseType(tag, StringListToVectorString(it->second.toStringList()));
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
+    else if (it->first == "COVER ART (FRONT)")
+    {
+      TagLib::ByteVector tdata = it->second.binaryData();
+      // The image data follows a null byte, which can optionally be preceded by a filename
+      const uint offset = tdata.find('\0') + 1;
+      ByteVector bv(tdata.data() + offset, tdata.size() - offset);
+      // Infer the mimetype
+      std::string mime{};
+      if (bv.startsWith("\xFF\xD8\xFF"))
+        mime = "image/jpeg";
+      else if (bv.startsWith("\x89\x50\x4E\x47"))
+        mime = "image/png";
+      else if (bv.startsWith("\x47\x49\x46\x38"))
+        mime = "image/gif";
+      else if (bv.startsWith("\x42\x4D"))
+        mime = "image/bmp";
+      if ((offset > 0) && (offset <= tdata.size()) && (mime.size() > 0))
+      {
+        tag.SetCoverArtInfo(bv.size(), mime);
+        if (art)
+          art->Set(reinterpret_cast<const uint8_t*>(bv.data()), bv.size(), mime);
+      }
+    }
+    else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel == LOG_LEVEL_MAX)
       CLog::Log(LOGDEBUG, "unrecognized APE tag: %s", it->first.toCString(true));
   }
 
@@ -712,7 +740,7 @@ bool CTagLoaderTagLib::ParseTag(Ogg::XiphComment *xiph, EmbeddedArt *art, CMusic
       pictures[2].setMimeType(it->second.front());
     }
 #endif
-    else if (g_advancedSettings.m_logLevel == LOG_LEVEL_MAX)
+    else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel == LOG_LEVEL_MAX)
       CLog::Log(LOGDEBUG, "unrecognized XipComment name: %s", it->first.toCString(true));
   }
 
@@ -927,13 +955,13 @@ void CTagLoaderTagLib::SetArtistSort(CMusicInfoTag &tag, const std::vector<std::
   if (values.size() == 1)
     tag.SetArtistSort(values[0]);
   else
-    tag.SetArtistSort(StringUtils::Join(values, g_advancedSettings.m_musicItemSeparator));
+    tag.SetArtistSort(StringUtils::Join(values, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
 }
 
 void CTagLoaderTagLib::SetArtistHints(CMusicInfoTag &tag, const std::vector<std::string> &values)
 {
   if (values.size() == 1)
-    tag.SetMusicBrainzArtistHints(StringUtils::Split(values[0], g_advancedSettings.m_musicItemSeparator));
+    tag.SetMusicBrainzArtistHints(StringUtils::Split(values[0], CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
   else
     tag.SetMusicBrainzArtistHints(values);
 }
@@ -974,13 +1002,13 @@ void CTagLoaderTagLib::SetAlbumArtistSort(CMusicInfoTag &tag, const std::vector<
   if (values.size() == 1)
     tag.SetAlbumArtistSort(values[0]);
   else
-    tag.SetAlbumArtistSort(StringUtils::Join(values, g_advancedSettings.m_musicItemSeparator));
+    tag.SetAlbumArtistSort(StringUtils::Join(values, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
 }
 
 void CTagLoaderTagLib::SetAlbumArtistHints(CMusicInfoTag &tag, const std::vector<std::string> &values)
 {
   if (values.size() == 1)
-    tag.SetMusicBrainzAlbumArtistHints(StringUtils::Split(values[0], g_advancedSettings.m_musicItemSeparator));
+    tag.SetMusicBrainzAlbumArtistHints(StringUtils::Split(values[0], CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
   else
     tag.SetMusicBrainzAlbumArtistHints(values);
 }
@@ -991,7 +1019,7 @@ void CTagLoaderTagLib::SetComposerSort(CMusicInfoTag &tag, const std::vector<std
   if (values.size() == 1)
     tag.SetComposerSort(values[0]);
   else
-    tag.SetComposerSort(StringUtils::Join(values, g_advancedSettings.m_musicItemSeparator));
+    tag.SetComposerSort(StringUtils::Join(values, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
 }
 
 void CTagLoaderTagLib::SetGenre(CMusicInfoTag &tag, const std::vector<std::string> &values)
@@ -1001,12 +1029,12 @@ void CTagLoaderTagLib::SetGenre(CMusicInfoTag &tag, const std::vector<std::strin
    a number is specified, thus this workaround.
    */
   std::vector<std::string> genres;
-  for (std::vector<std::string>::const_iterator i = values.begin(); i != values.end(); ++i)
+  for (const std::string& i : values)
   {
-    std::string genre = *i;
+    std::string genre = i;
     if (StringUtils::IsNaturalNumber(genre))
     {
-      int number = strtol(i->c_str(), nullptr, 10);
+      int number = strtol(i.c_str(), nullptr, 10);
       if (number >= 0 && number < 256)
         genre = ID3v1::genre(number).to8Bit(true);
     }
@@ -1023,7 +1051,7 @@ void CTagLoaderTagLib::SetReleaseType(CMusicInfoTag &tag, const std::vector<std:
   if (values.size() == 1)
     tag.SetMusicBrainzReleaseType(values[0]);
   else
-    tag.SetMusicBrainzReleaseType(StringUtils::Join(values, g_advancedSettings.m_musicItemSeparator));
+    tag.SetMusicBrainzReleaseType(StringUtils::Join(values, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
 }
 
 void CTagLoaderTagLib::AddArtistRole(CMusicInfoTag &tag, const std::string& strRole, const std::vector<std::string> &values)
@@ -1258,7 +1286,7 @@ bool CTagLoaderTagLib::Load(const std::string& strFileName, CMusicInfoTag& tag, 
     ParseTag(mp4, art, tag);
   if (xiph) // xiph tags override id3v2 tags in badly tagged FLACs
     ParseTag(xiph, art, tag);
-  if (ape && (!id3v2 || g_advancedSettings.m_prioritiseAPEv2tags)) // ape tags override id3v2 if we're prioritising them
+  if (ape && (!id3v2 || CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_prioritiseAPEv2tags)) // ape tags override id3v2 if we're prioritising them
     ParseTag(ape, art, tag);
 
   // art for flac files is outside the tag

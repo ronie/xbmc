@@ -31,7 +31,6 @@
 						<onright>50</onright>
 						<orientation>vertical</orientation>
 						<animation effect="zoom" end="50,100" time="300" tween="sine" center="20,0" easing="inout" condition="!Control.HasFocus(50600)">conditional</animation>
-						<hitrect x="-30" y="0" w="120" h="100%" />
 					</control>
 					<control type="image">
 						<depth>DepthContentPopout</depth>
@@ -160,6 +159,7 @@
 		</definition>
 	</include>
 	<include name="ListThumbInfoPanel">
+		<param name="fallback_image"></param>
 		<param name="flip_bg">false</param>
 		<definition>
 			<control type="group">
@@ -175,7 +175,7 @@
 					<height>470</height>
 					<aspectratio aligny="bottom">keep</aspectratio>
 					<fadetime>300</fadetime>
-					<texture background="true">$VAR[IconWallThumbVar]</texture>
+					<texture fallback="$PARAM[fallback_image]" background="true">$VAR[IconWallThumbVar]</texture>
 					<visible>!String.IsEqual(ListItem.DbType,episode)</visible>
 				</control>
 				<control type="image">
@@ -222,7 +222,7 @@
 						<param name="bottom" value="100" />
 						<param name="width" value="540" />
 						<param name="sortby" value="year" />
-						<param name="sortorder" value="descending" />
+						<param name="sortorder" value="ascending" />
 						<param name="font" value="font13" />
 					</include>
 				</control>
@@ -251,7 +251,7 @@
 							<param name="bottom" value="100" />
 							<param name="width" value="540" />
 							<param name="sortby" value="year" />
-							<param name="sortorder" value="descending" />
+							<param name="sortorder" value="ascending" />
 							<param name="item_label" value="$INFO[ListItem.Year,[COLOR button_focus],[/COLOR]  -  ]$INFO[ListItem.Label]" />
 							<param name="visible" value="String.IsEqual(ListItem.DBType,artist)" />
 						</include>

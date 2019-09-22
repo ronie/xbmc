@@ -8,14 +8,14 @@
 
 #pragma once
 
+#include "DatabaseUtils.h"
+#include "LabelFormatter.h"
+#include "SortFileItem.h"
+
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "DatabaseUtils.h"
-#include "SortFileItem.h"
-#include "LabelFormatter.h"
 
 typedef enum {
   SortOrderNone = 0,
@@ -153,6 +153,8 @@ typedef enum {
   SortByLastUpdated,
   /// __52__ : Sort by last used                  <em>(String: <b><c>lastused</c></b>)</em>
   SortByLastUsed,
+  /// __53__ : Sort by client channel order       <em>(String: <b><c>ClientChannelOrder</c></b>)</em>
+  SortByClientChannelOrder,
 } SortBy;
 ///@}
 

@@ -7,25 +7,27 @@
  */
 
 #include "GUIAudioManager.h"
+
 #include "ServiceBroker.h"
-#include "input/ActionIDs.h"
-#include "input/ActionTranslator.h"
-#include "input/Key.h"
-#include "input/WindowTranslator.h"
-#include "settings/lib/Setting.h"
-#include "settings/Settings.h"
-#include "threads/SingleLock.h"
-#include "utils/URIUtils.h"
-#include "utils/XBMCTinyXML.h"
-#include "filesystem/Directory.h"
 #include "addons/AddonManager.h"
 #include "addons/Skin.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
+#include "filesystem/Directory.h"
+#include "input/Key.h"
+#include "input/WindowTranslator.h"
+#include "input/actions/ActionIDs.h"
+#include "input/actions/ActionTranslator.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "threads/SingleLock.h"
+#include "utils/URIUtils.h"
+#include "utils/XBMCTinyXML.h"
 #include "utils/log.h"
 
 CGUIAudioManager::CGUIAudioManager()
 {
-  m_settings = CServiceBroker::GetSettings();
+  m_settings = CServiceBroker::GetSettingsComponent()->GetSettings();
 
   m_bEnabled = false;
 
@@ -82,15 +84,17 @@ void CGUIAudioManager::DeInitialize()
 void CGUIAudioManager::Stop()
 {
   CSingleLock lock(m_cs);
-  for (windowSoundMap::iterator it = m_windowSoundMap.begin(); it != m_windowSoundMap.end(); ++it)
+  for (auto& it : m_windowSoundMap)
   {
-    if (it->second.initSound  ) it->second.initSound  ->Stop();
-    if (it->second.deInitSound) it->second.deInitSound->Stop();
+    if (it.second.initSound)
+      it.second.initSound->Stop();
+    if (it.second.deInitSound)
+      it.second.deInitSound->Stop();
   }
 
-  for (pythonSoundsMap::iterator it = m_pythonSounds.begin(); it != m_pythonSounds.end(); ++it)
+  for (auto& it : m_pythonSounds)
   {
-    IAESound* sound = it->second;
+    IAESound* sound = it.second;
     sound->Stop();
   }
 }
@@ -217,7 +221,7 @@ void CGUIAudioManager::UnLoad()
 
 std::string GetSoundSkinPath()
 {
-  auto setting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN));
+  auto setting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettingsComponent()->GetSettings()->GetSetting(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN));
   auto value = setting->GetValue();
   if (value.empty())
     return "";
@@ -406,7 +410,7 @@ IAESound* CGUIAudioManager::LoadWindowSound(TiXmlNode* pWindowNode, const std::s
 void CGUIAudioManager::Enable(bool bEnable)
 {
   // always deinit audio when we don't want gui sounds
-  if (CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN).empty())
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN).empty())
     bEnable = false;
 
   CSingleLock lock(m_cs);
@@ -419,29 +423,26 @@ void CGUIAudioManager::SetVolume(float level)
   CSingleLock lock(m_cs);
 
   {
-    actionSoundMap::iterator it = m_actionSoundMap.begin();
-    while (it!=m_actionSoundMap.end())
+    for (auto& it : m_actionSoundMap)
     {
-      if (it->second)
-        it->second->SetVolume(level);
-      ++it;
+      if (it.second)
+        it.second->SetVolume(level);
     }
   }
 
-  for(windowSoundMap::iterator it = m_windowSoundMap.begin(); it != m_windowSoundMap.end(); ++it)
+  for (auto& it : m_windowSoundMap)
   {
-    if (it->second.initSound  ) it->second.initSound  ->SetVolume(level);
-    if (it->second.deInitSound) it->second.deInitSound->SetVolume(level);
+    if (it.second.initSound)
+      it.second.initSound->SetVolume(level);
+    if (it.second.deInitSound)
+      it.second.deInitSound->SetVolume(level);
   }
 
   {
-    pythonSoundsMap::iterator it = m_pythonSounds.begin();
-    while (it != m_pythonSounds.end())
+    for (auto& it : m_pythonSounds)
     {
-      if (it->second)
-        it->second->SetVolume(level);
-
-      ++it;
+      if (it.second)
+        it.second->SetVolume(level);
     }
   }
 }

@@ -7,6 +7,7 @@
  */
 
 #include "PeripheralAddonTranslator.h"
+
 #include "games/controllers/ControllerTranslator.h"
 #include "input/joysticks/JoystickUtils.h"
 
@@ -100,7 +101,7 @@ CDriverPrimitive CPeripheralAddonTranslator::TranslatePrimitive(const kodi::addo
     }
     case JOYSTICK_DRIVER_PRIMITIVE_TYPE_KEY:
     {
-      XBMCKey keycode = GAME::CControllerTranslator::TranslateKeysym(primitive.Keycode());
+      KEYBOARD::KeySymbol keycode = GAME::CControllerTranslator::TranslateKeysym(primitive.Keycode());
       retVal = CDriverPrimitive(keycode);
       break;
     }

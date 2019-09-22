@@ -9,18 +9,19 @@
 #include "RendererMediaCodecSurface.h"
 
 #include "../RenderCapture.h"
+#include "../RenderFactory.h"
 #include "../RenderFlags.h"
-#include "windowing/GraphicContext.h"
+#include "DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
 #include "rendering/RenderSystem.h"
 #include "settings/MediaSettings.h"
-#include "platform/android/activity/XBMCApp.h"
-#include "DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
-#include "utils/log.h"
 #include "utils/TimeUtils.h"
-#include "../RenderFactory.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 
-#include <thread>
+#include "platform/android/activity/XBMCApp.h"
+
 #include <chrono>
+#include <thread>
 
 CRendererMediaCodecSurface::CRendererMediaCodecSurface()
 {
@@ -156,8 +157,10 @@ void CRendererMediaCodecSurface::RenderUpdate(int index, int index2, bool clear,
       m_surfDestRect.x2 *= 2.0;
       break;
     case RENDER_STEREO_MODE_MONO:
-      m_surfDestRect.y2 = m_surfDestRect.y2 * (m_surfDestRect.y2 / m_sourceRect.y2);
-      m_surfDestRect.x2 = m_surfDestRect.x2 * (m_surfDestRect.x2 / m_sourceRect.x2);
+      if (CONF_FLAGS_STEREO_MODE_MASK(m_iFlags) == CONF_FLAGS_STEREO_MODE_TAB)
+        m_surfDestRect.y2 = m_surfDestRect.y2 * 2.0;
+      else
+        m_surfDestRect.x2 = m_surfDestRect.x2 * 2.0;
       break;
     default:
       break;

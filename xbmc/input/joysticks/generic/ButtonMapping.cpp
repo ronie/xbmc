@@ -7,20 +7,21 @@
  */
 
 #include "ButtonMapping.h"
+
+#include "ServiceBroker.h"
 #include "games/controllers/Controller.h"
 #include "games/controllers/ControllerFeature.h"
 #include "games/controllers/ControllerManager.h"
-#include "input/joysticks/interfaces/IButtonMap.h"
-#include "input/joysticks/interfaces/IButtonMapper.h"
+#include "input/IKeymap.h"
+#include "input/InputTranslator.h"
+#include "input/Key.h"
 #include "input/joysticks/DriverPrimitive.h"
 #include "input/joysticks/JoystickTranslator.h"
 #include "input/joysticks/JoystickUtils.h"
-#include "input/InputTranslator.h"
-#include "input/IKeymap.h"
-#include "input/Key.h"
+#include "input/joysticks/interfaces/IButtonMap.h"
+#include "input/joysticks/interfaces/IButtonMapper.h"
 #include "threads/SystemClock.h"
 #include "utils/log.h"
-#include "ServiceBroker.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -364,16 +365,25 @@ CButtonMapping::CButtonMapping(IButtonMapper* buttonMapper, IButtonMap* buttonMa
 
 bool CButtonMapping::OnButtonMotion(unsigned int buttonIndex, bool bPressed)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::BUTTON))
+    return false;
+
   return GetButton(buttonIndex).OnMotion(bPressed);
 }
 
 bool CButtonMapping::OnHatMotion(unsigned int hatIndex, HAT_STATE state)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::HAT))
+    return false;
+
   return GetHat(hatIndex).OnMotion(state);
 }
 
 bool CButtonMapping::OnAxisMotion(unsigned int axisIndex, float position, int center, unsigned int range)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::SEMIAXIS))
+    return false;
+
   return GetAxis(axisIndex, position).OnMotion(position);
 }
 
@@ -389,21 +399,33 @@ void CButtonMapping::ProcessAxisMotions(void)
 
 bool CButtonMapping::OnKeyPress(const CKey& key)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::KEY))
+    return false;
+
   return GetKey(static_cast<XBMCKey>(key.GetKeycode())).OnMotion(true);
 }
 
 bool CButtonMapping::OnPosition(int x, int y)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::RELATIVE_POINTER))
+    return false;
+
   return GetPointer().OnMotion(x, y);
 }
 
 bool CButtonMapping::OnButtonPress(MOUSE::BUTTON_ID button)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::MOUSE_BUTTON))
+    return false;
+
   return GetMouseButton(button).OnMotion(true);
 }
 
 void CButtonMapping::OnButtonRelease(MOUSE::BUTTON_ID button)
 {
+  if (!m_buttonMapper->AcceptsPrimitive(PRIMITIVE_TYPE::MOUSE_BUTTON))
+    return;
+
   GetMouseButton(button).OnMotion(false);
 }
 
@@ -510,7 +532,7 @@ CAxisDetector& CButtonMapping::GetAxis(unsigned int axisIndex,
     }
 
     // Report axis
-    CLog::Log(LOGDEBUG, "Axis %u discovered at position %.04f after %lu frames",
+    CLog::Log(LOGDEBUG, "Axis %u discovered at position %.4f after %lu frames",
               axisIndex, position, static_cast<unsigned long>(m_frameCount));
 
     m_axes.insert(std::make_pair(axisIndex, CAxisDetector(this, axisIndex, config)));

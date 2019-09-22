@@ -16,7 +16,7 @@
 #include <atomic>
 
 extern "C" {
-#include "libavcodec/avcodec.h"
+#include <libavcodec/avcodec.h>
 }
 
 typedef struct stDVDAudioFrame DVDAudioFrame;
@@ -76,6 +76,7 @@ protected:
   int m_iBitsPerSample;
   bool m_bPassthrough;
   CAEChannelInfo m_channelLayout;
+  CAEStreamInfo::DataType m_dataType;
   bool m_bPaused;
 
   std::atomic_bool m_bAbort;

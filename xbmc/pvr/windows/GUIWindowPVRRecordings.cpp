@@ -11,20 +11,26 @@
 #include "GUIInfoManager.h"
 #include "ServiceBroker.h"
 #include "guilib/GUIComponent.h"
+#include "guilib/GUIMessage.h"
 #include "guilib/GUIRadioButtonControl.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "input/Key.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
+#include "pvr/PVRGUIActions.h"
+#include "pvr/PVRManager.h"
+#include "pvr/recordings/PVRRecording.h"
+#include "pvr/recordings/PVRRecordings.h"
+#include "pvr/recordings/PVRRecordingsPath.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
 #include "video/windows/GUIWindowVideoNav.h"
 
-#include "pvr/PVRGUIActions.h"
-#include "pvr/PVRManager.h"
-#include "pvr/recordings/PVRRecordings.h"
-#include "pvr/recordings/PVRRecordingsPath.h"
+#include <memory>
+#include <string>
 
 using namespace PVR;
 
@@ -266,8 +272,9 @@ bool CGUIWindowPVRRecordingsBase::OnMessage(CGUIMessage &message)
       }
       else if (message.GetSenderId() == CONTROL_BTNGROUPITEMS)
       {
-        CServiceBroker::GetSettings()->ToggleBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS);
-        CServiceBroker::GetSettings()->Save();
+        const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+        settings->ToggleBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS);
+        settings->Save();
         Refresh(true);
       }
       else if (message.GetSenderId() == CONTROL_BTNSHOWDELETED)
@@ -283,7 +290,7 @@ bool CGUIWindowPVRRecordingsBase::OnMessage(CGUIMessage &message)
       else if (message.GetSenderId() == CONTROL_BTNSHOWMODE)
       {
         CMediaSettings::GetInstance().CycleWatchedMode("recordings");
-        CServiceBroker::GetSettings()->Save();
+        CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
         OnFilterItems(GetProperty("filter").asString());
         UpdateButtons();
         return true;

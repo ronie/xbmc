@@ -7,30 +7,32 @@
  */
 
 #include "PlayerCoreFactory.h"
-#include "threads/SingleLock.h"
-#include "cores/VideoPlayer/VideoPlayer.h"
-#include "cores/paplayer/PAPlayer.h"
-#include "cores/IPlayerCallback.h"
-#include "dialogs/GUIDialogContextMenu.h"
-#include "URL.h"
+
 #include "FileItem.h"
-#include "profiles/ProfilesManager.h"
-#include "settings/lib/SettingsManager.h"
-#include "settings/AdvancedSettings.h"
-#include "settings/Settings.h"
 #include "PlayerCoreConfig.h"
 #include "PlayerSelectionRule.h"
+#include "URL.h"
+#include "cores/IPlayerCallback.h"
+#include "cores/paplayer/PAPlayer.h"
+#include "dialogs/GUIDialogContextMenu.h"
 #include "guilib/LocalizeStrings.h"
+#include "profiles/ProfileManager.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/SettingsManager.h"
+#include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
+
 #include <sstream>
 
 #define PLAYERCOREFACTORY_XML "playercorefactory.xml"
 
-CPlayerCoreFactory::CPlayerCoreFactory(const CProfilesManager &profileManager) :
+CPlayerCoreFactory::CPlayerCoreFactory(const CProfileManager &profileManager) :
   m_profileManager(profileManager)
 {
-  m_settings = CServiceBroker::GetSettings();
+  m_settings = CServiceBroker::GetSettingsComponent()->GetSettings();
 
   if (m_settings->IsLoaded())
     OnSettingsLoaded();
@@ -158,9 +160,9 @@ int CPlayerCoreFactory::GetPlayerIndex(const std::string& strCoreName) const
     // Dereference "*default*player" aliases
     std::string strRealCoreName;
     if (StringUtils::EqualsNoCase(strCoreName, "audiodefaultplayer"))
-      strRealCoreName = g_advancedSettings.m_audioDefaultPlayer;
+      strRealCoreName = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_audioDefaultPlayer;
     else if (StringUtils::EqualsNoCase(strCoreName, "videodefaultplayer"))
-      strRealCoreName = g_advancedSettings.m_videoDefaultPlayer;
+      strRealCoreName = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoDefaultPlayer;
     else
       strRealCoreName = strCoreName;
 

@@ -6,23 +6,25 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "utils/log.h"
-#include "video/VideoDatabase.h"
-#include "video/VideoInfoTag.h"
+#include "RecentlyAddedJob.h"
+
 #include "FileItem.h"
 #include "ServiceBroker.h"
-#include "RecentlyAddedJob.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindow.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/WindowIDs.h"
 #include "music/MusicDatabase.h"
-#include "music/tags/MusicInfoTag.h"
-#include "utils/StringUtils.h"
-#include "settings/AdvancedSettings.h"
 #include "music/MusicThumbLoader.h"
+#include "music/tags/MusicInfoTag.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
+#include "video/VideoDatabase.h"
+#include "video/VideoInfoTag.h"
 #include "video/VideoThumbLoader.h"
-#include "xbmc/settings/Settings.h"
 
 #define NUM_ITEMS 10
 
@@ -153,7 +155,7 @@ bool CRecentlyAddedJob::UpdateVideo()
       home->SetProperty("LatestMusicVideo." + value + ".Plot"        , item->GetVideoInfoTag()->m_strPlot);
       home->SetProperty("LatestMusicVideo." + value + ".RunningTime" , item->GetVideoInfoTag()->GetDuration() / 60);
       home->SetProperty("LatestMusicVideo." + value + ".Path"        , item->GetVideoInfoTag()->m_strFileNameAndPath);
-      home->SetProperty("LatestMusicVideo." + value + ".Artist"      , StringUtils::Join(item->GetVideoInfoTag()->m_artist, g_advancedSettings.m_videoItemSeparator));
+      home->SetProperty("LatestMusicVideo." + value + ".Artist"      , StringUtils::Join(item->GetVideoInfoTag()->m_artist, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoItemSeparator));
 
       if (!item->HasArt("thumb"))
         loader.LoadItem(item.get());
@@ -319,7 +321,7 @@ bool CRecentlyAddedJob::UpdateTotal()
 
   CMusicDbUrl musicUrl;
   musicUrl.FromString("musicdb://artists/");
-  musicUrl.AddOption("albumartistsonly", !CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS));
+  musicUrl.AddOption("albumartistsonly", !CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS));
 
   CFileItemList items;
   CDatabase::Filter filter;

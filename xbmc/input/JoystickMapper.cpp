@@ -7,11 +7,12 @@
  */
 
 #include "JoystickMapper.h"
-#include "ActionIDs.h"
-#include "ActionTranslator.h"
+
+#include "input/WindowKeymap.h"
+#include "input/actions/ActionIDs.h"
+#include "input/actions/ActionTranslator.h"
 #include "input/joysticks/JoystickTranslator.h"
 #include "input/joysticks/JoystickUtils.h"
-#include "input/WindowKeymap.h"
 #include "utils/StringUtils.h"
 #include "utils/XBMCTinyXML.h"
 
@@ -37,6 +38,15 @@ void CJoystickMapper::MapActions(int windowID, const TiXmlNode *pDevice)
   if (controllerId.empty())
     return;
 
+  // Update Controller IDs
+  if (std::find(m_controllerIds.begin(), m_controllerIds.end(), controllerId) == m_controllerIds.end())
+    m_controllerIds.emplace_back(controllerId);
+
+  // Create/overwrite keymap
+  auto& keymap = m_joystickKeymaps[controllerId];
+  if (!keymap)
+    keymap.reset(new CWindowKeymap(controllerId));
+
   const TiXmlElement *pButton = pDevice->FirstChildElement();
   while (pButton != nullptr)
   {
@@ -47,15 +57,6 @@ void CJoystickMapper::MapActions(int windowID, const TiXmlNode *pDevice)
     std::string actionString;
     if (DeserializeButton(pButton, feature, dir, holdtimeMs, hotkeys, actionString))
     {
-      // Update Controller IDs
-      if (std::find(m_controllerIds.begin(), m_controllerIds.end(), controllerId) == m_controllerIds.end())
-        m_controllerIds.emplace_back(controllerId);
-
-      // Find/create keymap
-      auto &keymap = m_joystickKeymaps[controllerId];
-      if (!keymap)
-        keymap.reset(new CWindowKeymap(controllerId));
-
       // Update keymap
       unsigned int actionId = ACTION_NONE;
       if (CActionTranslator::TranslateString(actionString, actionId))

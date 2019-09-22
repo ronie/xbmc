@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "filesystem/File.h"
-#include "AddonString.h"
 #include "AddonClass.h"
+#include "AddonString.h"
 #include "LanguageHook.h"
 #include "commons/Buffer.h"
+#include "filesystem/File.h"
 
 #include <algorithm>
 
@@ -38,11 +38,20 @@ namespace XBMCAddon
     ///
     ///
     ///--------------------------------------------------------------------------
+    /// @python_v19 Added context manager support
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
     /// ..
     /// f = xbmcvfs.File(file, 'w')
+    /// ..
+    /// ~~~~~~~~~~~~~
+    ///
+    /// **Example (v19 and up):**
+    /// ~~~~~~~~~~~~~{.py}
+    /// ..
+    /// with xbmcvfs.File(file, 'w') as f:
+    ///   ..
     /// ..
     /// ~~~~~~~~~~~~~
     //
@@ -60,6 +69,11 @@ namespace XBMCAddon
       }
 
       inline ~File() override { delete file; }
+
+#if !defined(DOXYGEN_SHOULD_USE_THIS)
+      inline File* __enter__() { return this; };
+      inline void __exit__() { close(); };
+#endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
@@ -81,6 +95,14 @@ namespace XBMCAddon
       /// f = xbmcvfs.File(file)
       /// b = f.read()
       /// f.close()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as file:
+      ///   b = f.read()
       /// ..
       /// ~~~~~~~~~~~~~
       ///
@@ -111,8 +133,16 @@ namespace XBMCAddon
       /// ~~~~~~~~~~~~~{.py}
       /// ..
       /// f = xbmcvfs.File(file)
-      /// b = f.read()
+      /// b = f.readBytes()
       /// f.close()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as f:
+      ///   b = f.readBytes()
       /// ..
       /// ~~~~~~~~~~~~~
       ///
@@ -143,6 +173,14 @@ namespace XBMCAddon
       /// ..
       /// ~~~~~~~~~~~~~
       ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// whith xbmcvfs.File(file, 'w') as f:
+      ///   result = f.write(buffer)
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
       write(...);
 #else
       bool write(XbmcCommons::Buffer& buffer);
@@ -169,6 +207,14 @@ namespace XBMCAddon
       /// ..
       /// ~~~~~~~~~~~~~
       ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as f:
+      ///   s = f.size()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
       size();
 #else
       inline long long size() { DelayedCallGuard dg(languageHook); return file->GetLength(); }
@@ -182,11 +228,12 @@ namespace XBMCAddon
       /// Seek to position in file.
       ///
       /// @param seekBytes          position in the file
-      /// @param iWhence            where in a file to seek from[0 beginning,
+      /// @param iWhence            [opt] where in a file to seek from[0 beginning,
       ///                           1 current , 2 end position]
       ///
       ///
       ///-----------------------------------------------------------------------
+      /// @python_v19 Function changed. param **iWhence** is now optional.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -197,9 +244,52 @@ namespace XBMCAddon
       /// ..
       /// ~~~~~~~~~~~~~
       ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as f:
+      ///   result = f.seek(8129, 0)
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
       seek(...);
 #else
-      inline long long seek(long long seekBytes, int iWhence) { DelayedCallGuard dg(languageHook); return file->Seek(seekBytes,iWhence); }
+      inline long long seek(long long seekBytes, int iWhence = SEEK_SET) { DelayedCallGuard dg(languageHook); return file->Seek(seekBytes,iWhence); }
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_file
+      /// @brief \python_func{ tell() }
+      ///-----------------------------------------------------------------------
+      /// Get the current position in the file.
+      ///
+      /// @return                       The file position
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      /// @python_v19 New function added
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// f = xbmcvfs.File(file)
+      /// s = f.tell()
+      /// f.close()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as f:
+      ///   s = f.tell()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      tell();
+#else
+      inline long long tell() { DelayedCallGuard dg(languageHook); return file->GetPosition(); }
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
@@ -217,6 +307,14 @@ namespace XBMCAddon
       /// ..
       /// f = xbmcvfs.File(file)
       /// f.close()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      /// **Example (v19 and up):**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// with xbmcvfs.File(file) as f:
+      ///   ..
       /// ..
       /// ~~~~~~~~~~~~~
       ///

@@ -7,10 +7,10 @@
  */
 
 #include "RetroPlayerAutoSave.h"
-#include "cores/RetroPlayer/playback/IPlayback.h"
+
+#include "URL.h"
 #include "games/GameSettings.h"
 #include "utils/log.h"
-#include "URL.h"
 
 using namespace KODI;
 using namespace RETRO;

@@ -7,6 +7,7 @@
  */
 
 #include "PeripheralMouse.h"
+
 #include "input/InputManager.h"
 #include "peripherals/Peripherals.h"
 #include "threads/SingleLock.h"
@@ -93,11 +94,16 @@ bool CPeripheralMouse::OnPosition(int x, int y)
     }
   }
 
+  if (bHandled)
+    m_lastActive = CDateTime::GetCurrentDateTime();
+
   return bHandled;
 }
 
 bool CPeripheralMouse::OnButtonPress(MOUSE::BUTTON_ID button)
 {
+  m_lastActive = CDateTime::GetCurrentDateTime();
+
   CSingleLock lock(m_mutex);
 
   bool bHandled = false;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "IConfigurationWindow.h"
+#include "games/GameTypes.h"
 #include "games/controllers/ControllerFeature.h"
 #include "games/controllers/ControllerTypes.h"
 #include "input/joysticks/JoystickTypes.h"
@@ -26,7 +27,7 @@ namespace GAME
   class CGUIFeatureList : public IFeatureList
   {
   public:
-    CGUIFeatureList(CGUIWindow* window);
+    CGUIFeatureList(CGUIWindow* window, GameClientPtr gameClient);
     virtual ~CGUIFeatureList(void);
 
     // implementation of IFeatureList
@@ -53,7 +54,7 @@ namespace GAME
        */
       bool bIsVirtualKey = false;
     };
-    static std::vector<FeatureGroup> GetFeatureGroups(const std::vector<CControllerFeature>& features);
+    std::vector<FeatureGroup> GetFeatureGroups(const std::vector<CControllerFeature>& features) const;
     std::vector<CGUIButtonControl*> GetButtons(const std::vector<CControllerFeature>& features, unsigned int startIndex);
     CGUIButtonControl* GetSelectKeyButton(const std::vector<CControllerFeature>& features, unsigned int buttonIndex);
 
@@ -66,6 +67,7 @@ namespace GAME
     CGUIImage*              m_guiFeatureSeparator;
 
     // Game window stuff
+    GameClientPtr           m_gameClient;
     ControllerPtr           m_controller;
     IConfigurationWizard*   m_wizard;
   };

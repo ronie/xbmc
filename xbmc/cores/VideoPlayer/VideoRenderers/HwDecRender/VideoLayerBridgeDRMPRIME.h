@@ -13,30 +13,40 @@
 
 #include <memory>
 
-class CDRMUtils;
-class CVideoBufferDRMPRIME;
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
+  class CDRMUtils;
+}
+}
+}
+
+class IVideoBufferDRMPRIME;
 
 class CVideoLayerBridgeDRMPRIME
-  : public CVideoLayerBridge
+  : public KODI::WINDOWING::GBM::CVideoLayerBridge
 {
 public:
-  CVideoLayerBridgeDRMPRIME(std::shared_ptr<CDRMUtils> drm);
+  CVideoLayerBridgeDRMPRIME(std::shared_ptr<KODI::WINDOWING::GBM::CDRMUtils> drm);
   ~CVideoLayerBridgeDRMPRIME();
   void Disable() override;
 
-  virtual void Configure(CVideoBufferDRMPRIME* buffer);
-  virtual void SetVideoPlane(CVideoBufferDRMPRIME* buffer, const CRect& destRect);
+  virtual void Configure(IVideoBufferDRMPRIME* buffer);
+  virtual void SetVideoPlane(IVideoBufferDRMPRIME* buffer, const CRect& destRect);
   virtual void UpdateVideoPlane();
 
 protected:
-  std::shared_ptr<CDRMUtils> m_DRM;
+  std::shared_ptr<KODI::WINDOWING::GBM::CDRMUtils> m_DRM;
 
 private:
-  void Acquire(CVideoBufferDRMPRIME* buffer);
-  void Release(CVideoBufferDRMPRIME* buffer);
-  bool Map(CVideoBufferDRMPRIME* buffer);
-  void Unmap(CVideoBufferDRMPRIME* buffer);
+  void Acquire(IVideoBufferDRMPRIME* buffer);
+  void Release(IVideoBufferDRMPRIME* buffer);
+  bool Map(IVideoBufferDRMPRIME* buffer);
+  void Unmap(IVideoBufferDRMPRIME* buffer);
 
-  CVideoBufferDRMPRIME* m_buffer = nullptr;
-  CVideoBufferDRMPRIME* m_prev_buffer = nullptr;
+  IVideoBufferDRMPRIME* m_buffer = nullptr;
+  IVideoBufferDRMPRIME* m_prev_buffer = nullptr;
 };

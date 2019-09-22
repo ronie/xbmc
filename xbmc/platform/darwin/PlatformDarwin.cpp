@@ -7,8 +7,10 @@
  */
 
 #include "PlatformDarwin.h"
-#include <stdlib.h>
+
 #include "filesystem/SpecialProtocol.h"
+
+#include <stdlib.h>
 
 CPlatformDarwin::CPlatformDarwin()
 {
@@ -22,5 +24,6 @@ CPlatformDarwin::~CPlatformDarwin()
 
 void CPlatformDarwin::Init()
 {
-    setenv("SSL_CERT_FILE", CSpecialProtocol::TranslatePath("special://xbmc/system/certs/cacert.pem").c_str(), 0);
+  CPlatformPosix::Init();
+  setenv("SSL_CERT_FILE", CSpecialProtocol::TranslatePath("special://xbmc/system/certs/cacert.pem").c_str(), 0);
 }

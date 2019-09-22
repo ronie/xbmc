@@ -7,21 +7,22 @@
  */
 
 #include "GUIOperations.h"
+
 #include "Application.h"
-#include "ServiceBroker.h"
-#include "messaging/ApplicationMessenger.h"
 #include "GUIInfoManager.h"
+#include "ServiceBroker.h"
+#include "addons/AddonManager.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/StereoscopicsManager.h"
 #include "input/Key.h"
 #include "input/WindowTranslator.h"
-#include "interfaces/builtins/Builtins.h"
-#include "dialogs/GUIDialogKaiToast.h"
-#include "addons/AddonManager.h"
-#include "settings/Settings.h"
-#include "utils/Variant.h"
-#include "guilib/StereoscopicsManager.h"
+#include "messaging/ApplicationMessenger.h"
 #include "rendering/RenderSystem.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/Variant.h"
 
 using namespace JSONRPC;
 using namespace ADDON;
@@ -133,7 +134,7 @@ JSONRPC_STATUS CGUIOperations::GetPropertyValue(const std::string &property, CVa
     result["label"] = CServiceBroker::GetGUI()->GetInfoManager().GetLabel(CServiceBroker::GetGUI()->GetInfoManager().TranslateString("System.CurrentControl"));
   else if (property == "skin")
   {
-    std::string skinId = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
+    std::string skinId = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
     AddonPtr addon;
     if (!CServiceBroker::GetAddonMgr().GetAddon(skinId, addon, ADDON_SKIN))
       return InternalError;

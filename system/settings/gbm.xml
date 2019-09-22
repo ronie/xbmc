@@ -17,11 +17,6 @@
         </setting>
         <setting id="videoplayer.useprimerenderer" type="integer" label="13462" help="13463">
           <visible>false</visible>
-          <dependencies>
-            <dependency type="enable">
-              <condition setting="videoplayer.useprimedecoder" operator="is">true</condition>
-            </dependency>
-          </dependencies>
           <level>2</level>
           <default>0</default>
           <constraints>
@@ -45,6 +40,21 @@
           <level>3</level>
           <default>false</default>
           <control type="toggle" />
+        </setting>
+      </group>
+    </category>
+    <category id="input">
+      <group id="4" label="35150">
+        <setting id="input.libinputkeyboardlayout" type="string" label="310" help="36436">
+          <level>0</level>
+          <default>us</default>
+          <visible>true</visible>
+          <constraints>
+            <options>libinputkeyboardlayout</options>
+          </constraints>
+          <control type="list" format="string">
+            <multiselect>false</multiselect>
+          </control>
         </setting>
       </group>
     </category>

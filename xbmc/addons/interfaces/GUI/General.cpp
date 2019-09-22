@@ -7,6 +7,12 @@
  */
 
 #include "General.h"
+
+#include "ListItem.h"
+#include "ServiceBroker.h"
+#include "Window.h"
+#include "addons/binary-addons/AddonDll.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/gui/General.h"
 #include "controls/Button.h"
 #include "controls/Edit.h"
 #include "controls/FadeLabel.h"
@@ -29,13 +35,6 @@
 #include "dialogs/Select.h"
 #include "dialogs/TextViewer.h"
 #include "dialogs/YesNo.h"
-#include "ListItem.h"
-#include "Window.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/gui/General.h"
-
-#include "ServiceBroker.h"
-#include "addons/binary-addons/AddonDll.h"
-#include "input/Key.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "utils/log.h"
@@ -92,6 +91,7 @@ void Interface_GUIGeneral::Init(AddonGlobalInterface* addonInterface)
   addonInterface->toKodi->kodi_gui->general->get_video_resolution = get_video_resolution;
   addonInterface->toKodi->kodi_gui->general->get_current_window_dialog_id = get_current_window_dialog_id;
   addonInterface->toKodi->kodi_gui->general->get_current_window_id = get_current_window_id;
+  addonInterface->toKodi->kodi_gui->general->get_hw_context = get_hw_context;
 }
 
 void Interface_GUIGeneral::DeInit(AddonGlobalInterface* addonInterface)
@@ -212,6 +212,11 @@ int Interface_GUIGeneral::get_current_window_id(void* kodiBase)
 
   CSingleLock gl(CServiceBroker::GetWinSystem()->GetGfxContext());
   return CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow();
+}
+
+void* Interface_GUIGeneral::get_hw_context(void* kodiBase)
+{
+  return CServiceBroker::GetWinSystem()->GetHWContext();
 }
 
 //@}

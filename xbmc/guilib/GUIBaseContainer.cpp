@@ -7,22 +7,24 @@
  */
 
 #include "GUIBaseContainer.h"
+
+#include "FileItem.h"
+#include "GUIInfoManager.h"
 #include "GUIListItemLayout.h"
 #include "GUIMessage.h"
 #include "ServiceBroker.h"
-#include "utils/CharsetConverter.h"
-#include "GUIInfoManager.h"
-#include "utils/TimeUtils.h"
-#include "utils/log.h"
-#include "utils/SortUtils.h"
-#include "utils/StringUtils.h"
-#include "FileItem.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "input/Key.h"
-#include "utils/MathUtils.h"
-#include "utils/XBMCTinyXML.h"
 #include "listproviders/IListProvider.h"
 #include "settings/Settings.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
+#include "settings/SettingsComponent.h"
+#include "utils/CharsetConverter.h"
+#include "utils/MathUtils.h"
+#include "utils/SortUtils.h"
+#include "utils/StringUtils.h"
+#include "utils/TimeUtils.h"
+#include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 
 #define HOLD_TIME_START 100
 #define HOLD_TIME_END   3000
@@ -57,6 +59,10 @@ CGUIBaseContainer::CGUIBaseContainer(const CGUIBaseContainer &) = default;
 
 CGUIBaseContainer::~CGUIBaseContainer(void)
 {
+  // release the container from items
+  for (auto item : m_items)
+    item->FreeMemory();
+
   delete m_listProvider;
 }
 
@@ -120,6 +126,8 @@ void CGUIBaseContainer::Process(unsigned int currentTime, CDirtyRegionList &dirt
     if (itemNo >= 0)
     {
       CGUIListItemPtr item = m_items[itemNo];
+      item->SetCurrentItem(itemNo + 1);
+
       // render our item
       if (m_orientation == VERTICAL)
         ProcessItem(origin.x, pos, item, focused, currentTime, dirtyregions);
@@ -571,7 +579,7 @@ void CGUIBaseContainer::OnJumpLetter(char letter, bool skip /*=false*/)
   {
     CGUIListItemPtr item = m_items[i];
     std::string label = item->GetLabel();
-    if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
       label = SortUtils::RemoveArticles(label);
     if (0 == strnicmp(label.c_str(), m_match.c_str(), m_match.size()))
     {
@@ -756,7 +764,7 @@ bool CGUIBaseContainer::OnClick(int actionID)
     if (m_listProvider)
     { // "select" action
       int selected = GetSelectedItem();
-      if (selected >= 0 && selected < (int)m_items.size())
+      if (selected >= 0 && selected < static_cast<int>(m_items.size()))
       {
         if (m_clickActions.HasActionsMeetingCondition())
           m_clickActions.ExecuteActions(0, GetParentID(), m_items[selected]);

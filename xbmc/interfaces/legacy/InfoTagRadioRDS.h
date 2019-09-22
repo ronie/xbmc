@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include "pvr/channels/PVRRadioRDSInfoTag.h"
 #include "AddonClass.h"
+#include "pvr/PVRTypes.h"
+#include "pvr/channels/PVRRadioRDSInfoTag.h"
 
 namespace XBMCAddon
 {
@@ -49,7 +50,7 @@ namespace XBMCAddon
 
     public:
 #ifndef SWIG
-      explicit InfoTagRadioRDS(const PVR::CPVRRadioRDSInfoTagPtr tag);
+      explicit InfoTagRadioRDS(const PVR::CPVRChannelPtr& channel);
 #endif
       InfoTagRadioRDS();
       ~InfoTagRadioRDS() override;

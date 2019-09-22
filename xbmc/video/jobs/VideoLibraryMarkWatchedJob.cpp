@@ -17,7 +17,8 @@
 #endif
 #include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
+#include "settings/SettingsComponent.h"
 #include "ServiceBroker.h"
 #include "utils/URIUtils.h"
 #include "video/VideoDatabase.h"
@@ -43,9 +44,9 @@ bool CVideoLibraryMarkWatchedJob::operator==(const CJob* job) const
 
 bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
 {
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (!profileManager.GetCurrentProfile().canWriteDatabases())
+  if (!profileManager->GetCurrentProfile().canWriteDatabases())
     return false;
 
   CFileItemList items;
@@ -66,8 +67,16 @@ bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
       continue;
 #endif
 
-    if (item->HasPVRRecordingInfoTag() && CServiceBroker::GetPVRManager().Recordings()->MarkWatched(item, m_mark))
+    if (item->HasPVRRecordingInfoTag() &&
+        CServiceBroker::GetPVRManager().Recordings()->MarkWatched(item->GetPVRRecordingInfoTag(), m_mark))
+    {
+      if (m_mark)
+        db.IncrementPlayCount(*item);
+      else
+        db.SetPlayCount(*item, 0);
+
       continue;
+    }
 
     markItems.push_back(item);
   }
@@ -80,15 +89,16 @@ bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
   for (std::vector<CFileItemPtr>::const_iterator iter = markItems.begin(); iter != markItems.end(); ++iter)
   {
     CFileItemPtr item = *iter;
-    if (m_mark)
-    {
-      std::string path(item->GetPath());
-      if (item->HasVideoInfoTag() && !item->GetVideoInfoTag()->GetPath().empty())
-        path = item->GetVideoInfoTag()->GetPath();
 
-      db.ClearBookMarksOfFile(path, CBookmark::RESUME);
+    std::string path(item->GetPath());
+    if (item->HasVideoInfoTag() && !item->GetVideoInfoTag()->GetPath().empty())
+      path = item->GetVideoInfoTag()->GetPath();
+
+    // With both mark as watched and unwatched we want the resume bookmarks to be reset
+    db.ClearBookMarksOfFile(path, CBookmark::RESUME);
+
+    if (m_mark)
       db.IncrementPlayCount(*item);
-    }
     else
       db.SetPlayCount(*item, 0);
   }

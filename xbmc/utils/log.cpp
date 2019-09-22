@@ -8,7 +8,9 @@
 
 #include "log.h"
 #include "CompileInfo.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
 #include "threads/Thread.h"
@@ -91,7 +93,7 @@ void CLog::LogString(int logLevel, std::string&& logString)
 
 void CLog::LogString(int logLevel, int component, std::string&& logString)
 {
-  if (g_advancedSettings.CanLogComponent(component) && IsLogLevelLogged(logLevel))
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(component) && IsLogLevelLogged(logLevel))
     LogString(logLevel, std::move(logString));
 }
 
@@ -186,22 +188,25 @@ void CLog::PrintDebugString(const std::string& line)
 
 bool CLog::WriteLogString(int logLevel, const std::string& logString)
 {
-  static const char* prefixFormat = "%02d:%02d:%02d.%03d T:%" PRIu64" %7s: ";
+  static const char* prefixFormat = "%02d-%02d-%02d %02d:%02d:%02d.%03d T:%" PRIu64" %7s: ";
 
   std::string strData(logString);
   /* fixup newline alignment, number of spaces should equal prefix length */
   StringUtils::Replace(strData, "\n", "\n                                            ");
 
-  int hour, minute, second;
+  int year, month, day, hour, minute, second;
   double millisecond;
-  g_logState.m_platform.GetCurrentLocalTime(hour, minute, second, millisecond);
+  g_logState.m_platform.GetCurrentLocalTime(year, month, day, hour, minute, second, millisecond);
 
   strData = StringUtils::Format(prefixFormat,
+                                  year,
+                                  month,
+                                  day,
                                   hour,
                                   minute,
                                   second,
                                   static_cast<int>(millisecond),
-                                  (uint64_t)CThread::GetCurrentThreadId(),
+                                  static_cast<uint64_t>(CThread::GetCurrentThreadNativeHandle()),
                                   levelNames[logLevel]) + strData;
 
   return g_logState.m_platform.WriteStringToLog(strData);

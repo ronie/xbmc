@@ -8,20 +8,23 @@
 
 #pragma once
 
-#include "gtest/gtest.h"
-
 #include <memory>
 #include <string>
 
+#include <gtest/gtest.h>
+
 class CSettings;
+class CSettingsComponent;
 
 class TestBasicEnvironment : public testing::Environment
 {
 public:
+  TestBasicEnvironment();
+
   void SetUp() override;
   void TearDown() override;
 private:
   void SetUpError();
   std::string m_tempPath;
-  std::shared_ptr <CSettings> m_pSettings;
+  std::unique_ptr<CSettingsComponent> m_pSettingsComponent;
 };

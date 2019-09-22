@@ -7,17 +7,19 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "../RenderFlags.h"
 #include "YUV2RGBShaderGL.h"
-#include "YUVMatrix.h"
+
+#include "../RenderFlags.h"
 #include "ConversionMatrix.h"
 #include "ConvolutionKernels.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/log.h"
+#include "settings/SettingsComponent.h"
 #include "utils/GLUtils.h"
+#include "utils/log.h"
 
-#include <string>
 #include <sstream>
+#include <string>
 
 using namespace Shaders;
 
@@ -50,7 +52,7 @@ BaseYUV2RGBGLSLShader::BaseYUV2RGBGLSLShader(bool rect, EShaderFormat format, bo
   else
     m_defines += "#define XBMC_texture_rectangle 0\n";
 
-  if (g_advancedSettings.m_GLRectangleHack)
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_GLRectangleHack)
     m_defines += "#define XBMC_texture_rectangle_hack 1\n";
   else
     m_defines += "#define XBMC_texture_rectangle_hack 0\n";

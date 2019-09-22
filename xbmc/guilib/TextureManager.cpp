@@ -27,7 +27,7 @@
 #endif
 #if defined(TARGET_DARWIN_IOS)
 #include "ServiceBroker.h"
-#include "windowing/osx/WinSystemIOS.h" // for g_Windowing in CGUITextureManager::FreeUnusedTextures
+#include "windowing/ios/WinSystemIOS.h" // for g_Windowing in CGUITextureManager::FreeUnusedTextures
 #endif
 #include "FFmpegImage.h"
 
@@ -533,7 +533,8 @@ void CGUITextureManager::Cleanup()
     delete pMap;
     i = m_vecTextures.erase(i);
   }
-
+  m_TexBundle[0].Close();
+  m_TexBundle[1].Close();
   m_TexBundle[0] = CTextureBundle(true);
   m_TexBundle[1] = CTextureBundle();
   FreeUnusedTextures();
@@ -617,9 +618,9 @@ std::string CGUITextureManager::GetTexturePath(const std::string &textureName, b
   else
   { // texture doesn't include the full path, so check all fallbacks
     CSingleLock lock(m_section);
-    for (std::vector<std::string>::iterator it = m_texturePaths.begin(); it != m_texturePaths.end(); ++it)
+    for (const std::string& it : m_texturePaths)
     {
-      std::string path = URIUtils::AddFileToFolder(it->c_str(), "media", textureName);
+      std::string path = URIUtils::AddFileToFolder(it.c_str(), "media", textureName);
       if (directory)
       {
         if (XFILE::CDirectory::Exists(path))

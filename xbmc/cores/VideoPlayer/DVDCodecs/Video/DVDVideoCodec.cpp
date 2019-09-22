@@ -7,12 +7,9 @@
  */
 
 #include "DVDVideoCodec.h"
-#include "ServiceBroker.h"
+
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
-#include "rendering/RenderSystem.h"
-#include "settings/Settings.h"
-#include "settings/lib/Setting.h"
-#include "windowing/WinSystem.h"
+
 #include <string>
 #include <vector>
 
@@ -44,7 +41,7 @@ void VideoPicture::Reset()
   color_space = AVCOL_SPC_UNSPECIFIED;
   color_range = 0;
   chroma_position = 0;
-  color_primaries = 0;
+  color_primaries = AVColorPrimaries::AVCOL_PRI_UNSPECIFIED;
   color_transfer = 0;
   colorBits = 8;
   stereoMode.clear();

@@ -8,14 +8,14 @@
 
 #include "MusicThumbLoader.h"
 
-#include <utility>
-
 #include "FileItem.h"
+#include "TextureDatabase.h"
 #include "music/infoscanner/MusicInfoScanner.h"
 #include "music/tags/MusicInfoTag.h"
 #include "music/tags/MusicInfoTagLoaderFactory.h"
-#include "TextureDatabase.h"
 #include "video/VideoThumbLoader.h"
+
+#include <utility>
 
 using namespace MUSIC_INFO;
 
@@ -56,8 +56,7 @@ bool CMusicThumbLoader::LoadItemCached(CFileItem* pItem)
   if (pItem->m_bIsShareOrDrive)
     return false;
 
-  if (pItem->HasMusicInfoTag() && (pItem->GetArt().empty() ||
-    (pItem->GetArt().size() == 1 && pItem->HasArt("thumb"))))
+  if (pItem->HasMusicInfoTag() && !pItem->GetProperty("libraryartfilled").asBoolean())
   {
     if (FillLibraryArt(*pItem))
       return true;
@@ -66,7 +65,7 @@ bool CMusicThumbLoader::LoadItemCached(CFileItem* pItem)
       return false; // No fallback
   }
 
-  if (pItem->HasVideoInfoTag() && pItem->GetArt().empty())
+  if (pItem->HasVideoInfoTag() && !pItem->HasArt("thumb"))
   { // music video
     CVideoThumbLoader loader;
     if (loader.LoadItemCached(pItem))
@@ -323,6 +322,7 @@ bool CMusicThumbLoader::FillLibraryArt(CFileItem &item)
     item.AppendArt(artmap);
   }
 
+  item.SetProperty("libraryartfilled", true);
   return artfound;
 }
 
@@ -331,7 +331,7 @@ bool CMusicThumbLoader::GetEmbeddedThumb(const std::string &path, EmbeddedArt &a
   CFileItem item(path, false);
   std::unique_ptr<IMusicInfoTagLoader> pLoader (CMusicInfoTagLoaderFactory::CreateLoader(item));
   CMusicInfoTag tag;
-  if (NULL != pLoader.get())
+  if (nullptr != pLoader)
     pLoader->Load(path, tag, &art);
 
   return !art.Empty();

@@ -134,7 +134,7 @@ XFILE::CFile *CXBMCTestUtils::CreateCorruptedFile(std::string const& strFileName
 {
   XFILE::CFile inputfile, *tmpfile = CreateTempFile(suffix);
   unsigned char buf[20], tmpchar;
-  unsigned int size, i;
+  ssize_t size, i;
 
   if (tmpfile && inputfile.Open(strFileName))
   {
@@ -200,10 +200,10 @@ std::vector<std::string> &CXBMCTestUtils::getGUISettingsFiles()
 }
 
 static const char usage[] =
-"XBMC Test Suite\n"
-"Usage: xbmc-test [options]\n"
+"Kodi Test Suite\n"
+"Usage: kodi-test [options]\n"
 "\n"
-"The following options are recognized by the xbmc-test program.\n"
+"The following options are recognized by the kodi-test program.\n"
 "\n"
 "  --add-testfilefactory-readurl [URL]\n"
 "    Add a url to be used int the TestFileFactory read tests.\n"

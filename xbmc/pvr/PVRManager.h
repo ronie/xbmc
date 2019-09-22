@@ -8,35 +8,52 @@
 
 #pragma once
 
-#include <atomic>
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
+#include "interfaces/IAnnouncer.h"
+#include "pvr/PVRActionListener.h"
+#include "pvr/PVRSettings.h"
+#include "pvr/PVRTypes.h"
+#include "pvr/epg/EpgContainer.h"
+#include "threads/CriticalSection.h"
+#include "threads/Event.h"
+#include "threads/Thread.h"
+#include "utils/EventStream.h"
+#include "utils/Observer.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "FileItem.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "interfaces/IAnnouncer.h"
-#include "threads/Event.h"
-#include "threads/Thread.h"
-#include "utils/EventStream.h"
-#include "utils/JobManager.h"
-#include "utils/Observer.h"
-
-#include "pvr/PVRActionListener.h"
-#include "pvr/PVREvent.h"
-#include "pvr/PVRSettings.h"
-#include "pvr/PVRTypes.h"
-#include "pvr/epg/EpgContainer.h"
-#include "pvr/recordings/PVRRecording.h"
-
+class CFileItem;
+class CJob;
 class CStopWatch;
-class CVariant;
 
 namespace PVR
 {
   class CPVRClient;
   class CPVRGUIInfo;
   class CPVRGUIProgressHandler;
+
+  enum class PVREvent
+  {
+    // PVR Manager states
+    ManagerError = 0,
+    ManagerStopped,
+    ManagerStarting,
+    ManagerStopping,
+    ManagerInterrupted,
+    ManagerStarted,
+
+    // Recording events
+    RecordingsInvalidated,
+
+    // Timer events
+    TimersInvalidated,
+    AnnounceReminder,
+
+    // Channel events
+    ChannelGroupsInvalidated,
+  };
 
   class CPVRManagerJobQueue
   {
@@ -227,6 +244,14 @@ namespace PVR
     }
 
     /*!
+     * @brief Check whether playing channel matches given uids.
+     * @param iClientID The client id.
+     * @param iUniqueChannelID The channel uid.
+     * @return True on match, false if there is no match or no channel is playing.
+     */
+    bool IsPlayingChannel(int iClientID, int iUniqueChannelID) const;
+
+    /*!
      * @brief Return the channel that is currently playing.
      * @return The channel or NULL if none is playing.
      */
@@ -263,6 +288,12 @@ namespace PVR
     bool IsRecordingOnPlayingChannel(void) const;
 
     /*!
+     * @brief Check if an active recording is playing.
+     * @return True if an in-progress (active) recording is playing, false otherwise.
+     */
+    bool IsPlayingActiveRecording() const;
+
+    /*!
      * @brief Check whether the currently playing channel can be recorded.
      * @return True if there is a playing channel that can be recorded, false otherwise.
      */
@@ -278,19 +309,19 @@ namespace PVR
      * @brief Inform PVR manager that playback of an item just started.
      * @param item The item that started to play.
      */
-    void OnPlaybackStarted(const CFileItemPtr item);
+    void OnPlaybackStarted(const std::shared_ptr<CFileItem> item);
 
     /*!
      * @brief Inform PVR manager that playback of an item was stopped due to user interaction.
      * @param item The item that stopped to play.
      */
-    void OnPlaybackStopped(const CFileItemPtr item);
+    void OnPlaybackStopped(const std::shared_ptr<CFileItem> item);
 
     /*!
      * @brief Inform PVR manager that playback of an item has stopped without user interaction.
      * @param item The item that ended to play.
      */
-    void OnPlaybackEnded(const CFileItemPtr item);
+    void OnPlaybackEnded(const std::shared_ptr<CFileItem> item);
 
     /*!
      * @brief Check whether there are active recordings.
@@ -310,13 +341,6 @@ namespace PVR
      * @return The current group or the group containing all channels if it's not set.
      */
     CPVRChannelGroupPtr GetPlayingGroup(bool bRadio = false) const;
-
-    /*!
-     * @brief Fill the file item for a recording, a channel or an epg tag with the properties required for playback. Values are obtained from the PVR backend.
-     * @param fileItem The file item to be filled. Item must contain either a pvr recording, a pvr channel or an epg tag.
-     * @return True if the stream properties have been set, false otherwiese.
-     */
-    bool FillStreamFileItem(CFileItem &fileItem);
 
     /*!
      * @brief Let the background thread create epg tags for all channels.
@@ -344,9 +368,15 @@ namespace PVR
     void TriggerChannelGroupsUpdate(void);
 
     /*!
-     * @brief Let the background thread search for missing channel icons.
+     * @brief Let the background thread search for all missing channel icons.
      */
     void TriggerSearchMissingChannelIcons(void);
+
+    /*!
+     * @brief Let the background thread search for missing channel icons for channels contained in the given group.
+     * @param group The channel group.
+     */
+    void TriggerSearchMissingChannelIcons(const std::shared_ptr<CPVRChannelGroup>& group);
 
     /*!
      * @brief Check whether names are still correct after the language settings changed.
@@ -384,16 +414,18 @@ namespace PVR
     bool IsPlayingEpgTag(void) const;
 
     /*!
-     * @brief Try to find missing channel icons automatically
+     * @brief Check if parental lock is overridden at the given moment.
+     * @param channel The channel to check.
+     * @return True if parental lock is overridden, false otherwise.
      */
-    void SearchMissingChannelIcons(void);
+    bool IsParentalLocked(const std::shared_ptr<CPVRChannel>& channel) const;
 
     /*!
      * @brief Check if parental lock is overridden at the given moment.
-     * @param channel The channel to open.
+     * @param epgTag The epg tag to check.
      * @return True if parental lock is overridden, false otherwise.
      */
-    bool IsParentalLocked(const CPVRChannelPtr &channel);
+    bool IsParentalLocked(const std::shared_ptr<CPVREpgInfoTag>& epgTag) const;
 
     /*!
      * @brief Restart the parental timer.
@@ -432,8 +464,9 @@ namespace PVR
     /*!
      * @brief Updates the last watched timestamps of the channel and group which are currently playing.
      * @param channel The channel which is updated
+     * @param time The last watched time to set
      */
-    void UpdateLastWatched(const CPVRChannelPtr &channel);
+    void UpdateLastWatched(const CPVRChannelPtr &channel, const CDateTime& time);
 
     /*!
      * @brief Set the playing group to the first group the channel is in if the given channel is not part of the current playing group
@@ -495,6 +528,8 @@ namespace PVR
      */
     void SetState(ManagerState state);
 
+    bool IsCurrentlyParentalLocked(const std::shared_ptr<CPVRChannel>& channel, bool bGenerallyLocked) const;
+
     /** @name containers */
     //@{
     CPVRChannelGroupsContainerPtr  m_channelGroups;               /*!< pointer to the channel groups container */
@@ -510,8 +545,8 @@ namespace PVR
 
     CPVRDatabasePtr                 m_database;                    /*!< the database for all PVR related data */
     mutable CCriticalSection        m_critSection;                 /*!< critical section for all changes to this class, except for changes to triggers */
-    bool                            m_bFirstStart = true;                 /*!< true when the PVR manager was started first, false otherwise */
-    bool                            m_bEpgsCreated = false;                /*!< true if epg data for channels has been created */
+    bool                            m_bFirstStart = true;          /*!< true when the PVR manager was started first, false otherwise */
+    bool                            m_bEpgsCreated = false;        /*!< true if epg data for channels has been created */
 
     mutable CCriticalSection        m_managerStateMutex;
     ManagerState                    m_managerState = ManagerStateStopped;
@@ -529,5 +564,9 @@ namespace PVR
     CPVREpgInfoTagPtr m_playingEpgTag;
     std::string m_strPlayingClientName;
     int m_playingClientId = -1;
+    int m_iplayingChannelUniqueID = -1;
+
+    class CLastWatchedUpdateTimer;
+    std::unique_ptr<CLastWatchedUpdateTimer> m_lastWatchedUpdateTimer;
   };
 }

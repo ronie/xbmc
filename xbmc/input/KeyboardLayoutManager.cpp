@@ -8,14 +8,15 @@
 
 #include "KeyboardLayoutManager.h"
 
-#include <algorithm>
-
 #include "FileItem.h"
-#include "filesystem/Directory.h"
 #include "URL.h"
+#include "filesystem/Directory.h"
 #include "settings/lib/Setting.h"
-#include "utils/log.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
+
+#include <algorithm>
 
 #define KEYBOARD_LAYOUTS_PATH   "special://xbmc/system/keyboardlayouts"
 
@@ -116,13 +117,21 @@ bool CKeyboardLayoutManager::GetLayout(const std::string& name, CKeyboardLayout&
   return true;
 }
 
-void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void* data)
+namespace
 {
-  for (KeyboardLayouts::const_iterator it = CKeyboardLayoutManager::GetInstance().m_layouts.begin(); it != CKeyboardLayoutManager::GetInstance().m_layouts.end(); ++it)
+  inline bool LayoutSort(const StringSettingOption& i, const StringSettingOption& j)
   {
-    std::string name = it->second.GetName();
-    list.push_back(make_pair(name, name));
+    return (i.value > j.value);
+  }
+}
+
+void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(SettingConstPtr setting, std::vector<StringSettingOption> &list, std::string &current, void* data)
+{
+  for (const auto& it : CKeyboardLayoutManager::GetInstance().m_layouts)
+  {
+    std::string name = it.second.GetName();
+    list.push_back(StringSettingOption(name, name));
   }
 
-  std::sort(list.begin(), list.end());
+  std::sort(list.begin(), list.end(), LayoutSort);
 }

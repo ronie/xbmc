@@ -8,17 +8,25 @@
 
 #pragma once
 
-#include <gbm.h>
-#include <EGL/egl.h>
-
-#include "platform/linux/input/LibInputHandler.h"
-#include "platform/linux/OptionalsReg.h"
-#include "threads/CriticalSection.h"
-#include "windowing/WinSystem.h"
 #include "DRMUtils.h"
 #include "VideoLayerBridge.h"
+#include "threads/CriticalSection.h"
+#include "windowing/WinSystem.h"
+
+#include "platform/linux/OptionalsReg.h"
+#include "platform/linux/input/LibInputHandler.h"
+
+#include <EGL/egl.h>
+#include <gbm.h>
 
 class IDispResource;
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
 
 class CWinSystemGbm : public CWinSystemBase
 {
@@ -28,12 +36,6 @@ public:
 
   bool InitWindowSystem() override;
   bool DestroyWindowSystem() override;
-
-  bool CreateNewWindow(const std::string& name,
-                       bool fullScreen,
-                       RESOLUTION_INFO& res) override;
-
-  bool DestroyWindow() override;
 
   bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
@@ -54,7 +56,6 @@ public:
   void RegisterVideoLayerBridge(std::shared_ptr<CVideoLayerBridge> bridge) { m_videoLayerBridge = bridge; };
 
   std::string GetModule() const { return m_DRM->GetModule(); }
-  std::string GetDevicePath() const { return m_DRM->GetDevicePath(); }
   struct gbm_device *GetGBMDevice() const { return m_GBM->GetDevice(); }
   std::shared_ptr<CDRMUtils> GetDrm() const { return m_DRM; }
 
@@ -73,3 +74,7 @@ protected:
   std::unique_ptr<OPTIONALS::CLircContainer, OPTIONALS::delete_CLircContainer> m_lirc;
   std::unique_ptr<CLibInputHandler> m_libinput;
 };
+
+}
+}
+}

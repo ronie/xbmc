@@ -7,21 +7,24 @@
  */
 
 #include "GameWindowFullScreen.h"
+
+#include "Application.h" //! @todo Remove me
+#include "ApplicationPlayer.h" //! @todo Remove me
+#include "GUIInfoManager.h" //! @todo Remove me
 #include "GameWindowFullScreenText.h"
+#include "ServiceBroker.h"
 #include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
 #include "cores/RetroPlayer/guibridge/GUIRenderHandle.h"
-#include "windowing/GraphicContext.h" //! @todo Remove me
 #include "games/GameServices.h"
 #include "games/GameSettings.h"
-#include "guilib/GUIDialog.h"
-#include "guilib/GUIControl.h"
 #include "guilib/GUIComponent.h"
+#include "guilib/GUIControl.h"
+#include "guilib/GUIDialog.h"
 #include "guilib/GUIWindowManager.h" //! @todo Remove me
 #include "guilib/WindowIDs.h"
-#include "input/Action.h"
-#include "input/ActionIDs.h"
-#include "GUIInfoManager.h" //! @todo Remove me
-#include "ServiceBroker.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
+#include "windowing/GraphicContext.h" //! @todo Remove me
 
 using namespace KODI;
 using namespace KODI::GUILIB;
@@ -80,10 +83,6 @@ bool CGameWindowFullScreen::OnAction(const CAction &action)
   switch (action.GetID())
   {
   case ACTION_SHOW_OSD:
-  {
-    ToggleOSD();
-    return true;
-  }
   case ACTION_TRIGGER_OSD:
   {
     TriggerOSD();
@@ -184,6 +183,17 @@ void CGameWindowFullScreen::OnInitWindow()
   GAME::CGameSettings &gameSettings = CServiceBroker::GetGameServices().GameSettings();
   if (gameSettings.ShowOSDHelp())
     TriggerOSD();
+  else
+  {
+    //! @todo We need to route this check through the GUI bridge. By adding the
+    //        dependency to the application player here, we are prevented from
+    //        having multiple players.
+    if (!g_application.GetAppPlayer().HasGameAgent())
+    {
+      gameSettings.SetShowOSDHelp(true);
+      TriggerOSD();
+    }
+  }
 }
 
 void CGameWindowFullScreen::OnDeinitWindow(int nextWindowID)
@@ -194,20 +204,6 @@ void CGameWindowFullScreen::OnDeinitWindow(int nextWindowID)
   CGUIWindow::OnDeinitWindow(nextWindowID);
 
   CServiceBroker::GetWinSystem()->GetGfxContext().SetFullScreenVideo(false); //! @todo
-}
-
-void CGameWindowFullScreen::ToggleOSD()
-{
-  CGUIDialog *pOSD = GetOSD();
-  if (pOSD != nullptr)
-  {
-    if (pOSD->IsDialogRunning())
-      pOSD->Close();
-    else
-      pOSD->Open();
-  }
-
-  MarkDirtyRegion();
 }
 
 void CGameWindowFullScreen::TriggerOSD()

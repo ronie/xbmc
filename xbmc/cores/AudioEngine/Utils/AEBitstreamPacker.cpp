@@ -7,12 +7,14 @@
  */
 
 #include "AEBitstreamPacker.h"
+
 #include "AEPackIEC61937.h"
 #include "AEStreamInfo.h"
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
 #include "utils/log.h"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
 #define BURST_HEADER_SIZE       8
 #define TRUEHD_FRAME_OFFSET     2560
@@ -112,7 +114,7 @@ bool CAEBitstreamPacker::PackPause(CAEStreamInfo &info, unsigned int millis, boo
   return true;
 }
 
-unsigned int CAEBitstreamPacker::GetSize()
+unsigned int CAEBitstreamPacker::GetSize() const
 {
   return m_dataSize;
 }

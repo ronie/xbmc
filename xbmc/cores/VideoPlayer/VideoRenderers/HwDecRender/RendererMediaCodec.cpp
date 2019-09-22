@@ -8,13 +8,13 @@
 
 #include "RendererMediaCodec.h"
 
+#include "../RenderFactory.h"
 #include "DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
-#include "utils/log.h"
-#include "utils/GLUtils.h"
-#include "settings/MediaSettings.h"
 #include "ServiceBroker.h"
 #include "rendering/gles/RenderSystemGLES.h"
-#include "../RenderFactory.h"
+#include "settings/MediaSettings.h"
+#include "utils/GLUtils.h"
+#include "utils/log.h"
 
 #if defined(EGL_KHR_reusable_sync) && !defined(EGL_EGLEXT_PROTOTYPES)
 static PFNEGLCREATESYNCKHRPROC eglCreateSyncKHR;
@@ -110,8 +110,8 @@ bool CRendererMediaCodec::LoadShadersHook()
 
 bool CRendererMediaCodec::RenderHook(int index)
 {
-  YUVPLANE &plane = m_buffers[index].fields[0][0];
-  YUVPLANE &planef = m_buffers[index].fields[m_currentField][0];
+  CYuvPlane &plane = m_buffers[index].fields[0][0];
+  CYuvPlane &planef = m_buffers[index].fields[m_currentField][0];
 
   glDisable(GL_DEPTH_TEST);
 
@@ -219,7 +219,7 @@ bool CRendererMediaCodec::CreateTexture(int index)
 
   for (int f=0; f<3; ++f)
   {
-    YUVPLANE  &plane  = buf.fields[f][0];
+    CYuvPlane  &plane  = buf.fields[f][0];
 
     plane.texwidth  = m_sourceWidth;
     plane.texheight = m_sourceHeight;

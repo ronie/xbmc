@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "music/tags/MusicInfoTag.h"
 #include "AddonClass.h"
+#include "music/tags/MusicInfoTag.h"
 
 namespace XBMCAddon
 {
@@ -63,7 +63,7 @@ namespace XBMCAddon
       ///
       ///
       ///-----------------------------------------------------------------------
-      /// @python_v17 New function added.
+      /// @python_v18 New function added.
       ///
       getDbId();
 #else

@@ -20,6 +20,7 @@
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
@@ -431,27 +432,27 @@ void GUIFontManager::GetStyle(const TiXmlNode *fontNode, int &iStyle)
   if (XMLUtils::GetString(fontNode, "style", style))
   {
     std::vector<std::string> styles = StringUtils::Tokenize(style, " ");
-    for (std::vector<std::string>::const_iterator i = styles.begin(); i != styles.end(); ++i)
+    for (const std::string& i : styles)
     {
-      if (*i == "bold")
+      if (i == "bold")
         iStyle |= FONT_STYLE_BOLD;
-      else if (*i == "italics")
+      else if (i == "italics")
         iStyle |= FONT_STYLE_ITALICS;
-      else if (*i == "bolditalics") // backward compatibility
+      else if (i == "bolditalics") // backward compatibility
         iStyle |= (FONT_STYLE_BOLD | FONT_STYLE_ITALICS);
-      else if (*i == "uppercase")
+      else if (i == "uppercase")
         iStyle |= FONT_STYLE_UPPERCASE;
-      else if (*i == "lowercase")
+      else if (i == "lowercase")
         iStyle |= FONT_STYLE_LOWERCASE;
-      else if (*i == "capitalize")
+      else if (i == "capitalize")
         iStyle |= FONT_STYLE_CAPITALIZE;
-      else if (*i == "lighten")
+      else if (i == "lighten")
         iStyle |= FONT_STYLE_LIGHT;
     }
   }
 }
 
-void GUIFontManager::SettingOptionsFontsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void GUIFontManager::SettingOptionsFontsFiller(SettingConstPtr setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
 {
   CFileItemList items;
   CFileItemList items2;
@@ -469,7 +470,7 @@ void GUIFontManager::SettingOptionsFontsFiller(SettingConstPtr setting, std::vec
       if (!pItem->m_bIsFolder
           && URIUtils::HasExtension(pItem->GetLabel(), ".ttf"))
       {
-        list.push_back(make_pair(pItem->GetLabel(), pItem->GetLabel()));
+        list.push_back(StringSettingOption(pItem->GetLabel(), pItem->GetLabel()));
       }
     }
   }

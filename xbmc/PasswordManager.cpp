@@ -7,14 +7,16 @@
  */
 
 #include "PasswordManager.h"
-#include "profiles/ProfilesManager.h"
-#include "profiles/dialogs/GUIDialogLockSettings.h"
-#include "URL.h"
-#include "utils/XMLUtils.h"
-#include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "filesystem/File.h"
+
 #include "ServiceBroker.h"
+#include "URL.h"
+#include "filesystem/File.h"
+#include "profiles/ProfileManager.h"
+#include "profiles/dialogs/GUIDialogLockSettings.h"
+#include "settings/SettingsComponent.h"
+#include "threads/SingleLock.h"
+#include "utils/XMLUtils.h"
+#include "utils/log.h"
 
 CPasswordManager &CPasswordManager::GetInstance()
 {
@@ -114,12 +116,9 @@ void CPasswordManager::SaveAuthenticatedURL(const CURL &url, bool saveToProfile)
 
 bool CPasswordManager::IsURLSupported(const CURL &url)
 {
-  if ( url.IsProtocol("smb")
+  return url.IsProtocol("smb")
     || url.IsProtocol("nfs")
-    || url.IsProtocol("sftp"))
-    return true;
-
-  return false;
+    || url.IsProtocol("sftp");
 }
 
 void CPasswordManager::Clear()
@@ -133,9 +132,9 @@ void CPasswordManager::Load()
 {
   Clear();
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  std::string passwordsFile = profileManager.GetUserDataItem("passwords.xml");
+  std::string passwordsFile = profileManager->GetUserDataItem("passwords.xml");
   if (XFILE::CFile::Exists(passwordsFile))
   {
     CXBMCTinyXML doc;
@@ -184,9 +183,9 @@ void CPasswordManager::Save() const
     XMLUtils::SetPath(path, "to", i->second);
   }
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  doc.SaveFile(profileManager.GetUserDataItem("passwords.xml"));
+  doc.SaveFile(profileManager->GetUserDataItem("passwords.xml"));
 }
 
 std::string CPasswordManager::GetLookupPath(const CURL &url) const

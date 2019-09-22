@@ -44,8 +44,8 @@
 #include <vector>
 
 extern "C" {
-#include "libavutil/avutil.h"
-#include "libavcodec/vdpau.h"
+#include <libavutil/avutil.h>
+#include <libavcodec/vdpau.h>
 }
 
 class CProcessInfo;
@@ -557,7 +557,6 @@ protected:
   CEvent m_DisplayEvent;
   int m_ErrorCount;
 
-  ThreadIdentifier m_decoderThread;
   bool m_vdpauConfigured;
   CVdpauConfig m_vdpauConfig;
   CVideoSurfaces m_videoSurfaces;

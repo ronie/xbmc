@@ -11,11 +11,11 @@
 #include "network/Network.h"
 #include "threads/CriticalSection.h"
 
+#include <androidjni/LinkProperties.h>
 #include <androidjni/Network.h>
 #include <androidjni/NetworkInfo.h>
-#include <androidjni/LinkProperties.h>
-#include <androidjni/RouteInfo.h>
 #include <androidjni/NetworkInterface.h>
+#include <androidjni/RouteInfo.h>
 
 class CNetworkAndroid;
 
@@ -27,20 +27,14 @@ public:
 
   // CNetworkInterface interface
 public:
-  virtual const std::string& GetName() const override;
   virtual bool IsEnabled() const override;
   virtual bool IsConnected() const override;
-  virtual bool IsWireless() const override;
   virtual std::string GetMacAddress() const override;
   virtual void GetMacAddressRaw(char rawMac[6]) const override;
   virtual bool GetHostMacAddress(unsigned long host_ip, std::string& mac) const override;
   virtual std::string GetCurrentIPAddress() const override;
   virtual std::string GetCurrentNetmask() const override;
   virtual std::string GetCurrentDefaultGateway() const override;
-  virtual std::string GetCurrentWirelessEssId() const override;
-  virtual std::vector<NetworkAccessPoint> GetAccessPoints() const override;
-  virtual void GetSettings(NetworkAssignment& assignment, std::string& ipAddress, std::string& networkMask, std::string& defaultGateway, std::string& essId, std::string& key, EncMode& encryptionMode) const override;
-  virtual void SetSettings(const NetworkAssignment& assignment, const std::string& ipAddress, const std::string& networkMask, const std::string& defaultGateway, const std::string& essId, const std::string& key, const EncMode& encryptionMode) override;
 
   std::string GetHostName();
 
@@ -66,7 +60,6 @@ public:
   virtual std::vector<CNetworkInterface*>& GetInterfaceList() override;
   virtual CNetworkInterface* GetFirstConnectedInterface() override;
   virtual std::vector<std::string> GetNameServers() override;
-  virtual void SetNameServers(const std::vector<std::string>& nameServers) override;
 
   // Ping remote host
   using CNetworkBase::PingHost;

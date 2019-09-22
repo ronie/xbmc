@@ -7,24 +7,24 @@
  */
 
 #include "DialogGameVideoSelect.h"
-#include "cores/RetroPlayer/guibridge/GUIGameVideoHandle.h"
+
+#include "Application.h"
+#include "FileItem.h"
+#include "ServiceBroker.h"
 #include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
-#include "windowing/GraphicContext.h"
+#include "cores/RetroPlayer/guibridge/GUIGameVideoHandle.h"
 #include "guilib/GUIBaseContainer.h"
-#include "guilib/GUIMessage.h"
 #include "guilib/GUIComponent.h"
+#include "guilib/GUIMessage.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/WindowIDs.h"
-#include "input/ActionIDs.h"
+#include "input/actions/ActionIDs.h"
 #include "settings/GameSettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "view/GUIViewControl.h"
 #include "view/ViewState.h"
-#include "Application.h"
-#include "ApplicationPlayer.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
+#include "windowing/GraphicContext.h"
 
 using namespace KODI;
 using namespace GAME;
@@ -199,7 +199,7 @@ void CDialogGameVideoSelect::SaveSettings()
   if (defaultSettings != currentSettings)
   {
     defaultSettings = currentSettings;
-    CServiceBroker::GetSettings()->Save();
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
   }
 }
 

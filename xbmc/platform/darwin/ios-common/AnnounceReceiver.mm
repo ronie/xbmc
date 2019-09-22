@@ -6,25 +6,22 @@
  *  See LICENSES/README.md for more information.
  */
 
-#import <UIKit/UIKit.h>
+#import "platform/darwin/ios-common/AnnounceReceiver.h"
 
 #import "Application.h"
 #import "FileItem.h"
-#import "music/tags/MusicInfoTag.h"
-#import "music/MusicDatabase.h"
+#include "PlayListPlayer.h"
+#include "ServiceBroker.h"
 #import "TextureCache.h"
 #import "filesystem/SpecialProtocol.h"
-#include "PlayListPlayer.h"
+#import "music/MusicDatabase.h"
+#import "music/tags/MusicInfoTag.h"
 #import "playlists/PlayList.h"
-
-#import "platform/darwin/ios-common/AnnounceReceiver.h"
-#if defined(TARGET_DARWIN_TVOS)
-#import "platform/darwin/tvos/MainController.h"
-#else
-#import "platform/darwin/ios/XBMCController.h"
-#endif
 #import "utils/Variant.h"
-#include "ServiceBroker.h"
+
+#import "platform/darwin/ios/XBMCController.h"
+
+#import <UIKit/UIKit.h>
 
 id objectFromVariant(const CVariant &data);
 
@@ -32,7 +29,7 @@ NSArray *arrayFromVariantArray(const CVariant &data)
 {
   if (!data.isArray())
     return nil;
-  NSMutableArray *array = [[[NSMutableArray alloc] initWithCapacity:data.size()] autorelease];
+  NSMutableArray* array = [[NSMutableArray alloc] initWithCapacity:data.size()];
   for (CVariant::const_iterator_array itr = data.begin_array(); itr != data.end_array(); ++itr)
     [array addObject:objectFromVariant(*itr)];
 
@@ -43,7 +40,7 @@ NSDictionary *dictionaryFromVariantMap(const CVariant &data)
 {
   if (!data.isObject())
     return nil;
-  NSMutableDictionary *dict = [[[NSMutableDictionary alloc] initWithCapacity:data.size()] autorelease];
+  NSMutableDictionary* dict = [[NSMutableDictionary alloc] initWithCapacity:data.size()];
   for (CVariant::const_iterator_map itr = data.begin_map(); itr != data.end_map(); ++itr)
     [dict setValue:objectFromVariant(itr->second) forKey:[NSString stringWithUTF8String:itr->first.c_str()]];
 
@@ -201,7 +198,8 @@ void CAnnounceReceiver::DeInitialize()
 void CAnnounceReceiver::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
 {
   // can be called from c++, we need an auto poll here.
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  AnnounceBridge(flag, sender, message, data);
-  [pool release];
+  @autoreleasepool
+  {
+    AnnounceBridge(flag, sender, message, data);
+  }
 }

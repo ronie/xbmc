@@ -8,19 +8,17 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-
-#include "threads/CriticalSection.h"
-
 #include "pvr/PVRChannelNumberInputHandler.h"
 #include "pvr/PVRGUIChannelNavigator.h"
 #include "pvr/PVRSettings.h"
 #include "pvr/PVRTypes.h"
+#include "threads/CriticalSection.h"
 
-class CAction;
+#include <memory>
+#include <string>
+#include <vector>
+
 class CFileItem;
-typedef std::shared_ptr<CFileItem> CFileItemPtr;
 
 class CGUIWindow;
 
@@ -72,22 +70,21 @@ namespace PVR
      * @param item containing epg data to show. item must be an epg tag, a channel or a timer.
      * @return true on success, false otherwise.
      */
-    bool ShowEPGInfo(const CFileItemPtr &item) const;
+    bool ShowEPGInfo(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open a dialog with the epg list for a given item.
      * @param item containing channel info. item must be an epg tag, a channel or a timer.
      * @return true on success, false otherwise.
      */
-    bool ShowChannelEPG(const CFileItemPtr &item) const;
+    bool ShowChannelEPG(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open a window containing a list of epg tags 'similar' to a given item.
      * @param item containing epg data for matching. item must be an epg tag, a channel or a recording.
-     * @param windowToClose is the window to close before opening the window with the search results.
      * @return true on success, false otherwise.
      */
-    bool FindSimilar(const CFileItemPtr &item, CGUIWindow *windowToClose = nullptr) const;
+    bool FindSimilar(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open the timer settings dialog to create a new tv or radio timer.
@@ -102,7 +99,7 @@ namespace PVR
      * @param bShowTimerSettings is used to control whether a settings dialog will be opened prior creating the timer.
      * @return true, if the timer was created successfully, false otherwise.
      */
-    bool AddTimer(const CFileItemPtr &item, bool bShowTimerSettings) const;
+    bool AddTimer(const std::shared_ptr<CFileItem>& item, bool bShowTimerSettings) const;
 
     /*!
      * @brief Add a timer to the client. Doesn't add the timer to the container. The backend will do this.
@@ -114,65 +111,73 @@ namespace PVR
      * @brief Create a new timer rule, either interactive or non-interactive.
      * @param item containing epg data to create a timer rule for. item must be an epg tag or a channel.
      * @param bShowTimerSettings is used to control whether a settings dialog will be opened prior creating the timer rule.
+     * @param bFallbackToOneShotTimer if no timer rule can be created, try to create a one-shot timer instead.
      * @return true, if the timer rule was created successfully, false otherwise.
      */
-    bool AddTimerRule(const CFileItemPtr &item, bool bShowTimerSettings) const;
+    bool AddTimerRule(const std::shared_ptr<CFileItem>& item, bool bShowTimerSettings, bool bFallbackToOneShotTimer) const;
 
     /*!
      * @brief Creates or deletes a timer for the given epg tag.
      * @param item containing an epg tag.
      * @return true on success, false otherwise.
      */
-    bool ToggleTimer(const CFileItemPtr &item) const;
+    bool ToggleTimer(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Toggles a given timer's enabled/disabled state.
      * @param item containing a timer.
      * @return true on success, false otherwise.
      */
-    bool ToggleTimerState(const CFileItemPtr &item) const;
+    bool ToggleTimerState(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open the timer settings dialog to edit an existing timer.
      * @param item containing an epg tag or a timer.
      * @return true on success, false otherwise.
      */
-    bool EditTimer(const CFileItemPtr &item) const;
+    bool EditTimer(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open the timer settings dialog to edit an existing timer rule.
      * @param item containing an epg tag or a timer.
      * @return true on success, false otherwise.
      */
-    bool EditTimerRule(const CFileItemPtr &item) const;
+    bool EditTimerRule(const std::shared_ptr<CFileItem>& item) const;
+
+    /*!
+     * @brief Get the timer rule for a given timer
+     * @param item containg an item to query the timer rule for. item must be a timer or an epg tag.
+     * @return The timer rule item, or nullptr if none was found.
+     */
+    std::shared_ptr<CFileItem> GetTimerRule(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Rename a timer, showing a text input dialog.
      * @param item containing a timer to rename.
      * @return true, if the timer was renamed successfully, false otherwise.
      */
-    bool RenameTimer(const CFileItemPtr &item) const;
+    bool RenameTimer(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Delete a timer, always showing a confirmation dialog.
      * @param item containing a timer to delete. item must be a timer, an epg tag or a channel.
      * @return true, if the timer was deleted successfully, false otherwise.
      */
-    bool DeleteTimer(const CFileItemPtr &item) const;
+    bool DeleteTimer(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Delete a timer rule, always showing a confirmation dialog.
      * @param item containing a timer rule to delete. item must be a timer, an epg tag or a channel.
      * @return true, if the timer rule was deleted successfully, false otherwise.
      */
-    bool DeleteTimerRule(const CFileItemPtr &item) const;
+    bool DeleteTimerRule(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open a dialog with information for a given recording.
      * @param item containing a recording.
      * @return true on success, false otherwise.
      */
-    bool ShowRecordingInfo(const CFileItemPtr &item) const;
+    bool ShowRecordingInfo(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Toggle recording on the currently playing channel, if any.
@@ -193,28 +198,35 @@ namespace PVR
      * @param item containing a recording to stop. item must be a timer, an epg tag or a channel.
      * @return true, if the recording was stopped successfully, false otherwise.
      */
-    bool StopRecording(const CFileItemPtr &item) const;
+    bool StopRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open the recording settings dialog to edit a recording.
      * @param item containing the recording to edit.
      * @return true on success, false otherwise.
      */
-    bool EditRecording(const CFileItemPtr &item) const;
+    bool EditRecording(const std::shared_ptr<CFileItem>& item) const;
+
+    /*!
+     * @brief Check if any recording settings can be edited.
+     * @param item containing the recording to edit.
+     * @return true on success, false otherwise.
+     */
+    bool CanEditRecording(const CFileItem& item) const;
 
     /*!
      * @brief Rename a recording, showing a text input dialog.
      * @param item containing a recording to rename.
      * @return true, if the recording was renamed successfully, false otherwise.
      */
-    bool RenameRecording(const CFileItemPtr &item) const;
+    bool RenameRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Delete a recording, always showing a confirmation dialog.
      * @param item containing a recording to delete.
      * @return true, if the recording was deleted successfully, false otherwise.
      */
-    bool DeleteRecording(const CFileItemPtr &item) const;
+    bool DeleteRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Delete all recordings from trash, always showing a confirmation dialog.
@@ -227,7 +239,7 @@ namespace PVR
      * @param item containing a recording to undelete.
      * @return true, if the recording was undeleted successfully, false otherwise.
      */
-    bool UndeleteRecording(const CFileItemPtr &item) const;
+    bool UndeleteRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Get a localized resume play label, if the given item can be resumed.
@@ -242,7 +254,7 @@ namespace PVR
      * @param bFallbackToPlay controls whether playback of the recording should be started at the beginning ig no resume data are available.
      * @return true on success, false otherwise.
      */
-    bool ResumePlayRecording(const CFileItemPtr &item, bool bFallbackToPlay) const;
+    bool ResumePlayRecording(const std::shared_ptr<CFileItem>& item, bool bFallbackToPlay) const;
 
     /*!
      * @brief Play recording.
@@ -250,14 +262,14 @@ namespace PVR
      * @param bCheckResume controls resume check.
      * @return true on success, false otherwise.
      */
-    bool PlayRecording(const CFileItemPtr &item, bool bCheckResume) const;
+    bool PlayRecording(const std::shared_ptr<CFileItem>& item, bool bCheckResume) const;
 
     /*!
      * @brief Play EPG tag.
      * @param item containing an epg tag.
      * @return true on success, false otherwise.
      */
-    bool PlayEpgTag(const CFileItemPtr &item) const;
+    bool PlayEpgTag(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Switch channel.
@@ -265,14 +277,14 @@ namespace PVR
      * @param bCheckResume controls resume check in case a recording for the current epg event is present.
      * @return true on success, false otherwise.
      */
-    bool SwitchToChannel(const CFileItemPtr &item, bool bCheckResume) const;
+    bool SwitchToChannel(const std::shared_ptr<CFileItem>& item, bool bCheckResume) const;
 
     /*!
      * @brief Playback the given file item.
      * @param item containing a channel or a recording.
      * @return True if the item could be played, false otherwise.
      */
-    bool PlayMedia(const CFileItemPtr &item) const;
+    bool PlayMedia(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Start playback of the last played channel, and if there is none, play first channel in the current channelgroup.
@@ -292,7 +304,7 @@ namespace PVR
      * @param item containing a channel or an epg tag.
      * @return true on success, false otherwise.
      */
-    bool HideChannel(const CFileItemPtr &item) const;
+    bool HideChannel(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open a selection dialog and start a channel scan on the selected client.
@@ -306,11 +318,10 @@ namespace PVR
     bool IsRunningChannelScan() const { return m_bChannelScanRunning; }
 
     /*!
-     * @brief Open selection and progress PVR actions.
-     * @param item The selected file item for which the hook was called.
+     * @brief Select and invoke client-specific settings actions
      * @return true on success, false otherwise.
      */
-    bool ProcessMenuHooks(const CFileItemPtr &item);
+    bool ProcessSettingsMenuHooks();
 
     /*!
      * @brief Reset the TV database to it's initial state and delete all the data.
@@ -343,6 +354,18 @@ namespace PVR
      * @return True if system can be safely powered down, false otherwise.
      */
     bool CanSystemPowerdown(bool bAskUser = true) const;
+
+    /*!
+     * @brief Create a new reminder timer, non-interactive.
+     * @param item containing epg data to create a reminder timer for. item must be an epg tag.
+     * @return true, if the timer was created successfully, false otherwise.
+     */
+    bool AddReminder(const std::shared_ptr<CFileItem>& item) const;
+
+    /*!
+     * @brief Announce due reminders, if any.
+     */
+    void AnnounceReminders() const;
 
     /*!
      * @brief Get the currently selected item path; used across several windows/dialogs to share item selection.
@@ -388,13 +411,13 @@ namespace PVR
      * @brief Inform GUI actions that playback of an item just started.
      * @param item The item that started to play.
      */
-    void OnPlaybackStarted(const CFileItemPtr &item);
+    void OnPlaybackStarted(const std::shared_ptr<CFileItem>& item);
 
     /*!
-     * @brief Inform GUI actions manager that playback of an item was stopped due to user interaction.
+     * @brief Inform GUI actions that playback of an item was stopped due to user interaction.
      * @param item The item that stopped to play.
      */
-    void OnPlaybackStopped(const CFileItemPtr &item);
+    void OnPlaybackStopped(const std::shared_ptr<CFileItem>& item);
 
   private:
     CPVRGUIActions(const CPVRGUIActions&) = delete;
@@ -412,9 +435,10 @@ namespace PVR
      * @param item containing epg data to create a timer or timer rule for. item must be an epg tag or a channel.
      * @param bCreateteRule denotes whether to create a one-shot timer or a timer rule.
      * @param bShowTimerSettings is used to control whether a settings dialog will be opened prior creating the timer or timer rule.
+     * @param bFallbackToOneShotTimer if bCreateteRule is true and no timer rule can be created, try to create a one-shot timer instead.
      * @return true, if the timer or timer rule was created successfully, false otherwise.
      */
-    bool AddTimer(const CFileItemPtr &item, bool bCreateRule, bool bShowTimerSettings) const;
+    bool AddTimer(const std::shared_ptr<CFileItem>& item, bool bCreateRule, bool bShowTimerSettings, bool bFallbackToOneShotTimer) const;
 
     /*!
      * @brief Delete a timer or timer rule, always showing a confirmation dialog.
@@ -423,7 +447,7 @@ namespace PVR
      * @param bDeleteRule denotes to delete a timer rule. For convenience, one can pass a timer created by a rule.
      * @return true, if the timer or timer rule was deleted successfully, false otherwise.
     */
-    bool DeleteTimer(const CFileItemPtr &item, bool bIsRecording, bool bDeleteRule) const;
+    bool DeleteTimer(const std::shared_ptr<CFileItem>& item, bool bIsRecording, bool bDeleteRule) const;
 
     /*!
      * @brief Delete a timer or timer rule, showing a confirmation dialog in case a timer currently recording shall be deleted.
@@ -457,7 +481,7 @@ namespace PVR
      * @param item the recording to delete.
      * @return true, to proceed with delete, false otherwise.
      */
-    bool ConfirmDeleteRecording(const CFileItemPtr &item) const;
+    bool ConfirmDeleteRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Open a dialog to confirm to permanently remove all deleted recordings.
@@ -477,7 +501,7 @@ namespace PVR
      * @param item containing a recording or an epg tag.
      * @return true, to play/resume the item, false otherwise.
      */
-    bool CheckResumeRecording(const CFileItemPtr &item) const;
+    bool CheckResumeRecording(const std::shared_ptr<CFileItem>& item) const;
 
     /*!
      * @brief Check "play minimized" settings value and switch to fullscreen if not set.
@@ -493,8 +517,14 @@ namespace PVR
     void StartPlayback(CFileItem *item, bool bFullscreen) const;
 
     bool AllLocalBackendsIdle(CPVRTimerInfoTagPtr& causingEvent) const;
-    bool EventOccursOnLocalBackend(const CFileItemPtr& item) const;
+    bool EventOccursOnLocalBackend(const std::shared_ptr<CFileItem>& item) const;
     bool IsNextEventWithinBackendIdleTime(void) const;
+
+    /*!
+     * @brief Announce and process a reminder timer.
+     * @param timer The reminder timer.
+     */
+    void AnnounceReminder(const std::shared_ptr<CPVRTimerInfoTag>& timer) const;
 
     mutable CCriticalSection m_critSection;
     CPVRChannelSwitchingInputHandler m_channelNumberInputHandler;
@@ -503,6 +533,7 @@ namespace PVR
     CPVRGUIChannelNavigator m_channelNavigator;
     std::string m_selectedItemPathTV;
     std::string m_selectedItemPathRadio;
+    mutable bool m_bReminderAnnouncementRunning = false;
   };
 
 } // namespace PVR

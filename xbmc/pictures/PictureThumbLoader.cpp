@@ -7,22 +7,24 @@
  */
 
 #include "PictureThumbLoader.h"
+
+#include "FileItem.h"
+#include "GUIUserMessages.h"
 #include "Picture.h"
 #include "ServiceBroker.h"
-#include "filesystem/File.h"
-#include "FileItem.h"
 #include "TextureCache.h"
+#include "URL.h"
 #include "filesystem/Directory.h"
+#include "filesystem/File.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "GUIUserMessages.h"
-#include "utils/FileExtensionProvider.h"
-#include "utils/URIUtils.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/FileExtensionProvider.h"
+#include "utils/URIUtils.h"
 #include "video/VideoThumbLoader.h"
-#include "URL.h"
 
 using namespace XFILE;
 
@@ -82,7 +84,7 @@ bool CPictureThumbLoader::LoadItemCached(CFileItem* pItem)
       {
         thumb = thumbURL;
       }
-      else if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MYVIDEOS_EXTRACTTHUMB) && CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MYVIDEOS_EXTRACTFLAGS))
+      else if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MYVIDEOS_EXTRACTTHUMB) && CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MYVIDEOS_EXTRACTFLAGS))
       {
         CFileItem item(*pItem);
         CThumbExtractor* extract = new CThumbExtractor(item, pItem->GetPath(), true, thumbURL);
@@ -200,7 +202,7 @@ void CPictureThumbLoader::ProcessFoldersAndArchives(CFileItem *pItem)
             {
               ProcessFoldersAndArchives(item.get());
               pItem->SetArt("thumb", items[i]->GetArt("thumb"));
-              pItem->SetIconImage(items[i]->GetIconImage());
+              pItem->SetArt("icon", items[i]->GetArt("icon"));
               return;
             }
           }
@@ -232,8 +234,8 @@ void CPictureThumbLoader::ProcessFoldersAndArchives(CFileItem *pItem)
         {
           CTextureDetails details;
           details.file = relativeCacheFile;
-          details.width = g_advancedSettings.m_imageRes;
-          details.height = g_advancedSettings.m_imageRes;
+          details.width = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_imageRes;
+          details.height = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_imageRes;
           CTextureCache::GetInstance().AddCachedTexture(thumb, details);
           db.SetTextureForPath(pItem->GetPath(), "thumb", thumb);
           pItem->SetArt("thumb", CTextureCache::GetCachedPath(relativeCacheFile));

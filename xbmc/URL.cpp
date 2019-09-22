@@ -72,7 +72,7 @@ void CURL::Parse(const std::string& strURL1)
     // This should turn into zip://rar:///foo/bar.zip/alice.rar/bob.avi
     iPos = 0;
     bool is_apk = (strURL.find(".apk/", iPos) != std::string::npos);
-    while (1)
+    while (true)
     {
       if (is_apk)
         iPos = strURL.find(".apk/", iPos);
@@ -463,7 +463,13 @@ std::string CURL::GetWithoutOptions() const
   if (m_strProtocol.empty())
     return m_strFileName;
 
-  return GetWithoutFilename() + m_strFileName;
+  std::string strGet = GetWithoutFilename();
+
+  // Prevent double slash when concatenating host part and filename part
+  if (m_strFileName.size() && (m_strFileName[0] == '/' || m_strFileName[0] == '\\') && URIUtils::HasSlashAtEnd(strGet))
+    URIUtils::RemoveSlashAtEnd(strGet);
+
+  return strGet + m_strFileName;
 }
 
 std::string CURL::GetWithoutUserDetails(bool redact) const

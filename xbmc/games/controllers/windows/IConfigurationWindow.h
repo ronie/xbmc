@@ -9,8 +9,8 @@
 #pragma once
 
 #include "games/controllers/ControllerTypes.h"
-#include "input/joysticks/JoystickTypes.h"
 #include "input/InputTypes.h"
+#include "input/joysticks/JoystickTypes.h"
 
 #include <string>
 #include <vector>
@@ -35,8 +35,6 @@ class CEvent;
  *   3) When the wizard's active feature loses focus, the wizard is cancelled
  *      and the prompt for input ends.
  */
-
-#include "input/joysticks/JoystickTypes.h"
 
 namespace KODI
 {
@@ -66,9 +64,10 @@ namespace GAME
 
     /*!
      * \brief Refresh the contents of the list
+     * \param controllerId The controller to focus, or empty to leave focus unchanged
      * \return True if the list was changed
      */
-    virtual bool Refresh(void) = 0;
+    virtual bool Refresh(const std::string& controllerId) = 0;
 
     /*
      * \brief  The specified controller has been focused

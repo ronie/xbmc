@@ -8,9 +8,8 @@
 
 #pragma once
 
-#if defined(TARGET_ANDROID)
-#include "filesystem/IDirectory.h"
 #include "FileItem.h"
+#include "filesystem/IDirectory.h"
 namespace XFILE
 {
 
@@ -26,5 +25,3 @@ public:
   virtual DIR_CACHE_TYPE GetCacheType(const CURL& url) const override { return DIR_CACHE_NEVER; }
 };
 }
-#endif
-

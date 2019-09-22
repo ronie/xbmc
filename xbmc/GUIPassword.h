@@ -8,13 +8,12 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
+#include "LockType.h"
 #include "settings/lib/ISettingCallback.h"
 #include "settings/lib/SettingLevel.h"
-#include "LockType.h"
-#include "SettingsLock.h"
+
+#include <string>
+#include <vector>
 
 class CFileItem;
 class CMediaSource;

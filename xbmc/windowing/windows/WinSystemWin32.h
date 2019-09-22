@@ -12,6 +12,7 @@
 #include "threads/CriticalSection.h"
 #include "threads/SystemClock.h"
 #include "windowing/WinSystem.h"
+
 #include <vector>
 
 static const DWORD WINDOWED_STYLE = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
@@ -185,7 +186,8 @@ protected:
   DWORD m_windowExStyle;                      // the ex style of the window
   bool m_inFocus;
   bool m_bMinimized;
-  bool m_bSizeMoveEnabled{ false };
+  bool m_bSizeMoveEnabled = false;
+  bool m_bFirstResChange = true;
   std::unique_ptr<CIRServerSuite> m_irss;
   std::vector<MONITOR_DETAILS> m_displays;
 };

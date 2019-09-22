@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include <string>
-
 #include "settings/SettingControl.h"
 #include "settings/SettingCreator.h"
 #include "settings/SettingsBase.h"
+
+#include <string>
 
 class CSettingList;
 class TiXmlNode;
@@ -95,10 +95,6 @@ public:
   static const std::string SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP;
   static const std::string SETTING_VIDEOPLAYER_RENDERMETHOD;
   static const std::string SETTING_VIDEOPLAYER_HQSCALERS;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODEC;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG2;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG4;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECH264;
   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODEC;
   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE;
   static const std::string SETTING_VIDEOPLAYER_USEVDPAU;
@@ -107,7 +103,6 @@ public:
   static const std::string SETTING_VIDEOPLAYER_USEVDPAUMPEG4;
   static const std::string SETTING_VIDEOPLAYER_USEVDPAUVC1;
   static const std::string SETTING_VIDEOPLAYER_USEDXVA2;
-  static const std::string SETTING_VIDEOPLAYER_USEOMXPLAYER;
   static const std::string SETTING_VIDEOPLAYER_USEVTB;
   static const std::string SETTING_VIDEOPLAYER_USEMMAL;
   static const std::string SETTING_VIDEOPLAYER_USEPRIMEDECODER;
@@ -161,7 +156,7 @@ public:
   static const std::string SETTING_PVRMANAGER_CHANNELSCAN;
   static const std::string SETTING_PVRMANAGER_RESETDB;
   static const std::string SETTING_PVRMENU_DISPLAYCHANNELINFO;
-  static const std::string SETTING_PVRMENU_USESIMPLETIMESHIFTOSD;
+  static const std::string SETTING_PVRMENU_CLOSECHANNELOSDONSWITCH;
   static const std::string SETTING_PVRMENU_ICONPATH;
   static const std::string SETTING_PVRMENU_SEARCHICONS;
   static const std::string SETTING_EPG_PAST_DAYSTODISPLAY;
@@ -170,12 +165,13 @@ public:
   static const std::string SETTING_EPG_HIDENOINFOAVAILABLE;
   static const std::string SETTING_EPG_EPGUPDATE;
   static const std::string SETTING_EPG_PREVENTUPDATESWHILEPLAYINGTV;
-  static const std::string SETTING_EPG_IGNOREDBFORCLIENT;
+  static const std::string SETTING_EPG_STOREEPGINDATABASE;
   static const std::string SETTING_EPG_RESETEPG;
   static const std::string SETTING_PVRPLAYBACK_SWITCHTOFULLSCREEN;
   static const std::string SETTING_PVRPLAYBACK_SIGNALQUALITY;
   static const std::string SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH;
   static const std::string SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT;
+  static const std::string SETTING_PVRPLAYBACK_DELAYMARKLASTWATCHED;
   static const std::string SETTING_PVRPLAYBACK_FPS;
   static const std::string SETTING_PVRRECORD_INSTANTRECORDACTION;
   static const std::string SETTING_PVRRECORD_INSTANTRECORDTIME;
@@ -183,6 +179,8 @@ public:
   static const std::string SETTING_PVRRECORD_MARGINEND;
   static const std::string SETTING_PVRRECORD_TIMERNOTIFICATIONS;
   static const std::string SETTING_PVRRECORD_GROUPRECORDINGS;
+  static const std::string SETTING_PVRREMINDERS_AUTOCLOSEDELAY;
+  static const std::string SETTING_PVRREMINDERS_AUTORECORD;
   static const std::string SETTING_PVRPOWERMANAGEMENT_ENABLED;
   static const std::string SETTING_PVRPOWERMANAGEMENT_BACKENDIDLETIME;
   static const std::string SETTING_PVRPOWERMANAGEMENT_SETWAKEUPCMD;
@@ -373,6 +371,10 @@ public:
   static const std::string SETTING_SOURCE_VIDEOS;
   static const std::string SETTING_SOURCE_MUSIC;
   static const std::string SETTING_SOURCE_PICTURES;
+  // values for SETTING_VIDEOLIBRARY_SHOWUNWATCHEDPLOTS
+  static const int VIDEOLIBRARY_PLOTS_SHOW_UNWATCHED_MOVIES = 0;
+  static const int VIDEOLIBRARY_PLOTS_SHOW_UNWATCHED_TVSHOWEPISODES = 1;
+  static const int VIDEOLIBRARY_THUMB_SHOW_UNWATCHED_EPISODE = 2;
 
   /*!
    \brief Creates a new settings wrapper around a new settings manager.

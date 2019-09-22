@@ -7,16 +7,16 @@
  */
 
 #include "ApplicationPlayer.h"
-#include "cores/DataCacheCore.h"
-#include "cores/IPlayer.h"
-#include "cores/playercorefactory/PlayerCoreFactory.h"
-#include "cores/VideoPlayer/VideoPlayer.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "cores/DataCacheCore.h"
+
 #include "Application.h"
 #include "PlayListPlayer.h"
 #include "ServiceBroker.h"
+#include "cores/DataCacheCore.h"
+#include "cores/IPlayer.h"
+#include "cores/VideoPlayer/VideoPlayer.h"
+#include "cores/playercorefactory/PlayerCoreFactory.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
 #include "settings/MediaSettings.h"
 
 CApplicationPlayer::CApplicationPlayer()
@@ -37,10 +37,15 @@ void CApplicationPlayer::ClosePlayer()
   if (player)
   {
     CloseFile();
-    // we need to do this directly on the member
-    CSingleLock lock(m_playerLock);
-    m_pPlayer.reset();
+    ResetPlayer();
   }
+}
+
+void CApplicationPlayer::ResetPlayer()
+{
+  // we need to do this directly on the member
+  CSingleLock lock(m_playerLock);
+  m_pPlayer.reset();
 }
 
 void CApplicationPlayer::CloseFile(bool reopen)
@@ -113,6 +118,15 @@ bool CApplicationPlayer::OpenFile(const CFileItem& item, const CPlayerOptions& o
         m_pPlayer.reset();
       }
       return true;
+    }
+  }
+  else if (player && player->m_name != newPlayer)
+  {
+    CloseFile();
+    {
+      CSingleLock lock(m_playerLock);
+      m_pPlayer.reset();
+      player.reset();
     }
   }
 
@@ -996,4 +1010,13 @@ void CApplicationPlayer::SetUpdateStreamDetails()
   CVideoPlayer* vp = dynamic_cast<CVideoPlayer*>(player.get());
   if (vp)
     vp->SetUpdateStreamDetails();
+}
+
+bool CApplicationPlayer::HasGameAgent()
+{
+  std::shared_ptr<IPlayer> player = GetInternal();
+  if (player)
+    return player->HasGameAgent();
+
+  return false;
 }

@@ -7,8 +7,11 @@
  */
 
 #include "Artist.h"
-#include "utils/XMLUtils.h"
+
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/XMLUtils.h"
 
 #include <algorithm>
 
@@ -68,17 +71,19 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
   if (!append)
     Reset();
 
+  const std::string itemSeparator = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator;
+
   XMLUtils::GetString(artist,                "name", strArtist);
   XMLUtils::GetString(artist, "musicBrainzArtistID", strMusicBrainzArtistID);
   XMLUtils::GetString(artist,            "sortname", strSortName);
   XMLUtils::GetString(artist, "type", strType);
   XMLUtils::GetString(artist, "gender", strGender);
   XMLUtils::GetString(artist, "disambiguation", strDisambiguation);
-  XMLUtils::GetStringArray(artist,       "genre", genre, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist,       "style", styles, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist,        "mood", moods, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist, "yearsactive", yearsActive, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist, "instruments", instruments, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist,       "genre", genre, prioritise, itemSeparator);
+  XMLUtils::GetStringArray(artist,       "style", styles, prioritise, itemSeparator);
+  XMLUtils::GetStringArray(artist,        "mood", moods, prioritise, itemSeparator);
+  XMLUtils::GetStringArray(artist, "yearsactive", yearsActive, prioritise, itemSeparator);
+  XMLUtils::GetStringArray(artist, "instruments", instruments, prioritise, itemSeparator);
 
   XMLUtils::GetString(artist,      "born", strBorn);
   XMLUtils::GetString(artist,    "formed", strFormed);
@@ -207,18 +212,18 @@ bool CArtist::Save(TiXmlNode *node, const std::string &tag, const std::string& s
   }
 
   // Discography
-  for (std::vector<std::pair<std::string,std::string> >::const_iterator it = discography.begin(); it != discography.end(); ++it)
+  for (const auto& it : discography)
   {
     // add a <album> tag
     TiXmlElement cast("album");
     TiXmlNode *node = artist->InsertEndChild(cast);
     TiXmlElement title("title");
     TiXmlNode *titleNode = node->InsertEndChild(title);
-    TiXmlText name(it->first);
+    TiXmlText name(it.first);
     titleNode->InsertEndChild(name);
     TiXmlElement year("year");
     TiXmlNode *yearNode = node->InsertEndChild(year);
-    TiXmlText name2(it->second);
+    TiXmlText name2(it.second);
     yearNode->InsertEndChild(name2);
   }
 

@@ -9,10 +9,11 @@
 #pragma once
 
 #include "OSScreenSaver.h"
+#include "Resolution.h"
 #include "VideoSync.h"
 #include "WinEvents.h"
 #include "guilib/DispResource.h"
-#include "Resolution.h"
+
 #include <memory>
 #include <vector>
 
@@ -30,9 +31,12 @@ struct REFRESHRATE
   int   ResInfo_Index;
 };
 
+class CDPMSSupport;
 class CGraphicContext;
 class CRenderSystemBase;
 class IRenderLoop;
+
+struct VideoPicture;
 
 class CWinSystemBase
 {
@@ -139,8 +143,25 @@ public:
   // Access render system interface
   CGraphicContext& GetGfxContext();
 
+  /**
+   * Get OS specific hardware context
+   *
+   * \return OS specific context or nullptr if OS not have
+   *
+   * \note This function is currently only related to Windows with DirectX,
+   * all other OS where use GL returns nullptr.
+   * Returned Windows class pointer is ID3D11DeviceContext1.
+   */
+  virtual void* GetHWContext() { return nullptr; }
+
+  std::shared_ptr<CDPMSSupport> GetDPMSManager();
+  virtual bool SetHDR(const VideoPicture* videoPicture) { return false; };
+  virtual bool IsHDRDisplay() { return false; };
+
+  static const char* SETTING_WINSYSTEM_IS_HDR_DISPLAY;
+
 protected:
-  void UpdateDesktopResolution(RESOLUTION_INFO& newRes, int width, int height, float refreshRate, uint32_t dwFlags);
+  void UpdateDesktopResolution(RESOLUTION_INFO& newRes, const std::string &output, int width, int height, float refreshRate, uint32_t dwFlags);
   virtual std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() { return nullptr; }
 
   int m_nWidth = 0;
@@ -157,4 +178,5 @@ protected:
 
   std::unique_ptr<IWinEvents> m_winEvents;
   std::unique_ptr<CGraphicContext> m_gfxContext;
+  std::shared_ptr<CDPMSSupport> m_dpms;
 };

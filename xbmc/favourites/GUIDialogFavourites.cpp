@@ -7,20 +7,20 @@
  */
 
 #include "GUIDialogFavourites.h"
+
+#include "ContextMenuManager.h"
+#include "FileItem.h"
+#include "ServiceBroker.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "ServiceBroker.h"
 #include "favourites/FavouritesService.h"
 #include "filesystem/Directory.h"
 #include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
 #include "guilib/GUIKeyboardFactory.h"
-#include "input/Key.h"
-#include "filesystem/File.h"
-#include "FileItem.h"
+#include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
 #include "storage/MediaManager.h"
-#include "ContextMenuManager.h"
 #include "utils/Variant.h"
 
 using namespace XFILE;
@@ -241,7 +241,7 @@ bool CGUIDialogFavourites::ChooseAndSetNewThumbnail(const CFileItemPtr &item)
   }
 
   const CFileItemPtr none(std::make_shared<CFileItem>("thumb://None", false));
-  none->SetIconImage(item->GetIconImage());
+  none->SetArt("icon", item->GetArt("icon"));
   none->SetLabel(g_localizeStrings.Get(20018)); // No thumb
   prefilledItems.Add(none);
 

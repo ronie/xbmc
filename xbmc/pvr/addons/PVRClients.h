@@ -8,15 +8,15 @@
 
 #pragma once
 
-#include <functional>
-#include <map>
-#include <string>
-#include <vector>
-
 #include "addons/AddonManager.h"
 #include "addons/PVRClient.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
 #include "threads/CriticalSection.h"
+
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace ADDON
 {
@@ -160,6 +160,8 @@ namespace PVR
      */
     int EnabledClientAmount(void) const;
 
+    //@}
+
     /*! @name general methods */
     //@{
 
@@ -173,12 +175,6 @@ namespace PVR
 
     /*! @name Timer methods */
     //@{
-
-    /*!
-     * @brief Check whether there is at least one created client supporting timers.
-     * @return True if at least one created client supports timers, false otherwise.
-     */
-    bool SupportsTimers() const;
 
     /*!
      * @brief Get all timers from all created clients

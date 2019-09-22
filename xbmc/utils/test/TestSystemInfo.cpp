@@ -9,14 +9,11 @@
 #include "utils/SystemInfo.h"
 #include "settings/Settings.h"
 #include "GUIInfoManager.h"
+#if defined(TARGET_WINDOWS)
 #include "platform/win32/CharsetConverter.h"
-
-#include "gtest/gtest.h"
-
-#ifdef TARGET_WINDOWS_STORE
-#include <algorithm>
-using namespace Windows::Storage;
 #endif
+
+#include <gtest/gtest.h>
 
 class TestSystemInfo : public testing::Test
 {
@@ -241,13 +238,6 @@ TEST_F(TestSystemInfo, GetUserAgent)
   EXPECT_NE(std::string::npos, g_sysinfo.GetUserAgent().find(" Version/")) << "'GetUserAgent()' must contain ' Version/'";
 }
 
-#ifndef TARGET_DARWIN
-TEST_F(TestSystemInfo, HasVideoToolBoxDecoder)
-{
-  EXPECT_FALSE(g_sysinfo.HasVideoToolBoxDecoder()) << "'HasVideoToolBoxDecoder()' must return 'false'";
-}
-#endif
-
 TEST_F(TestSystemInfo, GetBuildTargetPlatformName)
 {
   EXPECT_EQ(std::string::npos, g_sysinfo.GetBuildTargetPlatformName().find("Unknown")) << "'GetBuildTargetPlatformName()' must not contain 'Unknown', actual value: '" << g_sysinfo.GetBuildTargetPlatformName() << "'";
@@ -305,18 +295,7 @@ TEST_F(TestSystemInfo, GetDiskSpace)
 #ifdef TARGET_WINDOWS
   using KODI::PLATFORM::WINDOWS::FromW;
   wchar_t sysDrive[300];
-#if defined(TARGET_WINDOWS_STORE)
-  DWORD res = 0;
-  auto values = ApplicationData::Current->LocalSettings->Values;
-  if (values->HasKey(L"SystemDrive"))
-  {
-    auto value = safe_cast<Platform::String^>(values->Lookup(L"SystemDrive"));
-    wcscpy_s(sysDrive, value->Data());
-    res = value->Length();
-  }
-#else
   DWORD res = GetEnvironmentVariableW(L"SystemDrive", sysDrive, sizeof(sysDrive) / sizeof(wchar_t));
-#endif
   std::string sysDriveLtr;
   if (res != 0 && res <= sizeof(sysDrive) / sizeof(wchar_t))
     sysDriveLtr.assign(FromW(sysDrive), 0, 1);

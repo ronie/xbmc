@@ -8,29 +8,29 @@
 
 #include "General.h"
 
-#include "addons/kodi-addon-dev-kit/include/kodi/General.h"
-
-#include "LangInfo.h"
 #include "Application.h"
 #include "CompileInfo.h"
+#include "LangInfo.h"
 #include "ServiceBroker.h"
 #include "addons/binary-addons/AddonDll.h"
 #include "addons/binary-addons/BinaryAddonManager.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/General.h"
 #include "addons/settings/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "filesystem/Directory.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/LocalizeStrings.h"
-#ifdef TARGET_POSIX
-#include "platform/linux/XMemUtils.h"
-#endif
+#include "input/KeyboardLayout.h"
+#include "input/KeyboardLayoutManager.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/CharsetConverter.h"
 #include "utils/Digest.h"
-#include "utils/log.h"
 #include "utils/LangCodeExpander.h"
+#include "utils/MemUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <string.h>
 
@@ -55,8 +55,10 @@ void Interface_General::Init(AddonGlobalInterface* addonInterface)
   addonInterface->toKodi->kodi->get_region = get_region;
   addonInterface->toKodi->kodi->get_free_mem = get_free_mem;
   addonInterface->toKodi->kodi->get_global_idle_time = get_global_idle_time;
-  addonInterface->toKodi->kodi->get_current_skin_id = get_current_skin_id;
   addonInterface->toKodi->kodi->kodi_version = kodi_version;
+  addonInterface->toKodi->kodi->get_current_skin_id = get_current_skin_id;
+  addonInterface->toKodi->kodi->get_keyboard_layout = get_keyboard_layout;
+  addonInterface->toKodi->kodi->change_keyboard_layout = change_keyboard_layout;
 }
 
 void Interface_General::DeInit(AddonGlobalInterface* addonInterface)
@@ -384,11 +386,10 @@ void Interface_General::get_free_mem(void* kodiBase, long* free, long* total, bo
     return;
   }
 
-  MEMORYSTATUSEX stat;
-  stat.dwLength = sizeof(MEMORYSTATUSEX);
-  GlobalMemoryStatusEx(&stat);
-  *free = static_cast<long>(stat.ullAvailPhys);
-  *total = static_cast<long>(stat.ullTotalPhys);
+  KODI::MEMORY::MemoryStatus stat;
+  KODI::MEMORY::GetMemoryStatus(&stat);
+  *free = static_cast<long>(stat.availPhys);
+  *total = static_cast<long>(stat.totalPhys);
   if (!as_bytes)
   {
     *free = *free / ( 1024 * 1024 );
@@ -408,18 +409,6 @@ int Interface_General::get_global_idle_time(void* kodiBase)
   return g_application.GlobalIdleTime();
 }
 
-char* Interface_General::get_current_skin_id(void* kodiBase)
-{
-  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
-  if (addon == nullptr)
-  {
-    CLog::Log(LOGERROR, "Interface_General::%s - invalid data (addon='%p')", __FUNCTION__, kodiBase);
-    return nullptr;
-  }
-
-  return strdup(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN).c_str());
-}
-
 void Interface_General::kodi_version(void* kodiBase, char** compile_name, int* major, int* minor, char** revision, char** tag, char** tagversion)
 {
   CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
@@ -434,7 +423,7 @@ void Interface_General::kodi_version(void* kodiBase, char** compile_name, int* m
               static_cast<void*>(tagversion));
     return;
   }
-
+    
   *compile_name = strdup(CCompileInfo::GetAppName());
   *major = CCompileInfo::GetMajor();
   *minor = CCompileInfo::GetMinor();
@@ -459,6 +448,92 @@ void Interface_General::kodi_version(void* kodiBase, char** compile_name, int* m
     *tag = strdup("stable");
   else
     *tag = strdup("prealpha");
+}
+
+char* Interface_General::get_current_skin_id(void* kodiBase)
+{
+  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+  if (addon == nullptr)
+  {
+    CLog::Log(LOGERROR, "Interface_General::%s - invalid data (addon='%p')", __FUNCTION__, kodiBase);
+    return nullptr;
+  }
+
+  return strdup(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN).c_str());
+}
+
+bool Interface_General::get_keyboard_layout(void* kodiBase, char** layout_name, int modifier_key, AddonKeyboardKeyTable* c_layout)
+{
+  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+  if (addon == nullptr || c_layout == nullptr || layout_name == nullptr)
+  {
+    CLog::Log(LOGERROR, "Interface_General::%s - invalid data (addon='%p', c_layout='%p', layout_name='%p')",
+              __FUNCTION__, kodiBase, static_cast<void*>(c_layout), static_cast<void*>(layout_name));
+    return false;
+  }
+
+  std::string activeLayout = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOCALE_ACTIVEKEYBOARDLAYOUT);
+
+  CKeyboardLayout layout;
+  if (!CKeyboardLayoutManager::GetInstance().GetLayout(activeLayout, layout))
+    return false;
+
+  *layout_name = strdup(layout.GetName().c_str());
+
+  unsigned int modifiers = CKeyboardLayout::ModifierKeyNone;
+  if (modifier_key & STD_KB_MODIFIER_KEY_SHIFT)
+    modifiers |= CKeyboardLayout::ModifierKeyShift;
+  if (modifier_key & STD_KB_MODIFIER_KEY_SYMBOL)
+    modifiers |= CKeyboardLayout::ModifierKeySymbol;
+
+  for (unsigned int row = 0; row < STD_KB_BUTTONS_MAX_ROWS; row++)
+  {
+    for (unsigned int column = 0; column < STD_KB_BUTTONS_PER_ROW; column++)
+    {
+      std::string label = layout.GetCharAt(row, column, modifiers);
+      c_layout->keys[row][column] = strdup(label.c_str());
+    }
+  }
+
+  return true;
+}
+
+bool Interface_General::change_keyboard_layout(void* kodiBase, char** layout_name)
+{
+  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+  if (addon == nullptr || layout_name == nullptr)
+  {
+    CLog::Log(LOGERROR, "Interface_General::%s - invalid data (addon='%p', layout_name='%p')", __FUNCTION__, kodiBase, static_cast<void*>(layout_name));
+    return false;
+  }
+
+  std::vector<CKeyboardLayout> layouts;
+  unsigned int currentLayout = 0;
+
+  const KeyboardLayouts& keyboardLayouts = CKeyboardLayoutManager::GetInstance().GetLayouts();
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  std::vector<CVariant> layoutNames = settings->GetList(CSettings::SETTING_LOCALE_KEYBOARDLAYOUTS);
+  std::string activeLayout = settings->GetString(CSettings::SETTING_LOCALE_ACTIVEKEYBOARDLAYOUT);
+
+  for (const auto& layoutName : layoutNames)
+  {
+    const auto keyboardLayout = keyboardLayouts.find(layoutName.asString());
+    if (keyboardLayout != keyboardLayouts.end())
+    {
+      layouts.emplace_back(keyboardLayout->second);
+      if (layoutName.asString() == activeLayout)
+        currentLayout = layouts.size() - 1;
+    }
+  }
+
+  currentLayout++;
+  if (currentLayout >= layouts.size())
+    currentLayout = 0;
+  CKeyboardLayout layout = layouts.empty() ? CKeyboardLayout() : layouts[currentLayout];
+  CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_LOCALE_ACTIVEKEYBOARDLAYOUT, layout.GetName());
+
+  *layout_name = strdup(layout.GetName().c_str());
+  return true;
 }
 
 } /* namespace ADDON */

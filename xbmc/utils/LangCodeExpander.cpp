@@ -6,13 +6,13 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <algorithm>
-#include <array>
-
 #include "LangCodeExpander.h"
-#include "Util.h"
+
 #include "utils/StringUtils.h"
 #include "utils/XBMCTinyXML.h"
+
+#include <algorithm>
+#include <array>
 
 #define MAKECODE(a, b, c, d)  ((((long)(a)) << 24) | (((long)(b)) << 16) | (((long)(c)) << 8) | (long)(d))
 #define MAKETWOCHARCODE(a, b) ((((long)(a)) << 8) | (long)(b))
@@ -331,7 +331,13 @@ bool CLangCodeExpander::ConvertToISO6391(const std::string& lang, std::string& c
     }
 
     if (tmp.length() == 3)
+    {
+      // there's only an iso639-2 code that is identical to the language name, e.g. Yao
+      if (StringUtils::EqualsNoCase(tmp, lang))
+        return false;
+
       return ConvertToISO6391(tmp, code);
+    }
   }
 
   return false;

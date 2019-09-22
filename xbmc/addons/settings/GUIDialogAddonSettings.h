@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "settings/dialogs/GUIDialogSettingsManagerBase.h"
 #include "addons/IAddon.h"
+#include "settings/dialogs/GUIDialogSettingsManagerBase.h"
 
 class CGUIDialogAddonSettings : public CGUIDialogSettingsManagerBase
 {
@@ -19,6 +19,7 @@ public:
 
   // specializations of CGUIControl
   bool OnMessage(CGUIMessage &message) override;
+  bool OnAction(const CAction& action) override;
 
   static bool ShowForAddon(const ADDON::AddonPtr &addon, bool saveToDisk = true);
   static void SaveAndClose();

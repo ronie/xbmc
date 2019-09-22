@@ -9,13 +9,14 @@
 #pragma once
 
 #include "AndroidUtils.h"
-
 #include "rendering/gles/RenderSystemGLES.h"
 #include "threads/CriticalSection.h"
-#include "windowing/WinSystem.h"
 #include "threads/Timer.h"
-#include "EGL/egl.h"
+#include "windowing/WinSystem.h"
 
+#include <EGL/egl.h>
+
+class CDecoderFilterManager;
 class IDispResource;
 
 class CWinSystemAndroid : public CWinSystemBase, public ITimerCallback
@@ -34,7 +35,9 @@ public:
   bool DestroyWindow() override;
   void UpdateResolutions() override;
 
-  void SetHDMIState(bool connected, uint32_t timeoutMs = 0);
+  void SetHDMIState(bool connected);
+
+  void UpdateDisplayModes();
 
   bool HasCursor() override { return false; };
 
@@ -47,6 +50,7 @@ public:
 
   // winevents override
   bool MessagePump() override;
+  bool IsHDRDisplay() override;
 
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
@@ -74,4 +78,8 @@ protected:
 
   CCriticalSection m_resourceSection;
   std::vector<IDispResource*> m_resources;
+  CDecoderFilterManager *m_decoderFilterManager;
+
+private:
+  void UpdateResolutions(bool bUpdateDesktopRes);
 };

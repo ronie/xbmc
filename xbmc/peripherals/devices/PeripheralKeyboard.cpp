@@ -7,6 +7,7 @@
  */
 
 #include "PeripheralKeyboard.h"
+
 #include "input/InputManager.h"
 #include "peripherals/Peripherals.h"
 #include "threads/SingleLock.h"
@@ -75,6 +76,8 @@ void CPeripheralKeyboard::UnregisterKeyboardDriverHandler(KODI::KEYBOARD::IKeybo
 
 bool CPeripheralKeyboard::OnKeyPress(const CKey& key)
 {
+  m_lastActive = CDateTime::GetCurrentDateTime();
+
   CSingleLock lock(m_mutex);
 
   bool bHandled = false;

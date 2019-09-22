@@ -6,8 +6,8 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <sys/resource.h>
 #include <signal.h>
+#include <sys/resource.h>
 
 #include <cstring>
 
@@ -25,7 +25,7 @@
 #include "PlayListPlayer.h"
 #include "platform/MessagePrinter.h"
 #include "platform/xbmc.h"
-#include "settings/AdvancedSettings.h"
+#include "PlatformPosix.h"
 #include "utils/log.h"
 
 #ifdef HAS_LIRC
@@ -37,31 +37,14 @@
 namespace
 {
 
-class CPOSIXSignalHandleThread : public CThread
-{
-public:
-  CPOSIXSignalHandleThread()
-  : CThread("POSIX signal handler")
-  {}
-protected:
-  void Process() override
-  {
-    CMessagePrinter::DisplayMessage("Exiting application");
-    KODI::MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
-  }
-};
-
 extern "C"
 {
 
 void XBMC_POSIX_HandleSignal(int sig)
 {
-  // Spawn handling thread: the current thread that this signal was catched on
-  // might have been interrupted in a call to PostMsg() while holding a lock
-  // there, which would lead to a deadlock if PostMsg() was called directly here
-  // as PostMsg() is not supposed to be reentrant
-  auto thread = new CPOSIXSignalHandleThread;
-  thread->Create(true);
+  // Setting an atomic flag is one of the only useful things that is permitted by POSIX
+  // in signal handlers
+  CPlatformPosix::RequestQuit();
 }
 
 }
@@ -88,8 +71,6 @@ int main(int argc, char* argv[])
 
   setlocale(LC_NUMERIC, "C");
 
-  // Initialize before CAppParamParser so it can set the log level
-  g_advancedSettings.Initialize();
   CAppParamParser appParamParser;
   appParamParser.Parse(argv, argc);
 

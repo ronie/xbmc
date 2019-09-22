@@ -12,10 +12,13 @@
 #include "games/GameTypes.h"
 #include "guilib/GUIDialog.h"
 
+#include <memory>
+
 namespace KODI
 {
 namespace GAME
 {
+  class CControllerInstaller;
   class IControllerList;
   class IFeatureList;
 
@@ -39,11 +42,15 @@ namespace GAME
     void OnControllerSelected(unsigned int controllerIndex);
     void OnFeatureFocused(unsigned int featureIndex);
     void OnFeatureSelected(unsigned int featureIndex);
-    void OnEvent(const ADDON::CRepositoryUpdater::RepositoryUpdated& event);
     void UpdateButtons(void);
+
+    // Callbacks for events
+    void OnEvent(const ADDON::CRepositoryUpdater::RepositoryUpdated& event);
+    void OnEvent(const ADDON::AddonEvent& event);
 
     // Action for the available button
     void GetMoreControllers(void);
+    void GetAllControllers();
     void ResetController(void);
     void ShowHelp(void);
     void ShowButtonCaptureDialog(void);
@@ -53,6 +60,9 @@ namespace GAME
 
     // Game paremeters
     GameClientPtr m_gameClient;
+
+    // Controller parameters
+    std::unique_ptr<CControllerInstaller> m_installer;
   };
 }
 }

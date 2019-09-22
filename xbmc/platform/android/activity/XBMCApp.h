@@ -8,24 +8,6 @@
 
 #pragma once
 
-#include <math.h>
-#include <pthread.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
-
-#include <android/native_activity.h>
-
-#include <androidjni/Activity.h>
-#include <androidjni/AudioManager.h>
-#include <androidjni/BroadcastReceiver.h>
-#include <androidjni/SurfaceHolder.h>
-#include <androidjni/View.h>
-
-#include "threads/Event.h"
-#include "interfaces/IAnnouncer.h"
-
 #include "IActivityHandler.h"
 #include "IInputHandler.h"
 #include "JNIMainActivity.h"
@@ -33,8 +15,24 @@
 #include "JNIXBMCDisplayManagerDisplayListener.h"
 #include "JNIXBMCMainView.h"
 #include "JNIXBMCMediaSession.h"
+#include "interfaces/IAnnouncer.h"
 #include "platform/xbmc.h"
+#include "threads/Event.h"
 #include "utils/Geometry.h"
+
+#include <map>
+#include <math.h>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <android/native_activity.h>
+#include <androidjni/Activity.h>
+#include <androidjni/AudioManager.h>
+#include <androidjni/BroadcastReceiver.h>
+#include <androidjni/SurfaceHolder.h>
+#include <androidjni/View.h>
+#include <pthread.h>
 
 // forward declares
 class CJNIWakeLock;
@@ -43,6 +41,8 @@ class CVariant;
 class IInputDeviceCallbacks;
 class IInputDeviceEventHandler;
 class CVideoSyncAndroid;
+class CJNIActivityManager;
+
 typedef struct _JNIEnv JNIEnv;
 
 struct androidIcon
@@ -191,11 +191,13 @@ public:
   void ProcessSlow();
 
   static bool WaitVSync(unsigned int milliSeconds);
-  static int64_t GetNextFrameTime(){ return m_frameTimeNanos; };
+  static int64_t GetNextFrameTime();
+  static float GetFrameLatencyMs();
 
   bool getVideosurfaceInUse();
   void setVideosurfaceInUse(bool videosurfaceInUse);
 
+  bool GetMemoryInfo(long& availMem, long& totalMem);
 protected:
   // limit who can access Volume
   friend class CAESinkAUDIOTRACK;
@@ -228,6 +230,7 @@ private:
   static bool m_headsetPlugged;
   static bool m_hdmiPlugged;
   static bool m_hdmiReportedState;
+  static bool m_hdmiSource;
   static IInputDeviceCallbacks* m_inputDeviceCallbacks;
   static IInputDeviceEventHandler* m_inputDeviceEventHandler;
   static bool m_hasReqVisible;
@@ -243,6 +246,9 @@ private:
 
   static CVideoSyncAndroid* m_syncImpl;
   static CEvent m_vsyncEvent;
+  static CEvent m_displayChangeEvent;
+
+  std::unique_ptr<CJNIActivityManager> m_activityManager;
 
   void XBMC_Pause(bool pause);
   void XBMC_Stop();

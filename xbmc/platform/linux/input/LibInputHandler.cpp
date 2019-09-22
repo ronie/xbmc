@@ -7,16 +7,18 @@
  */
 
 #include "LibInputHandler.h"
+
 #include "LibInputKeyboard.h"
 #include "LibInputPointer.h"
+#include "LibInputSettings.h"
 #include "LibInputTouch.h"
-
 #include "utils/log.h"
 
 #include <algorithm>
+#include <string.h>
+
 #include <fcntl.h>
 #include <linux/input.h>
-#include <string.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -90,6 +92,7 @@ CLibInputHandler::CLibInputHandler() : CThread("libinput")
   m_keyboard.reset(new CLibInputKeyboard());
   m_pointer.reset(new CLibInputPointer());
   m_touch.reset(new CLibInputTouch());
+  m_settings.reset(new CLibInputSettings(this));
 }
 
 CLibInputHandler::~CLibInputHandler()
@@ -98,6 +101,11 @@ CLibInputHandler::~CLibInputHandler()
 
   libinput_unref(m_li);
   udev_unref(m_udev);
+}
+
+bool CLibInputHandler::SetKeymap(const std::string& layout)
+{
+  return m_keyboard->SetKeymap(layout);
 }
 
 void CLibInputHandler::Start()
@@ -129,7 +137,7 @@ void CLibInputHandler::Process()
 
   while (!m_bStop)
   {
-    epoll_wait(epollFd, &event, 1, -1);
+    epoll_wait(epollFd, &event, 1, 200);
 
     ret = libinput_dispatch(m_li);
     if (ret < 0)
@@ -173,6 +181,9 @@ void CLibInputHandler::ProcessEvent(libinput_event *ev)
       break;
     case LIBINPUT_EVENT_POINTER_MOTION:
       m_pointer->ProcessMotion(libinput_event_get_pointer_event(ev));
+      break;
+    case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
+      m_pointer->ProcessMotionAbsolute(libinput_event_get_pointer_event(ev));
       break;
     case LIBINPUT_EVENT_POINTER_AXIS:
       m_pointer->ProcessAxis(libinput_event_get_pointer_event(ev));

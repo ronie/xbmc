@@ -6,9 +6,11 @@
  *  See LICENSES/README.md for more information.
  */
 #include "UISoundsResource.h"
+
 #include "ServiceBroker.h"
 #include "guilib/GUIAudioManager.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 
@@ -24,7 +26,7 @@ bool CUISoundsResource::IsAllowed(const std::string& file) const
 
 bool CUISoundsResource::IsInUse() const
 {
-  return CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN) == ID();
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SOUNDSKIN) == ID();
 }
 
 void CUISoundsResource::OnPostInstall(bool update, bool modal)

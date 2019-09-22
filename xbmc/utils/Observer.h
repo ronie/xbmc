@@ -9,6 +9,7 @@
 #pragma once
 
 #include "threads/CriticalSection.h"
+
 #include <atomic>
 #include <vector>
 
@@ -24,6 +25,7 @@ typedef enum
   ObservableMessageEpgContainer,
   ObservableMessageEpgActiveItem,
   ObservableMessageEpgItemUpdate,
+  ObservableMessageEpgUpdatePending,
   ObservableMessageChannelGroup,
   ObservableMessageChannelGroupReset,
   ObservableMessageTimers,

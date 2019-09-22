@@ -15,10 +15,9 @@
 #include "Application.h"
 #include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
-#include "utils/URIUtils.h"
 #include "aojsonrpc.h"
 #ifndef TARGET_WINDOWS
-#include "XTimeUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 #include "guilib/LocalizeStrings.h"
 #include "GUIInfoManager.h"
@@ -30,8 +29,8 @@
 #include "FileItem.h"
 #include "LangInfo.h"
 #include "PlayListPlayer.h"
-#include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "guilib/TextureManager.h"
 #include "Util.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
@@ -39,6 +38,7 @@
 #include "storage/MediaManager.h"
 #include "utils/FileExtensionProvider.h"
 #include "utils/LangCodeExpander.h"
+#include "utils/MemUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
 #include "AddonUtils.h"
@@ -51,10 +51,6 @@
 
 using namespace KODI;
 using namespace KODI::MESSAGING;
-
-#ifdef TARGET_POSIX
-#include "platform/linux/XMemUtils.h"
-#endif
 
 namespace XBMCAddon
 {
@@ -178,7 +174,7 @@ namespace XBMCAddon
     String getSkinDir()
     {
       XBMC_TRACE;
-      return CServiceBroker::GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
+      return CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
     }
 
     String getLanguage(int format /* = CLangCodeExpander::ENGLISH_NAME */, bool region /*= false*/)
@@ -252,10 +248,9 @@ namespace XBMCAddon
     long getFreeMem()
     {
       XBMC_TRACE;
-      MEMORYSTATUSEX stat;
-      stat.dwLength = sizeof(MEMORYSTATUSEX);
-      GlobalMemoryStatusEx(&stat);
-      return (long)(stat.ullAvailPhys  / ( 1024 * 1024 ));
+      KODI::MEMORY::MemoryStatus stat;
+      KODI::MEMORY::GetMemoryStatus(&stat);
+      return static_cast<long>(stat.availPhys  / ( 1024 * 1024 ));
     }
 
     // getCpuTemp() method

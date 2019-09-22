@@ -7,18 +7,33 @@
  */
 
 #include "GUIDialogIgnoreInput.h"
+
 #include "guilib/LocalizeStrings.h"
+#include "input/joysticks/JoystickTranslator.h"
 #include "input/joysticks/interfaces/IButtonMap.h"
 #include "input/joysticks/interfaces/IButtonMapCallback.h"
-#include "input/joysticks/JoystickTranslator.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
 
 #include <algorithm>
 #include <iterator>
 
 using namespace KODI;
 using namespace GAME;
+
+bool CGUIDialogIgnoreInput::AcceptsPrimitive(JOYSTICK::PRIMITIVE_TYPE type) const
+{
+  switch (type)
+  {
+  case JOYSTICK::PRIMITIVE_TYPE::BUTTON:
+  case JOYSTICK::PRIMITIVE_TYPE::SEMIAXIS:
+    return true;
+  default:
+    break;
+  }
+
+  return false;
+}
 
 std::string CGUIDialogIgnoreInput::GetDialogText()
 {

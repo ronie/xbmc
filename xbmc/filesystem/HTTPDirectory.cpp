@@ -7,17 +7,21 @@
  */
 
 #include "HTTPDirectory.h"
-#include "URL.h"
+
 #include "CurlFile.h"
 #include "FileItem.h"
-#include "utils/RegExp.h"
+#include "ServiceBroker.h"
+#include "URL.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/StringUtils.h"
+#include "settings/SettingsComponent.h"
 #include "utils/CharsetConverter.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
 #include "utils/HTMLUtil.h"
-#include "climits"
+#include "utils/RegExp.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+
+#include <climits>
 
 using namespace XFILE;
 
@@ -101,6 +105,18 @@ bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         strLinkOptions = strLinkBase.substr(pos);
         strLinkBase.erase(pos);
       }
+      
+      // encoding + and ; to URL encode if it is not already encoded by http server used on the remote server (example: Apache)
+      // more characters may be added here when required when required by certain http servers
+      pos = strLinkBase.find_first_of("+;");
+      while (pos != std::string::npos) 
+      {
+        std::stringstream convert;
+        convert << '%' << std::hex << int(strLinkBase.at(pos));
+        strLinkBase.replace(pos, 1, convert.str());
+        pos = strLinkBase.find_first_of("+;");
+      }
+
       std::string strLinkTemp = strLinkBase;
 
       URIUtils::RemoveSlashAtEnd(strLinkTemp);
@@ -214,7 +230,7 @@ bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
             pItem->m_dwSize = (int64_t)Size;
           }
           else
-          if (g_advancedSettings.m_bHTTPDirectoryStatFilesize) // As a fallback get the size by stat-ing the file (slow)
+          if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bHTTPDirectoryStatFilesize) // As a fallback get the size by stat-ing the file (slow)
           {
             CCurlFile file;
             file.Open(url);

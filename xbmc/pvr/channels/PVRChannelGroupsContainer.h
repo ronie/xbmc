@@ -8,14 +8,15 @@
 
 #pragma once
 
+#include "pvr/PVRTypes.h"
 #include "threads/CriticalSection.h"
-
-#include "pvr/channels/PVRChannelGroups.h"
-
-class CURL;
 
 namespace PVR
 {
+  class CPVRChannel;
+  class CPVRChannelGroups;
+  class CPVREpgInfoTag;
+
   class CPVRChannelGroupsContainer
   {
   public:
@@ -113,28 +114,18 @@ namespace PVR
     CPVRChannelPtr GetChannelByEpgId(int iEpgId) const;
 
     /*!
-     * @brief Get the groups list for a directory.
-     * @param strBase The directory path.
-     * @param results The file list to store the results in.
-     * @param bRadio Get radio channels or tv channels.
-     * @return True if the list was filled successfully.
+     * @brief Get the channel for the given epg tag.
+     * @param epgTag The epg tag.
+     * @return The channel.
      */
-    bool GetGroupsDirectory(CFileItemList *results, bool bRadio) const;
+    std::shared_ptr<CPVRChannel> GetChannelForEpgTag(const std::shared_ptr<CPVREpgInfoTag>& epgTag) const;
 
     /*!
      * @brief Get a channel given it's path.
      * @param strPath The path.
-     * @return The channel or NULL if it wasn't found.
+     * @return The channel or nullptr if it wasn't found.
      */
-    CFileItemPtr GetByPath(const std::string &strPath) const;
-
-    /*!
-     * @brief Get the directory for a path.
-     * @param strPath The path.
-     * @param results The file list to store the results in.
-     * @return True if the directory was found, false if not.
-     */
-    bool GetDirectory(const std::string& strPath, CFileItemList &results) const;
+    std::shared_ptr<CPVRChannel> GetByPath(const std::string& strPath) const;
 
     /*!
      * @brief Get the group that is currently selected in the UI.
@@ -152,15 +143,10 @@ namespace PVR
     CPVRChannelPtr GetByUniqueID(int iUniqueChannelId, int iClientID) const;
 
     /*!
-     * @brief Try to find missing channel icons automatically
+     * @brief Get the channel that was played last.
+     * @return The requested channel or nullptr.
      */
-    void SearchMissingChannelIcons(void) const;
-
-    /*!
-     * @brief The channel that was played last that has a valid client or NULL if there was none.
-     * @return The requested channel.
-     */
-    CFileItemPtr GetLastPlayedChannel(void) const;
+    std::shared_ptr<CPVRChannel> GetLastPlayedChannel() const;
 
     /*!
      * @brief The group that was played last and optionally contains the given channel.
@@ -198,8 +184,6 @@ namespace PVR
   private :
     CPVRChannelGroupsContainer& operator=(const CPVRChannelGroupsContainer&) = delete;
     CPVRChannelGroupsContainer(const CPVRChannelGroupsContainer&) = delete;
-
-    bool FilterDirectory(const CURL &url, CFileItemList &results) const;
 
     bool m_bLoaded = false;
   };

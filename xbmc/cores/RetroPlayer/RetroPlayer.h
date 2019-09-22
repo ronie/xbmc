@@ -9,9 +9,9 @@
 #pragma once
 
 #include "RetroPlayerAutoSave.h"
+#include "cores/IPlayer.h"
 #include "cores/RetroPlayer/guibridge/IGameCallback.h"
 #include "cores/RetroPlayer/playback/IPlaybackControl.h"
-#include "cores/IPlayer.h"
 #include "games/GameTypes.h"
 #include "guilib/DispResource.h"
 #include "threads/CriticalSection.h"
@@ -66,6 +66,7 @@ namespace RETRO
     void FrameMove() override;
     void Render(bool clear, uint32_t alpha = 255, bool gui = true) override;
     bool IsRenderingVideo() override;
+    bool HasGameAgent() override;
 
     // Implementation of IGameCallback
     std::string GameClientID() const override;

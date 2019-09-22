@@ -7,20 +7,20 @@
  */
 
 #include "VideoPlayerCodec.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
+
+#include "ServiceBroker.h"
+#include "URL.h"
 #include "cores/AudioEngine/AEResampleFactory.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
-
-#include "cores/VideoPlayer/DVDInputStreams/DVDFactoryInputStream.h"
-#include "cores/VideoPlayer/DVDDemuxers/DVDFactoryDemuxer.h"
-#include "cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.h"
-#include "cores/VideoPlayer/DVDStreamInfo.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
+#include "cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.h"
+#include "cores/VideoPlayer/DVDDemuxers/DVDFactoryDemuxer.h"
+#include "cores/VideoPlayer/DVDInputStreams/DVDFactoryInputStream.h"
+#include "cores/VideoPlayer/DVDStreamInfo.h"
 #include "music/tags/TagLoaderTagLib.h"
-#include "utils/log.h"
-#include "URL.h"
 #include "utils/StringUtils.h"
-#include "ServiceBroker.h"
+#include "utils/log.h"
 
 VideoPlayerCodec::VideoPlayerCodec()
 {
@@ -161,7 +161,7 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
   CDVDStreamInfo hint(*pStream, true);
 
   CAEStreamInfo::DataType ptStreamTye = GetPassthroughStreamType(hint.codec, hint.samplerate);
-  m_pAudioCodec = CDVDFactoryCodec::CreateAudioCodec(hint, *m_processInfo.get(), true, true, ptStreamTye);
+  m_pAudioCodec = CDVDFactoryCodec::CreateAudioCodec(hint, *m_processInfo, true, true, ptStreamTye);
   if (!m_pAudioCodec)
   {
     CLog::Log(LOGERROR, "%s: Could not create audio codec", __FUNCTION__);
@@ -510,7 +510,12 @@ CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID cod
       break;
 
     case AV_CODEC_ID_DTS:
-      format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
+      format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD;
+      format.m_streamInfo.m_sampleRate = samplerate;
+      break;
+
+    case AV_CODEC_ID_TRUEHD:
+      format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_TRUEHD;
       format.m_streamInfo.m_sampleRate = samplerate;
       break;
 
@@ -519,6 +524,12 @@ CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID cod
   }
 
   bool supports = CServiceBroker::GetActiveAE()->SupportsRaw(format);
+
+  if (!supports && codecId == AV_CODEC_ID_DTS)
+  {
+    format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
+    supports = CServiceBroker::GetActiveAE()->SupportsRaw(format);
+  }
 
   if (supports)
     return format.m_streamInfo.m_type;

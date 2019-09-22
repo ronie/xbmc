@@ -6,22 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <taglib/id3v1genres.h>
 #include "cddb.h"
+
 #include "CompileInfo.h"
+#include "ServiceBroker.h"
+#include "filesystem/File.h"
 #include "network/DNSNameCache.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
-#include "filesystem/File.h"
+#include "settings/SettingsComponent.h"
 #include "utils/CharsetConverter.h"
-#include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <memory>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <taglib/id3v1genres.h>
 
 using namespace MEDIA_DETECT;
 using namespace CDDB;
@@ -33,7 +37,7 @@ Xcddb::Xcddb()
 #else
     : m_cddb_socket(close, -1)
 #endif
-    , m_cddb_ip_address(g_advancedSettings.m_cddbAddress)
+    , m_cddb_ip_address(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cddbAddress)
 {
   m_lastError = 0;
 }
@@ -501,9 +505,8 @@ void Xcddb::parseData(const char *buffer)
   }
 
   // parse keywords
-  for (std::list<std::string>::const_iterator it = keywordsOrder.begin(); it != keywordsOrder.end(); ++it)
+  for (const std::string& strKeyword : keywordsOrder)
   {
-    std::string strKeyword = *it;
     std::string strValue = keywords[strKeyword];
 
     //! @todo STRING_CLEANUP

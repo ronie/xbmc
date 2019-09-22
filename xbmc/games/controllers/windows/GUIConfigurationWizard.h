@@ -10,10 +10,10 @@
 
 #include "IConfigurationWindow.h"
 #include "games/controllers/ControllerFeature.h"
+#include "input/XBMC_keysym.h"
 #include "input/joysticks/DriverPrimitive.h"
 #include "input/joysticks/interfaces/IButtonMapper.h"
 #include "input/keyboard/interfaces/IKeyboardDriverHandler.h"
-#include "input/XBMC_keysym.h"
 #include "threads/CriticalSection.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
@@ -55,6 +55,7 @@ namespace GAME
     // implementation of IButtonMapper
     virtual std::string ControllerID(void) const override { return m_strControllerId; }
     virtual bool NeedsCooldown(void) const override { return true; }
+    virtual bool AcceptsPrimitive(JOYSTICK::PRIMITIVE_TYPE type) const override { return true; }
     virtual bool MapPrimitive(JOYSTICK::IButtonMap* buttonMap,
                               IKeymap* keymap,
                               const JOYSTICK::CDriverPrimitive& primitive) override;

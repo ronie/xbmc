@@ -6,32 +6,30 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "GUIDialogContentSettings.h"
+
+#include "ServiceBroker.h"
+#include "addons/AddonSystemSettings.h"
+#include "addons/GUIWindowAddonBrowser.h"
+#include "addons/settings/GUIDialogAddonSettings.h"
+#include "dialogs/GUIDialogKaiToast.h"
+#include "dialogs/GUIDialogSelect.h"
+#include "filesystem/AddonsDirectory.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "settings/lib/Setting.h"
+#include "settings/lib/SettingsManager.h"
+#include "settings/windows/GUIControlSettings.h"
+#include "utils/log.h"
+#include "video/VideoInfoScanner.h"
+
+#include <limits.h>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <limits.h>
-
-#include "GUIDialogContentSettings.h"
-#include "ServiceBroker.h"
-#include "addons/AddonSystemSettings.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
-#include "addons/GUIWindowAddonBrowser.h"
-#include "filesystem/AddonsDirectory.h"
-#include "dialogs/GUIDialogKaiToast.h"
-#include "dialogs/GUIDialogSelect.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/LocalizeStrings.h"
-#include "interfaces/builtins/Builtins.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
-#include "settings/windows/GUIControlSettings.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "video/VideoInfoScanner.h"
 
 #define SETTING_CONTENT_TYPE          "contenttype"
 #define SETTING_SCRAPER_LIST          "scraperlist"

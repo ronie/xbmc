@@ -7,12 +7,11 @@
  */
 
 #include "ControllerTopology.h"
+
 #include "ControllerDefinitions.h"
-#include "games/controllers/Controller.h"
-#include "games/GameServices.h"
-#include "utils/log.h"
 #include "utils/XMLUtils.h"
-#include "ServiceManager.h"
+#include "utils/log.h"
+
 #include <algorithm>
 
 using namespace KODI;

@@ -78,14 +78,14 @@ extern "C"
    * Request the EPG for a channel from the backend.
    * EPG entries are added to Kodi by calling TransferEpgEntry() on the callback.
    * @param handle Handle to pass to the callback method.
-   * @param channel The channel to get the EPG table for.
+   * @param iChannelUid The UID of the channel to get the EPG table for.
    * @param iStart Get events after this time (UTC).
    * @param iEnd Get events before this time (UTC).
    * @return PVR_ERROR_NO_ERROR if the table has been fetched successfully.
    * @remarks Required if bSupportsEPG is set to true.
    *          Return PVR_ERROR_NOT_IMPLEMENTED if this add-on won't provide this function.
    */
-  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL& channel, time_t iStart, time_t iEnd);
+  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd);
 
   /*
    * Check if the given EPG tag can be recorded.
@@ -316,7 +316,7 @@ extern "C"
   /*!
    * Set the last watched position of a recording on the backend.
    * @param recording The recording.
-   * @param position The last watched position in seconds
+   * @param lastplayedposition The last watched position in seconds
    * @return PVR_ERROR_NO_ERROR if the position has been stored successfully.
    * @remarks Required if bSupportsLastPlayedPosition is set to true.
    *          Return PVR_ERROR_NOT_IMPLEMENTED if this add-on won't provide this function.
@@ -413,6 +413,7 @@ extern "C"
    * @param channel The channel to stream.
    * @return True if the stream has been opened successfully, false otherwise.
    * @remarks Required if bHandlesInputStream or bHandlesDemuxing is set to true.
+   *          CloseLiveStream() will always be called by Kodi prior to calling this function.
    *          Return false if this add-on won't provide this function.
    */
   bool OpenLiveStream(const PVR_CHANNEL& channel);
@@ -483,7 +484,7 @@ extern "C"
 
   /*!
    * Get the stream properties for a recording from the backend.
-   * @param[in] channel The recording to get the stream properties for.
+   * @param[in] recording The recording to get the stream properties for.
    * @param[inout] properties in: an array for the properties to return, out: the properties required to play the stream.
    * @param[inout] iPropertiesCount in: the size of the properties array, out: the number of properties returned.
    * @return PVR_ERROR_NO_ERROR if the stream is available.
@@ -497,7 +498,7 @@ extern "C"
    * Get the stream properties of the stream that's currently being read.
    * @param pProperties The properties of the currently playing stream.
    * @return PVR_ERROR_NO_ERROR if the properties have been fetched successfully.
-   * @remarks Required if bHandlesInputStream or bHandlesDemuxing is set to true.
+   * @remarks Required if bHandlesDemuxing is set to true.
    *          Return PVR_ERROR_NOT_IMPLEMENTED if this add-on won't provide this function.
    */
   PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES* pProperties);
@@ -523,6 +524,7 @@ extern "C"
    * @param recording The recording to open.
    * @return True if the stream has been opened successfully, false otherwise.
    * @remarks Optional, and only used if bSupportsRecordings is set to true.
+   *          CloseRecordedStream() will always be called by Kodi prior to calling this function.
    *          Return false if this add-on won't provide this function.
    */
   bool OpenRecordedStream(const PVR_RECORDING& recording);
@@ -639,16 +641,17 @@ extern "C"
   void SetSpeed(int speed);
 
   /*!
+   * Notify the pvr addon/demuxer that Kodi wishes to fill demux queue
+   * @param mode The requested filling mode
+   * @remarks Optional, and only used if addon has its own demuxer.
+   */
+  void FillBuffer(bool mode);
+
+  /*!
    *  Get the hostname of the pvr backend server
    *  @return hostname as ip address or alias. If backend does not utilize a server, return empty string.
    */
   const char* GetBackendHostname();
-
-  /*!
-   *  Check if timeshift is active
-   *  @return true if timeshift is active
-   */
-  bool IsTimeshifting();
 
   /*!
    *  Check for real-time streaming
@@ -751,6 +754,7 @@ extern "C"
     pClient->toAddon.CanSeekStream                  = CanSeekStream;
     pClient->toAddon.SeekTime                       = SeekTime;
     pClient->toAddon.SetSpeed                       = SetSpeed;
+    pClient->toAddon.FillBuffer                     = FillBuffer;
 
     pClient->toAddon.OpenRecordedStream             = OpenRecordedStream;
     pClient->toAddon.CloseRecordedStream            = CloseRecordedStream;
@@ -765,7 +769,6 @@ extern "C"
 
     pClient->toAddon.GetBackendHostname             = GetBackendHostname;
 
-    pClient->toAddon.IsTimeshifting                 = IsTimeshifting;
     pClient->toAddon.IsRealTimeStream               = IsRealTimeStream;
 
     pClient->toAddon.SetEPGTimeFrame                = SetEPGTimeFrame;

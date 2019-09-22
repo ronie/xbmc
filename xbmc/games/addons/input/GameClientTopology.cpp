@@ -7,6 +7,7 @@
  */
 
 #include "GameClientTopology.h"
+
 #include "GameClientDevice.h"
 #include "GameClientPort.h"
 #include "games/controllers/Controller.h"
@@ -19,14 +20,17 @@ using namespace GAME;
 
 #define CONTROLLER_ADDRESS_SEPARATOR  "/"
 
-CGameClientTopology::CGameClientTopology(GameClientPortVec ports) :
-  m_ports(std::move(ports))
+CGameClientTopology::CGameClientTopology(GameClientPortVec ports, int playerLimit) :
+  m_ports(std::move(ports)),
+  m_playerLimit(playerLimit),
+  m_controllers(GetControllerTree(m_ports))
 {
 }
 
-CControllerTree CGameClientTopology::GetControllerTree() const
+void CGameClientTopology::Clear()
 {
-  return GetControllerTree(m_ports);
+  m_ports.clear();
+  m_controllers.Clear();
 }
 
 CControllerTree CGameClientTopology::GetControllerTree(const GameClientPortVec &ports)
@@ -95,9 +99,9 @@ std::string CGameClientTopology::MakeAddress(const std::string &baseAddress, con
   std::ostringstream address;
 
   if (!baseAddress.empty())
-    address << baseAddress << CONTROLLER_ADDRESS_SEPARATOR;
+    address << baseAddress;
 
-  address << nodeId;
+  address << CONTROLLER_ADDRESS_SEPARATOR << nodeId;
 
   return address.str();
 }

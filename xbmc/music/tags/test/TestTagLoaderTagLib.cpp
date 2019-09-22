@@ -6,17 +6,18 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "gtest/gtest.h"
-#include "music/tags/TagLoaderTagLib.h"
 #include "music/tags/MusicInfoTag.h"
-#include <taglib/tpropertymap.h>
+#include "music/tags/TagLoaderTagLib.h"
+
+#include <gtest/gtest.h>
+#include <taglib/apetag.h>
+#include <taglib/asftag.h>
+#include <taglib/id3v1genres.h>
 #include <taglib/id3v1tag.h>
 #include <taglib/id3v2tag.h>
-#include <taglib/apetag.h>
-#include <taglib/xiphcomment.h>
-#include <taglib/id3v1genres.h>
-#include <taglib/asftag.h>
 #include <taglib/mp4tag.h>
+#include <taglib/tpropertymap.h>
+#include <taglib/xiphcomment.h>
 
 using namespace TagLib;
 using namespace MUSIC_INFO;
@@ -49,11 +50,17 @@ TYPED_TEST(TestTagParser, ParsesBasicTag) {
   EXPECT_EQ(1985, tag.GetYear());
   EXPECT_EQ(2, tag.GetTrackNumber());
   EXPECT_EQ(1u, tag.GetArtist().size());
-  if (!tag.GetArtist().empty()) EXPECT_EQ("artist", tag.GetArtist().front());
+  if (!tag.GetArtist().empty())
+  {
+    EXPECT_EQ("artist", tag.GetArtist().front());
+  }
   EXPECT_EQ("album", tag.GetAlbum());
   EXPECT_EQ("comment", tag.GetComment());
   EXPECT_EQ(1u, tag.GetGenre().size());
-  if (!tag.GetGenre().empty()) EXPECT_EQ("Jazz", tag.GetGenre().front());
+  if (!tag.GetGenre().empty())
+  {
+    EXPECT_EQ("Jazz", tag.GetGenre().front());
+  }
   EXPECT_EQ("title", tag.GetTitle());
 }
 
@@ -130,10 +137,16 @@ TYPED_TEST(TestTagParser, FooProperties) {
   EXPECT_EQ(0, tag.GetYear());
   EXPECT_EQ(0, tag.GetTrackNumber());
   EXPECT_EQ(1u, tag.GetArtist().size());
-  if (!tag.GetArtist().empty()) EXPECT_EQ("foo", tag.GetArtist().front());
+  if (!tag.GetArtist().empty())
+  {
+    EXPECT_EQ("foo", tag.GetArtist().front());
+  }
   EXPECT_EQ("foo", tag.GetAlbum());
   EXPECT_EQ("foo", tag.GetComment());
-  if (!tag.GetGenre().empty()) EXPECT_EQ("foo", tag.GetGenre().front());
+  if (!tag.GetGenre().empty())
+  {
+    EXPECT_EQ("foo", tag.GetGenre().front());
+  }
   EXPECT_EQ("foo", tag.GetTitle());
 }
 

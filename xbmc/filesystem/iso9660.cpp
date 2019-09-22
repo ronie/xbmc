@@ -36,8 +36,8 @@ ISO9660
 
 #ifndef TARGET_WINDOWS
 #include "storage/DetectDVDType.h"  // for MODE2_DATA_SIZE etc.
-#include "platform/linux/XFileUtils.h"
-#include "platform/linux/XTimeUtils.h"
+#include "platform/posix/XFileUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #else
 #include "platform/win32/CharsetConverter.h"
 #endif
@@ -238,7 +238,7 @@ struct iso_dirtree *iso9660::ReadRecursiveDirFromSector( DWORD sector, const cha
 
   strcpy( m_lastpath->path, path );
 
-  while ( 1 )
+  while ( true )
   {
     if ( isodir.ucRecordLength )
       iso9660searchpointer += isodir.ucRecordLength;
@@ -325,7 +325,7 @@ struct iso_dirtree *iso9660::ReadRecursiveDirFromSector( DWORD sector, const cha
   iso9660searchpointer = 0;
   memcpy( &curr_dir, pCurr_dir_cache, sizeof(isodir) );
   memcpy( &isodir, pCurr_dir_cache, sizeof(isodir) );
-  while ( 1 )
+  while ( true )
   {
     if ( isodir.ucRecordLength )
       iso9660searchpointer += isodir.ucRecordLength;

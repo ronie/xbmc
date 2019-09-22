@@ -16,7 +16,6 @@
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIProgressControl.h"
 #include "guilib/GUILabelControl.h"
-#include "video/dialogs/GUIDialogVideoOSD.h"
 #include "video/dialogs/GUIDialogSubtitleSettings.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
@@ -24,12 +23,10 @@
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "FileItem.h"
-#include "utils/CPUInfo.h"
 #include "guilib/LocalizeStrings.h"
-#include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
-#include "XBDateTime.h"
 #include "windowing/WinSystem.h"
 #include "cores/IPlayer.h"
 #include "guilib/guiinfo/GUIInfoLabels.h"
@@ -38,14 +35,14 @@
 #include <stdio.h>
 #include <algorithm>
 #if defined(TARGET_DARWIN)
-#include "platform/linux/LinuxResourceCounter.h"
+#include "platform/posix/PosixResourceCounter.h"
 #endif
 
 using namespace KODI::GUILIB;
 using namespace KODI::MESSAGING;
 
 #if defined(TARGET_DARWIN)
-static CLinuxResourceCounter m_resourceCounter;
+static CPosixResourceCounter m_resourceCounter;
 #endif
 
 CGUIWindowFullScreen::CGUIWindowFullScreen()
@@ -256,7 +253,7 @@ bool CGUIWindowFullScreen::OnMessage(CGUIMessage& message)
 
       CGUIWindow::OnMessage(message);
 
-      CServiceBroker::GetSettings()->Save();
+      CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
 
       CServiceBroker::GetWinSystem()->GetGfxContext().SetFullScreenVideo(false);
 

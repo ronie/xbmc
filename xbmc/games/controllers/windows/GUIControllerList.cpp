@@ -8,47 +8,44 @@
 
 #include "GUIControllerList.h"
 
-#include <algorithm>
-#include <assert.h>
-#include <iterator>
-
 #include "GUIControllerDefines.h"
 #include "GUIControllerWindow.h"
 #include "GUIFeatureList.h"
+#include "ServiceBroker.h"
 #include "addons/AddonManager.h"
-#include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
-#include "cores/RetroPlayer/guibridge/GUIGameSettingsHandle.h"
 #include "dialogs/GUIDialogYesNo.h"
-#include "games/addons/input/GameClientInput.h"
+#include "games/GameServices.h"
 #include "games/addons/GameClient.h"
-#include "games/controllers/types/ControllerTree.h"
+#include "games/addons/input/GameClientInput.h"
 #include "games/controllers/Controller.h"
 #include "games/controllers/ControllerIDs.h"
-#include "games/controllers/ControllerFeature.h"
 #include "games/controllers/ControllerLayout.h"
 #include "games/controllers/guicontrols/GUIControllerButton.h"
 #include "games/controllers/guicontrols/GUIGameController.h"
-#include "games/GameServices.h"
-#include "guilib/GUIMessage.h"
+#include "games/controllers/types/ControllerTree.h"
 #include "guilib/GUIButtonControl.h"
 #include "guilib/GUIControlGroupList.h"
+#include "guilib/GUIMessage.h"
 #include "guilib/GUIWindow.h"
-#include "guilib/WindowIDs.h"
 #include "messaging/ApplicationMessenger.h"
 #include "peripherals/Peripherals.h"
 #include "utils/StringUtils.h"
-#include "ServiceBroker.h"
+
+#include <algorithm>
+#include <assert.h>
+#include <iterator>
 
 using namespace KODI;
 using namespace ADDON;
 using namespace GAME;
 
-CGUIControllerList::CGUIControllerList(CGUIWindow* window, IFeatureList* featureList) :
+CGUIControllerList::CGUIControllerList(CGUIWindow* window, IFeatureList* featureList, GameClientPtr gameClient) :
   m_guiWindow(window),
   m_featureList(featureList),
   m_controllerList(nullptr),
   m_controllerButton(nullptr),
-  m_focusedController(-1) // Initially unfocused
+  m_focusedController(-1), // Initially unfocused
+  m_gameClient(std::move(gameClient))
 {
   assert(m_featureList != nullptr);
 }
@@ -61,21 +58,8 @@ bool CGUIControllerList::Initialize(void)
   if (m_controllerButton)
     m_controllerButton->SetVisible(false);
 
-  // Get active game add-on
-  GameClientPtr gameClient;
-  {
-    auto gameSettingsHandle = CServiceBroker::GetGameRenderManager().RegisterGameSettingsDialog();
-    if (gameSettingsHandle)
-    {
-      ADDON::AddonPtr addon;
-      if (CServiceBroker::GetAddonMgr().GetAddon(gameSettingsHandle->GameClientID(), addon, ADDON::ADDON_GAMEDLL))
-        gameClient = std::static_pointer_cast<CGameClient>(addon);
-    }
-  }
-  m_gameClient = std::move(gameClient);
-
   CServiceBroker::GetAddonMgr().Events().Subscribe(this, &CGUIControllerList::OnEvent);
-  Refresh();
+  Refresh("");
 
   return m_controllerList != nullptr &&
          m_controllerButton != nullptr;
@@ -85,16 +69,23 @@ void CGUIControllerList::Deinitialize(void)
 {
   CServiceBroker::GetAddonMgr().Events().Unsubscribe(this);
 
-  m_gameClient.reset();
-
   CleanupButtons();
 
   m_controllerList = nullptr;
   m_controllerButton = nullptr;
 }
 
-bool CGUIControllerList::Refresh(void)
+bool CGUIControllerList::Refresh(const std::string& controllerId)
 {
+  // Focus specified controller after refresh
+  std::string focusController = controllerId;
+
+  if (focusController.empty() && m_focusedController >= 0)
+  {
+    // If controller ID wasn't provided, focus current controller
+    focusController = m_controllers[m_focusedController]->ID();
+  }
+
   if (!RefreshControllers())
     return false;
 
@@ -103,12 +94,16 @@ bool CGUIControllerList::Refresh(void)
   if (m_controllerList)
   {
     unsigned int buttonId = 0;
-    for (ControllerVector::const_iterator it = m_controllers.begin(); it != m_controllers.end(); ++it)
+    for (const auto& controller : m_controllers)
     {
-      const ControllerPtr& controller = *it;
-
       CGUIButtonControl* pButton = new CGUIControllerButton(*m_controllerButton, controller->Layout().Label(), buttonId++);
       m_controllerList->AddControl(pButton);
+
+      if (!focusController.empty() && controller->ID() == focusController)
+      {
+        CGUIMessage msg(GUI_MSG_SETFOCUS, m_guiWindow->GetID(), pButton->GetID());
+        m_guiWindow->OnMessage(msg);
+      }
 
       // Just in case
       if (buttonId >= MAX_CONTROLLER_COUNT)
@@ -132,6 +127,11 @@ void CGUIControllerList::OnFocus(unsigned int controllerIndex)
     CGUIGameController* pController = dynamic_cast<CGUIGameController*>(m_guiWindow->GetControl(CONTROL_GAME_CONTROLLER));
     if (pController)
       pController->ActivateController(controller);
+
+    // Update controller description
+    CGUIMessage msg(GUI_MSG_LABEL_SET, m_guiWindow->GetID(), CONTROL_CONTROLLER_DESCRIPTION);
+    msg.SetLabel(controller->Description());
+    m_guiWindow->OnMessage(msg);
   }
 }
 
@@ -159,12 +159,20 @@ void CGUIControllerList::ResetController(void)
 
 void CGUIControllerList::OnEvent(const ADDON::AddonEvent& event)
 {
-  if (typeid(event) == typeid(ADDON::AddonEvents::ReInstalled) ||
+  if (typeid(event) == typeid(ADDON::AddonEvents::Enabled) ||  // also called on install,
+      typeid(event) == typeid(ADDON::AddonEvents::Disabled) || // not called on uninstall
+      typeid(event) == typeid(ADDON::AddonEvents::ReInstalled) ||
       typeid(event) == typeid(ADDON::AddonEvents::UnInstalled))
   {
     using namespace MESSAGING;
     CGUIMessage msg(GUI_MSG_REFRESH_LIST, m_guiWindow->GetID(), CONTROL_CONTROLLER_LIST);
-    CApplicationMessenger::GetInstance().SendGUIMessage(msg);
+
+    // Focus installed add-on
+    if (typeid(event) == typeid(ADDON::AddonEvents::Enabled) ||
+        typeid(event) == typeid(ADDON::AddonEvents::ReInstalled))
+      msg.SetStringParam(event.id);
+
+    CApplicationMessenger::GetInstance().SendGUIMessage(msg, m_guiWindow->GetID());
   }
 }
 
@@ -173,21 +181,6 @@ bool CGUIControllerList::RefreshControllers(void)
   // Get current controllers
   CGameServices& gameServices = CServiceBroker::GetGameServices();
   ControllerVector newControllers = gameServices.GetControllers();
-
-  // Don't show an empty feature list in the GUI
-  auto HasButtonForFeature = [this](const CControllerFeature &feature)
-    {
-      return m_featureList->HasButton(feature.Type());
-    };
-
-  auto HasButtonForController = [&](const ControllerPtr &controller)
-    {
-      const auto &features = controller->Features();
-      auto it = std::find_if(features.begin(), features.end(), HasButtonForFeature);
-      return it == features.end();
-    };
-
-  newControllers.erase(std::remove_if(newControllers.begin(), newControllers.end(), HasButtonForController), newControllers.end());
 
   // Filter by current game add-on
   if (m_gameClient)

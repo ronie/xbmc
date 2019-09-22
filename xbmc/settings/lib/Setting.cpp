@@ -6,15 +6,17 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <sstream>
-
 #include "Setting.h"
+
 #include "SettingDefinitions.h"
 #include "SettingsManager.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
+#include "utils/log.h"
+
+#include <algorithm>
+#include <sstream>
 
 template<typename TKey, typename TValue>
 bool CheckSettingOptionsValidity(const TValue& value, const std::vector<std::pair<TKey, TValue>>& options)
@@ -22,6 +24,18 @@ bool CheckSettingOptionsValidity(const TValue& value, const std::vector<std::pai
   for (auto it : options)
   {
     if (it.second == value)
+      return true;
+  }
+
+  return false;
+}
+
+template<typename TKey, typename TValue>
+bool CheckSettingOptionsValidity(const TValue& value, const std::vector<TKey>& options)
+{
+  for (auto it : options)
+  {
+    if (it.value == value)
       return true;
   }
 
@@ -400,6 +414,14 @@ void CSettingList::Reset()
     values.push_back(it->Clone(it->GetId()));
 
   SetValue(values);
+}
+
+bool CSettingList::FindIntInList(int value) const
+{
+  return std::find_if(m_values.cbegin(), m_values.cend(), [&](const SettingPtr& setting)
+  {
+    return setting->GetType() == SettingType::Integer && std::static_pointer_cast<CSettingInt>(setting)->GetValue() == value;
+  }) != m_values.cend();
 }
 
 bool CSettingList::FromString(const std::vector<std::string> &value)
@@ -914,8 +936,8 @@ IntegerSettingOptions CSettingInt::UpdateDynamicOptions()
   {
     for (size_t index = 0; index < options.size(); index++)
     {
-      if (options[index].first.compare(m_dynamicOptions[index].first) != 0 ||
-          options[index].second != m_dynamicOptions[index].second)
+      if (options[index].label.compare(m_dynamicOptions[index].label) != 0 ||
+          options[index].value != m_dynamicOptions[index].value)
       {
         changed = true;
         break;
@@ -1319,8 +1341,8 @@ StringSettingOptions CSettingString::UpdateDynamicOptions()
   {
     for (size_t index = 0; index < options.size(); index++)
     {
-      if (options[index].first.compare(m_dynamicOptions[index].first) != 0 ||
-          options[index].second.compare(m_dynamicOptions[index].second) != 0)
+      if (options[index].label.compare(m_dynamicOptions[index].label) != 0 ||
+          options[index].value.compare(m_dynamicOptions[index].value) != 0)
       {
         changed = true;
         break;

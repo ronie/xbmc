@@ -12,11 +12,11 @@
 #include <algorithm>
 
 extern "C" {
-#include "libavfilter/avfilter.h"
-#include "libavcodec/avcodec.h"
-#include "libavfilter/buffersink.h"
-#include "libavfilter/buffersrc.h"
-#include "libswresample/swresample.h"
+#include <libavfilter/avfilter.h>
+#include <libavcodec/avcodec.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libswresample/swresample.h>
 }
 
 using namespace ActiveAE;
@@ -314,25 +314,22 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
   return 0;
 }
 
-bool CActiveAEFilter::IsEof()
+bool CActiveAEFilter::IsEof() const
 {
   return m_filterEof;
 }
 
-bool CActiveAEFilter::NeedData()
+bool CActiveAEFilter::NeedData() const
 {
   return m_needData;
 }
 
-bool CActiveAEFilter::IsActive()
+bool CActiveAEFilter::IsActive() const
 {
-  if (m_pFilterGraph)
-    return true;
-  else
-    return false;
+  return m_pFilterGraph != nullptr;
 }
 
-int CActiveAEFilter::GetBufferedSamples()
+int CActiveAEFilter::GetBufferedSamples() const
 {
   int ret = m_SamplesIn - (m_SamplesOut * m_tempo);
   if (m_hasData)

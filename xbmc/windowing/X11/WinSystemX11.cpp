@@ -7,29 +7,33 @@
  */
 
 #include "WinSystemX11.h"
+
+#include "CompileInfo.h"
+#include "OSScreenSaverX11.h"
 #include "ServiceBroker.h"
+#include "WinEventsX11.h"
+#include "XRandR.h"
+#include "guilib/DispResource.h"
+#include "guilib/Texture.h"
+#include "input/InputManager.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
-#include "windowing/GraphicContext.h"
-#include "guilib/Texture.h"
-#include "guilib/DispResource.h"
-#include "utils/log.h"
-#include "XRandR.h"
-#include <vector>
-#include <string>
 #include "threads/SingleLock.h"
-#include "utils/TimeUtils.h"
 #include "utils/StringUtils.h"
-#include "CompileInfo.h"
-#include "messaging/ApplicationMessenger.h"
+#include "utils/TimeUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
+#include "platform/linux/powermanagement/LinuxPowerSyscall.h"
+
+#include <string>
+#include <vector>
+
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrandr.h>
-
-#include "WinEventsX11.h"
-#include "input/InputManager.h"
-#include "OSScreenSaverX11.h"
-#include "platform/linux/powermanagement/LinuxPowerSyscall.h"
 
 using namespace KODI::MESSAGING;
 using namespace KODI::WINDOWING;
@@ -125,7 +129,7 @@ bool CWinSystemX11::DestroyWindow()
 
 bool CWinSystemX11::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
-  m_userOutput = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  m_userOutput = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   XOutput *out = NULL;
   if (m_userOutput.compare("Default") != 0)
   {
@@ -163,7 +167,7 @@ bool CWinSystemX11::ResizeWindow(int newWidth, int newHeight, int newLeft, int n
 
 void CWinSystemX11::FinishWindowResize(int newWidth, int newHeight)
 {
-  m_userOutput = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  m_userOutput = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   XOutput *out = NULL;
   if (m_userOutput.compare("Default") != 0)
   {
@@ -263,7 +267,7 @@ bool CWinSystemX11::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
         OnLostDevice();
         m_bIsInternalXrr = true;
         g_xrandr.SetMode(out, mode);
-        int delay = CServiceBroker::GetSettings()->GetInt("videoscreen.delayrefreshchange");
+        int delay = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt("videoscreen.delayrefreshchange");
         if (delay > 0)
         {
           m_delayDispReset = true;
@@ -292,8 +296,9 @@ void CWinSystemX11::UpdateResolutions()
   int numScreens = XScreenCount(m_dpy);
   g_xrandr.SetNumScreens(numScreens);
 
-  bool switchOnOff = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
-  m_userOutput = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  bool switchOnOff = settings->GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
+  m_userOutput = settings->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   if (m_userOutput.compare("Default") == 0)
     switchOnOff = false;
 
@@ -338,11 +343,10 @@ void CWinSystemX11::UpdateResolutions()
       mode = g_xrandr.GetPreferredMode(m_userOutput);
     m_bIsRotated = out->isRotated;
     if (!m_bIsRotated)
-      UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), mode.w, mode.h, mode.hz, 0);
+      UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), out->name, mode.w, mode.h, mode.hz, 0);
     else
-      UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), mode.h, mode.w, mode.hz, 0);
+      UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), out->name, mode.h, mode.w, mode.hz, 0);
     CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP).strId = mode.id;
-    CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP).strOutput = m_userOutput;
   }
   else
   {
@@ -350,7 +354,7 @@ void CWinSystemX11::UpdateResolutions()
     m_screen = DefaultScreen(m_dpy);
     int w = DisplayWidth(m_dpy, m_screen);
     int h = DisplayHeight(m_dpy, m_screen);
-    UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), w, h, 0.0, 0);
+    UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), m_userOutput, w, h, 0.0, 0);
   }
 
   // erase previous stored modes
@@ -445,7 +449,7 @@ bool CWinSystemX11::HasCalibration(const RESOLUTION_INFO &resInfo)
 
 bool CWinSystemX11::UseLimitedColor()
 {
-  return CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
 }
 
 void CWinSystemX11::GetConnectedOutputs(std::vector<std::string> *outputs)

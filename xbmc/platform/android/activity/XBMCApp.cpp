@@ -21,6 +21,7 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 
+#include <androidjni/ActivityManager.h>
 #include <androidjni/ApplicationInfo.h>
 #include <androidjni/BitmapFactory.h>
 #include <androidjni/BroadcastReceiver.h>
@@ -45,6 +46,7 @@
 #include <androidjni/StatFs.h>
 #include <androidjni/System.h>
 #include <androidjni/SystemClock.h>
+#include <androidjni/SystemProperties.h>
 #include <androidjni/URI.h>
 #include <androidjni/View.h>
 #include <androidjni/WakeLock.h>
@@ -119,7 +121,7 @@ int CXBMCApp::m_batteryLevel = 0;
 bool CXBMCApp::m_hasFocus = false;
 bool CXBMCApp::m_headsetPlugged = false;
 bool CXBMCApp::m_hdmiPlugged = true;
-bool CXBMCApp::m_hdmiReportedState = true;
+bool CXBMCApp::m_hdmiSource = false;
 IInputDeviceCallbacks* CXBMCApp::m_inputDeviceCallbacks = nullptr;
 IInputDeviceEventHandler* CXBMCApp::m_inputDeviceEventHandler = nullptr;
 bool CXBMCApp::m_hasReqVisible = false;
@@ -127,7 +129,9 @@ CCriticalSection CXBMCApp::m_applicationsMutex;
 std::vector<androidPackage> CXBMCApp::m_applications;
 CVideoSyncAndroid* CXBMCApp::m_syncImpl = NULL;
 CEvent CXBMCApp::m_vsyncEvent;
+CEvent CXBMCApp::m_displayChangeEvent;
 std::vector<CActivityResultEvent*> CXBMCApp::m_activityResultEvents;
+
 int64_t CXBMCApp::m_frameTimeNanos = 0;
 float CXBMCApp::m_refreshRate = 0.0f;
 
@@ -149,6 +153,7 @@ CXBMCApp::CXBMCApp(ANativeActivity* nativeActivity)
   m_mainView.reset(new CJNIXBMCMainView(this));
   m_firstrun = true;
   m_exiting = false;
+  m_hdmiSource = CJNISystemProperties::get("ro.hdmi.device_type", "") == "4";
   android_printf("CXBMCApp: Created");
 }
 
@@ -210,7 +215,10 @@ void CXBMCApp::onStart()
     intentFilter.addAction("android.intent.action.BATTERY_CHANGED");
     intentFilter.addAction("android.intent.action.SCREEN_ON");
     intentFilter.addAction("android.intent.action.HEADSET_PLUG");
-    intentFilter.addAction("android.media.action.HDMI_AUDIO_PLUG");
+    // We currently use HDMI_AUDIO_PLUG for mode switch, don't use it on TV's (device_type = "0"
+    if (m_hdmiSource)
+      intentFilter.addAction("android.media.action.HDMI_AUDIO_PLUG");
+
     intentFilter.addAction("android.intent.action.SCREEN_OFF");
     intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
     registerReceiver(*this, intentFilter);
@@ -352,6 +360,7 @@ void CXBMCApp::Initialize()
 {
   CServiceBroker::GetAnnouncementManager()->AddAnnouncer(CXBMCApp::get());
   runNativeOnUiThread(RegisterDisplayListener, nullptr);
+  m_activityManager.reset(new CJNIActivityManager(getSystemService(CJNIContext::ACTIVITY_SERVICE)));
 }
 
 void CXBMCApp::Deinitialize()
@@ -514,18 +523,17 @@ void CXBMCApp::SetRefreshRateCallback(CVariant* rateVariant)
   if (window)
   {
     CJNIWindowManagerLayoutParams params = window.getAttributes();
-    if (params.getpreferredRefreshRate() != rate)
+    if (fabs(params.getpreferredRefreshRate() - rate) > 0.001)
     {
-      if (g_application.GetAppPlayer().IsPlaying())
-      {
-        dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->SetHDMIState(false, 1000);
-        m_hdmiReportedState = false;
-      }
       params.setpreferredRefreshRate(rate);
       if (params.getpreferredRefreshRate() > 0.0)
+      {
         window.setAttributes(params);
+        return;
+      }
     }
   }
+  m_displayChangeEvent.Set();
 }
 
 void CXBMCApp::SetDisplayModeCallback(CVariant* variant)
@@ -540,16 +548,13 @@ void CXBMCApp::SetDisplayModeCallback(CVariant* variant)
     CJNIWindowManagerLayoutParams params = window.getAttributes();
     if (params.getpreferredDisplayModeId() != mode)
     {
-      if (g_application.GetAppPlayer().IsPlaying())
-      {
-        dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->SetHDMIState(false);
-        m_hdmiReportedState = false;
-      }
       params.setpreferredDisplayModeId(mode);
       params.setpreferredRefreshRate(rate);
       window.setAttributes(params);
+      return;
     }
   }
+  m_displayChangeEvent.Set();
 }
 
 void CXBMCApp::SetRefreshRate(float rate)
@@ -557,10 +562,25 @@ void CXBMCApp::SetRefreshRate(float rate)
   if (rate < 1.0)
     return;
 
+  CJNIWindow window = getWindow();
+  if (window)
+  {
+    CJNIWindowManagerLayoutParams params = window.getAttributes();
+    if (fabs(params.getpreferredRefreshRate() - rate) <= 0.001)
+      return;
+  }
+
   m_refreshRate = rate;
 
+  m_displayChangeEvent.Reset();
   CVariant *variant = new CVariant(rate);
   runNativeOnUiThread(SetRefreshRateCallback, variant);
+  if (g_application.IsInitialized())
+  {
+    m_displayChangeEvent.WaitMSec(5000);
+    if (m_hdmiSource && g_application.GetAppPlayer().IsPlaying())
+      dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->SetHDMIState(false);
+  }
 }
 
 void CXBMCApp::SetDisplayMode(int mode, float rate)
@@ -568,12 +588,27 @@ void CXBMCApp::SetDisplayMode(int mode, float rate)
   if (mode < 1.0)
     return;
 
+  CJNIWindow window = getWindow();
+  if (window)
+  {
+    CJNIWindowManagerLayoutParams params = window.getAttributes();
+    if (params.getpreferredDisplayModeId() == mode)
+      return;
+  }
+
+  m_displayChangeEvent.Reset();
   std::map<std::string, CVariant> vmap;
   vmap["mode"] = mode;
   vmap["rate"] = rate;
   m_refreshRate = rate;
   CVariant *variant = new CVariant(vmap);
   runNativeOnUiThread(SetDisplayModeCallback, variant);
+  if (g_application.IsInitialized())
+  {
+    m_displayChangeEvent.WaitMSec(5000);
+    if (m_hdmiSource && g_application.GetAppPlayer().IsPlaying())
+      dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->SetHDMIState(false);
+  }
 }
 
 int CXBMCApp::android_printf(const char *format, ...)
@@ -974,29 +1009,26 @@ void CXBMCApp::onReceive(CJNIIntent intent)
     if (newstate != m_headsetPlugged)
     {
       m_headsetPlugged = newstate;
-      CServiceBroker::GetActiveAE()->DeviceChange();
+      IAE *iae = CServiceBroker::GetActiveAE();
+      if (iae)
+        iae->DeviceChange();
     }
   }
   else if (action == "android.media.action.HDMI_AUDIO_PLUG")
   {
-    bool newstate;
-    newstate = (intent.getIntExtra("android.media.extra.AUDIO_PLUG_STATE", 0) != 0);
-
-    if (newstate != m_hdmiPlugged)
+    m_hdmiPlugged = (intent.getIntExtra("android.media.extra.AUDIO_PLUG_STATE", 0) != 0);
+    CLog::Log(LOGDEBUG, "-- HDMI state: %s",  m_hdmiPlugged ? "on" : "off");
+    if (m_hdmiSource && g_application.IsInitialized())
     {
-      CLog::Log(LOGDEBUG, "-- HDMI state: %s",  newstate ? "on" : "off");
-      m_hdmiPlugged = newstate;
-      if (m_hdmiPlugged != m_hdmiReportedState)
-      {
-        dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem())->SetHDMIState(m_hdmiPlugged);
-        m_hdmiReportedState = m_hdmiPlugged;
-      }
+      CWinSystemBase* winSystem = CServiceBroker::GetWinSystem();
+      if (winSystem && dynamic_cast<CWinSystemAndroid*>(winSystem))
+        dynamic_cast<CWinSystemAndroid*>(winSystem)->SetHDMIState(m_hdmiPlugged);
     }
   }
   else if (action == "android.intent.action.SCREEN_OFF")
   {
     if (m_playback_state & PLAYBACK_STATE_VIDEO)
-      CApplicationMessenger::GetInstance().SendMsg(TMSG_GUI_ACTION, WINDOW_INVALID, -1, static_cast<void*>(new CAction(ACTION_STOP)));
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_GUI_ACTION, WINDOW_INVALID, -1, static_cast<void*>(new CAction(ACTION_STOP)));
   }
   else if (action == "android.intent.action.MEDIA_BUTTON")
   {
@@ -1045,6 +1077,12 @@ void CXBMCApp::onReceive(CJNIIntent intent)
 
 void CXBMCApp::onNewIntent(CJNIIntent intent)
 {
+  if (!intent)
+  {
+    CLog::Log(LOGNOTICE, "CXBMCApp::onNewIntent - Got invalid intent.");
+    return;
+  }
+
   std::string action = intent.getAction();
   CLog::Log(LOGDEBUG, "CXBMCApp::onNewIntent - Got intent. Action: %s", action.c_str());
   std::string targetFile = GetFilenameFromIntent(intent);
@@ -1183,15 +1221,47 @@ void CXBMCApp::doFrame(int64_t frameTimeNanos)
 
   // Calculate the time, when next surface buffer should be rendered
   m_frameTimeNanos = frameTimeNanos;
-  if (m_refreshRate)
-    m_frameTimeNanos += static_cast<int64_t>(1500000000ll / m_refreshRate);
 
   m_vsyncEvent.Set();
+}
+
+int64_t CXBMCApp::GetNextFrameTime()
+{
+  if (m_refreshRate > 0.0001f)
+    return m_frameTimeNanos + static_cast<int64_t>(1500000000ll / m_refreshRate);
+  else
+    return m_frameTimeNanos;
+}
+
+float CXBMCApp::GetFrameLatencyMs()
+{
+  return (CurrentHostCounter() - m_frameTimeNanos) * 0.000001;
 }
 
 bool CXBMCApp::WaitVSync(unsigned int milliSeconds)
 {
   return m_vsyncEvent.WaitMSec(milliSeconds);
+}
+
+bool CXBMCApp::GetMemoryInfo(long& availMem, long& totalMem)
+{
+  if (m_activityManager)
+  {
+    CJNIActivityManager::MemoryInfo info;
+    m_activityManager->getMemoryInfo(info);
+    if (xbmc_jnienv()->ExceptionCheck())
+    {
+      xbmc_jnienv()->ExceptionClear();
+      return false;
+    }
+
+    availMem = info.availMem();
+    totalMem = info.totalMem();
+
+    return true;
+  }
+
+  return false;
 }
 
 void CXBMCApp::SetupEnv()
@@ -1340,7 +1410,6 @@ bool CXBMCApp::onInputDeviceEvent(const AInputEvent* event)
   return false;
 }
 
-
 void CXBMCApp::onDisplayAdded(int displayId)
 {
   android_printf("%s: ", __PRETTY_FUNCTION__);
@@ -1348,6 +1417,14 @@ void CXBMCApp::onDisplayAdded(int displayId)
 
 void CXBMCApp::onDisplayChanged(int displayId)
 {
+  CLog::Log(LOGDEBUG, "CXBMCApp::%s: id: %d", __FUNCTION__, displayId);
+
+  // Update display modes
+  CWinSystemAndroid* winSystemAndroid = dynamic_cast<CWinSystemAndroid*>(CServiceBroker::GetWinSystem());
+  if (winSystemAndroid)
+    winSystemAndroid->UpdateDisplayModes();
+
+  m_displayChangeEvent.Set();
   android_printf("%s: ", __PRETTY_FUNCTION__);
 }
 
@@ -1374,12 +1451,14 @@ void CXBMCApp::surfaceCreated(CJNISurfaceHolder holder)
   {
     XBMC_SetupDisplay();
   }
+  g_application.SetRenderGUI(true);
 }
 
 void CXBMCApp::surfaceDestroyed(CJNISurfaceHolder holder)
 {
   android_printf("%s: ", __PRETTY_FUNCTION__);
   // If we have exited XBMC, it no longer exists.
+  g_application.SetRenderGUI(false);
   if (!m_exiting)
   {
     XBMC_DestroyDisplay();

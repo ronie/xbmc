@@ -7,12 +7,13 @@
  */
 
 #include "AddonVideoCodec.h"
+
 #include "addons/binary-addons/BinaryAddonBase.h"
+#include "cores/VideoPlayer/DVDCodecs/DVDCodecs.h"
 #include "cores/VideoPlayer/DVDStreamInfo.h"
 #include "cores/VideoPlayer/Interface/Addon/DemuxCrypto.h"
-#include "cores/VideoPlayer/DVDCodecs/DVDCodecs.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/Process/VideoBuffer.h"
 #include "utils/log.h"
 
 using namespace kodi::addon;
@@ -32,7 +33,6 @@ CAddonVideoCodec::CAddonVideoCodec(CProcessInfo &processInfo, ADDON::BinaryAddon
     CLog::Log(LOGERROR, "CInputStreamAddon: Failed to create add-on instance for '%s'", addonInfo->ID().c_str());
     return;
   }
-  m_processInfo.SetVideoDecoderName(GetName(), false);
 }
 
 CAddonVideoCodec::~CAddonVideoCodec()
@@ -86,6 +86,26 @@ bool CAddonVideoCodec::CopyToInitData(VIDEOCODEC_INITDATA &initData, CDVDStreamI
     break;
   case AV_CODEC_ID_VP9:
     initData.codec = VIDEOCODEC_INITDATA::CodecVp9;
+    switch (hints.profile)
+    {
+    case FF_PROFILE_UNKNOWN:
+      initData.codecProfile = STREAMCODEC_PROFILE::CodecProfileUnknown;
+      break;
+    case FF_PROFILE_VP9_0:
+      initData.codecProfile = STREAMCODEC_PROFILE::VP9CodecProfile0;
+      break;
+    case FF_PROFILE_VP9_1:
+      initData.codecProfile = STREAMCODEC_PROFILE::VP9CodecProfile1;
+      break;
+    case FF_PROFILE_VP9_2:
+      initData.codecProfile = STREAMCODEC_PROFILE::VP9CodecProfile2;
+      break;
+    case FF_PROFILE_VP9_3:
+      initData.codecProfile = STREAMCODEC_PROFILE::VP9CodecProfile3;
+      break;
+    default:
+      return false;
+    }
     break;
   default:
     return false;
@@ -142,7 +162,10 @@ bool CAddonVideoCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   if (!CopyToInitData(initData, hints))
     return false;
 
-  return m_struct.toAddon.open(&m_struct, &initData);
+  bool ret = m_struct.toAddon.open(&m_struct, &initData);
+  m_processInfo.SetVideoDecoderName(GetName(), false);
+
+  return ret;
 }
 
 bool CAddonVideoCodec::Reconfigure(CDVDStreamInfo &hints)
@@ -189,7 +212,7 @@ CDVDVideoCodec::VCReturn CAddonVideoCodec::GetPicture(VideoPicture* pVideoPictur
     pVideoPicture->iFlags = 0;
     pVideoPicture->chroma_position = 0;
     pVideoPicture->colorBits = 8;
-    pVideoPicture->color_primaries = 0;
+    pVideoPicture->color_primaries = AVColorPrimaries::AVCOL_PRI_UNSPECIFIED;
     pVideoPicture->color_range = 0;
     pVideoPicture->color_space = AVCOL_SPC_UNSPECIFIED;
     pVideoPicture->color_transfer = 0;

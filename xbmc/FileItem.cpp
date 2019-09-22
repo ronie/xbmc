@@ -6,56 +6,58 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <cstdlib>
-
 #include "FileItem.h"
+
+#include "CueDocument.h"
 #include "ServiceBroker.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
-#include "utils/Archive.h"
+#include "URL.h"
 #include "Util.h"
-#include "playlists/PlayListFactory.h"
-#include "utils/Crc32.h"
+#include "events/IEvent.h"
+#include "filesystem/CurlFile.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
-#include "filesystem/StackDirectory.h"
-#include "filesystem/CurlFile.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "filesystem/MusicDatabaseDirectory.h"
+#include "filesystem/StackDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
 #include "filesystem/VideoDatabaseDirectory/QueryParams.h"
-#include "games/addons/GameClient.h"
 #include "games/GameUtils.h"
+#include "games/addons/GameClient.h"
 #include "games/tags/GameInfoTag.h"
-#include "music/tags/MusicInfoTagLoaderFactory.h"
-#include "CueDocument.h"
-#include "video/VideoDatabase.h"
+#include "guilib/LocalizeStrings.h"
+#include "music/Album.h"
+#include "music/Artist.h"
 #include "music/MusicDatabase.h"
+#include "music/tags/MusicInfoTag.h"
+#include "music/tags/MusicInfoTagLoaderFactory.h"
+#include "pictures/PictureInfoTag.h"
+#include "playlists/PlayListFactory.h"
+#include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannel.h"
-#include "pvr/channels/PVRRadioRDSInfoTag.h"
-#include "pvr/epg/Epg.h"
+#include "pvr/channels/PVRChannelGroupsContainer.h"
+#include "pvr/epg/EpgInfoTag.h"
 #include "pvr/recordings/PVRRecording.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
-#include "video/Bookmark.h"
-#include "video/VideoInfoTag.h"
-#include "threads/SingleLock.h"
-#include "music/tags/MusicInfoTag.h"
-#include "pictures/PictureInfoTag.h"
-#include "music/Artist.h"
-#include "music/Album.h"
-#include "URL.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "threads/SingleLock.h"
+#include "utils/Archive.h"
+#include "utils/Crc32.h"
 #include "utils/FileExtensionProvider.h"
-#include "utils/RegExp.h"
-#include "utils/log.h"
-#include "utils/Variant.h"
 #include "utils/Mime.h"
 #include "utils/Random.h"
-#include "events/IEvent.h"
+#include "utils/RegExp.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/Bookmark.h"
+#include "video/VideoDatabase.h"
+#include "video/VideoInfoTag.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 using namespace KODI;
 using namespace XFILE;
@@ -112,6 +114,20 @@ CFileItem::CFileItem(const CVideoInfoTag& movie)
   SetFromVideoInfoTag(movie);
 }
 
+namespace
+{
+  std::string GetEpgTagTitle(const std::shared_ptr<CPVREpgInfoTag>& epgTag)
+  {
+    if (CServiceBroker::GetPVRManager().IsParentalLocked(epgTag))
+      return g_localizeStrings.Get(19266); // Parental locked
+    else if (epgTag->Title().empty() &&
+             !CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_EPG_HIDENOINFOAVAILABLE))
+      return g_localizeStrings.Get(19055); // no information available
+    else
+      return epgTag->Title();
+  }
+} // unnamed namespace
+
 void CFileItem::FillMusicInfoTag(const CPVRChannelPtr& channel, const CPVREpgInfoTagPtr& tag)
 {
   if (channel && channel->IsRadio() && !HasMusicInfoTag())
@@ -120,11 +136,11 @@ void CFileItem::FillMusicInfoTag(const CPVRChannelPtr& channel, const CPVREpgInf
 
     if (tag)
     {
-      musictag->SetTitle(tag->Title());
+      musictag->SetTitle(GetEpgTagTitle(tag));
       musictag->SetGenre(tag->Genre());
       musictag->SetDuration(tag->GetDuration());
     }
-    else if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_EPG_HIDENOINFOAVAILABLE))
+    else if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_EPG_HIDENOINFOAVAILABLE))
     {
       musictag->SetTitle(g_localizeStrings.Get(19055)); // no information available
     }
@@ -144,15 +160,23 @@ CFileItem::CFileItem(const CPVREpgInfoTagPtr& tag)
   m_bIsFolder = false;
   m_epgInfoTag = tag;
   m_strPath = tag->Path();
-  SetLabel(tag->Title());
+  SetLabel(GetEpgTagTitle(tag));
   m_dateTime = tag->StartAsLocalTime();
 
   if (!tag->Icon().empty())
-    SetIconImage(tag->Icon());
-  else if (tag->HasChannel() && !tag->Channel()->IconPath().empty())
-    SetIconImage(tag->Channel()->IconPath());
+    SetArt("icon", tag->Icon());
+  else
+  {
+    const std::shared_ptr<CPVRChannel> channel = CServiceBroker::GetPVRManager().ChannelGroups()->GetChannelForEpgTag(tag);
+    if (channel)
+    {
+      if (!channel->IconPath().empty())
+        SetArt("icon", channel->IconPath());
 
-  FillMusicInfoTag(tag->Channel(), tag);
+      FillMusicInfoTag(channel, tag);
+    }
+  }
+
   FillInMimeType(false);
 }
 
@@ -168,11 +192,11 @@ CFileItem::CFileItem(const CPVRChannelPtr& channel)
   SetLabel(channel->ChannelName());
 
   if (!channel->IconPath().empty())
-    SetIconImage(channel->IconPath());
+    SetArt("icon", channel->IconPath());
   else if (channel->IsRadio())
-    SetIconImage("DefaultAudio.png");
+    SetArt("icon", "DefaultAudio.png");
   else
-    SetIconImage("DefaultTVShows.png");
+    SetArt("icon", "DefaultTVShows.png");
 
   SetProperty("channelid", channel->ChannelID());
   SetProperty("path", channel->Path());
@@ -195,7 +219,6 @@ CFileItem::CFileItem(const CPVRRecordingPtr& record)
   // Set art
   if (!record->m_strIconPath.empty())
   {
-    SetIconImage(record->m_strIconPath);
     SetArt("icon", record->m_strIconPath);
   }
 
@@ -219,7 +242,7 @@ CFileItem::CFileItem(const CPVRTimerInfoTagPtr& timer)
   m_dateTime = timer->StartAsLocalTime();
 
   if (!timer->ChannelIcon().empty())
-    SetIconImage(timer->ChannelIcon());
+    SetArt("icon", timer->ChannelIcon());
 
   FillInMimeType(false);
 }
@@ -339,7 +362,7 @@ CFileItem::CFileItem(const EventPtr& eventLogEntry)
   SetLabel(eventLogEntry->GetLabel());
   m_dateTime = eventLogEntry->GetDateTime();
   if (!eventLogEntry->GetIcon().empty())
-    SetIconImage(eventLogEntry->GetIcon());
+    SetArt("icon", eventLogEntry->GetIcon());
 }
 
 CFileItem::~CFileItem(void)
@@ -427,7 +450,6 @@ CFileItem& CFileItem::operator=(const CFileItem& item)
   m_pvrChannelInfoTag = item.m_pvrChannelInfoTag;
   m_pvrRecordingInfoTag = item.m_pvrRecordingInfoTag;
   m_pvrTimerInfoTag = item.m_pvrTimerInfoTag;
-  m_pvrRadioRDSInfoTag = item.m_pvrRadioRDSInfoTag;
   m_addonInfo = item.m_addonInfo;
   m_eventLogEntry = item.m_eventLogEntry;
 
@@ -501,7 +523,6 @@ void CFileItem::Reset()
   m_pvrChannelInfoTag.reset();
   m_pvrRecordingInfoTag.reset();
   m_pvrTimerInfoTag.reset();
-  m_pvrRadioRDSInfoTag.reset();
   delete m_pictureInfoTag;
   m_pictureInfoTag=NULL;
   delete m_gameInfoTag;
@@ -559,13 +580,6 @@ void CFileItem::Archive(CArchive& ar)
     }
     else
       ar << 0;
-    if (m_pvrRadioRDSInfoTag)
-    {
-      ar << 1;
-      ar << *m_pvrRadioRDSInfoTag;
-    }
-    else
-      ar << 0;
     if (m_pictureInfoTag)
     {
       ar << 1;
@@ -619,9 +633,6 @@ void CFileItem::Archive(CArchive& ar)
       ar >> *GetVideoInfoTag();
     ar >> iType;
     if (iType == 1)
-      ar >> *m_pvrRadioRDSInfoTag;
-    ar >> iType;
-    if (iType == 1)
       ar >> *GetPictureInfoTag();
     ar >> iType;
     if (iType == 1)
@@ -649,9 +660,6 @@ void CFileItem::Serialize(CVariant& value) const
 
   if (m_videoInfoTag)
     (*m_videoInfoTag).Serialize(value["videoInfoTag"]);
-
-  if (m_pvrRadioRDSInfoTag)
-    m_pvrRadioRDSInfoTag->Serialize(value["rdsInfoTag"]);
 
   if (m_pictureInfoTag)
     (*m_pictureInfoTag).Serialize(value["pictureInfoTag"]);
@@ -840,6 +848,11 @@ bool CFileItem::IsPVRChannel() const
   return HasPVRChannelInfoTag();
 }
 
+bool CFileItem::IsPVRChannelGroup() const
+{
+  return URIUtils::IsPVRChannelGroup(m_strPath);
+}
+
 bool CFileItem::IsPVRRecording() const
 {
   return HasPVRRecordingInfoTag();
@@ -863,11 +876,6 @@ bool CFileItem::IsInProgressPVRRecording() const
 bool CFileItem::IsPVRTimer() const
 {
   return HasPVRTimerInfoTag();
-}
-
-bool CFileItem::IsPVRRadioRDS() const
-{
-  return HasPVRRadioRDSInfoTag();
 }
 
 bool CFileItem::IsDiscStub() const
@@ -1010,7 +1018,7 @@ bool CFileItem::IsFileFolder(EFileFolderType types) const
   if(types & always_type)
   {
     if(IsSmartPlayList()
-    || (IsPlayList() && g_advancedSettings.m_playlistAsFolders)
+    || (IsPlayList() && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_playlistAsFolders)
     || IsAPK()
     || IsZIP()
     || IsRAR()
@@ -1030,7 +1038,7 @@ bool CFileItem::IsFileFolder(EFileFolderType types) const
 
   if(types & EFILEFOLDER_TYPE_ONBROWSE)
   {
-    if((IsPlayList() && !g_advancedSettings.m_playlistAsFolders)
+    if((IsPlayList() && !CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_playlistAsFolders)
     || IsDiscImage())
       return true;
   }
@@ -1114,7 +1122,8 @@ bool CFileItem::IsDVDFile(bool bVobs /*= true*/, bool bIfos /*= true*/) const
 bool CFileItem::IsBDFile() const
 {
   std::string strFileName = URIUtils::GetFileName(m_strPath);
-  return (StringUtils::EqualsNoCase(strFileName, "index.bdmv") || StringUtils::EqualsNoCase(strFileName, "MovieObject.bdmv"));
+  return (StringUtils::EqualsNoCase(strFileName, "index.bdmv") || StringUtils::EqualsNoCase(strFileName, "MovieObject.bdmv")
+          || StringUtils::EqualsNoCase(strFileName, "INDEX.BDM") || StringUtils::EqualsNoCase(strFileName, "MOVIEOBJ.BDM"));
 }
 
 bool CFileItem::IsRAR() const
@@ -1241,7 +1250,7 @@ bool CFileItem::IsURL() const
 
 bool CFileItem::IsPVR() const
 {
-  return CUtil::IsPVR(m_strPath);
+  return URIUtils::IsPVR(m_strPath);
 }
 
 bool CFileItem::IsLiveTV() const
@@ -1307,7 +1316,7 @@ void CFileItem::FillInDefaultIcon()
   //   for .. folders the default picture for parent folder
   //   for other folders the defaultFolder.png
 
-  if (GetIconImage().empty())
+  if (GetArt("icon").empty())
   {
     if (!m_bIsFolder)
     {
@@ -1319,75 +1328,75 @@ void CFileItem::FillInDefaultIcon()
       if (IsPVRChannel())
       {
         if (GetPVRChannelInfoTag()->IsRadio())
-          SetIconImage("DefaultAudio.png");
+          SetArt("icon", "DefaultAudio.png");
         else
-          SetIconImage("DefaultTVShows.png");
+          SetArt("icon", "DefaultTVShows.png");
       }
       else if ( IsLiveTV() )
       {
         // Live TV Channel
-        SetIconImage("DefaultTVShows.png");
+        SetArt("icon", "DefaultTVShows.png");
       }
       else if ( URIUtils::IsArchive(m_strPath) )
       { // archive
-        SetIconImage("DefaultFile.png");
+        SetArt("icon", "DefaultFile.png");
       }
       else if ( IsUsablePVRRecording() )
       {
         // PVR recording
-        SetIconImage("DefaultVideo.png");
+        SetArt("icon", "DefaultVideo.png");
       }
       else if ( IsDeletedPVRRecording() )
       {
         // PVR deleted recording
-        SetIconImage("DefaultVideoDeleted.png");
+        SetArt("icon", "DefaultVideoDeleted.png");
       }
       else if ( IsAudio() )
       {
         // audio
-        SetIconImage("DefaultAudio.png");
+        SetArt("icon", "DefaultAudio.png");
       }
       else if ( IsVideo() )
       {
         // video
-        SetIconImage("DefaultVideo.png");
+        SetArt("icon", "DefaultVideo.png");
       }
       else if (IsPVRTimer())
       {
-        SetIconImage("DefaultVideo.png");
+        SetArt("icon", "DefaultVideo.png");
       }
       else if ( IsPicture() )
       {
         // picture
-        SetIconImage("DefaultPicture.png");
+        SetArt("icon", "DefaultPicture.png");
       }
       else if ( IsPlayList() || IsSmartPlayList())
       {
-        SetIconImage("DefaultPlaylist.png");
+        SetArt("icon", "DefaultPlaylist.png");
       }
       else if ( IsPythonScript() )
       {
-        SetIconImage("DefaultScript.png");
+        SetArt("icon", "DefaultScript.png");
       }
       else
       {
         // default icon for unknown file type
-        SetIconImage("DefaultFile.png");
+        SetArt("icon", "DefaultFile.png");
       }
     }
     else
     {
       if ( IsPlayList() || IsSmartPlayList())
       {
-        SetIconImage("DefaultPlaylist.png");
+        SetArt("icon", "DefaultPlaylist.png");
       }
       else if (IsParentFolder())
       {
-        SetIconImage("DefaultFolderBack.png");
+        SetArt("icon", "DefaultFolderBack.png");
       }
       else
       {
-        SetIconImage("DefaultFolder.png");
+        SetArt("icon", "DefaultFolder.png");
       }
     }
   }
@@ -1474,13 +1483,13 @@ void CFileItem::FillInMimeType(bool lookup /*= true*/)
       if (!lookup)
         return;
 
-      CCurlFile::GetMimeType(GetURL(), m_mimetype);
+      CCurlFile::GetMimeType(GetDynURL(), m_mimetype);
 
       // try to get mime-type again but with an NSPlayer User-Agent
       // in order for server to provide correct mime-type.  Allows us
       // to properly detect an MMS stream
       if (StringUtils::StartsWithNoCase(m_mimetype, "video/x-ms-"))
-        CCurlFile::GetMimeType(GetURL(), m_mimetype, "NSPlayer/11.00.6001.7000");
+        CCurlFile::GetMimeType(GetDynURL(), m_mimetype, "NSPlayer/11.00.6001.7000");
 
       // make sure there are no options set in mime-type
       // mime-type can look like "video/x-ms-asf ; charset=utf8"
@@ -1609,11 +1618,6 @@ void CFileItem::UpdateInfo(const CFileItem &item, bool replaceLabels /*=true*/)
     *GetMusicInfoTag() = *item.GetMusicInfoTag();
     SetInvalid();
   }
-  if (item.HasPVRRadioRDSInfoTag())
-  {
-    m_pvrRadioRDSInfoTag = item.m_pvrRadioRDSInfoTag;
-    SetInvalid();
-  }
   if (item.HasPictureInfoTag())
   {
     *GetPictureInfoTag() = *item.GetPictureInfoTag();
@@ -1624,14 +1628,13 @@ void CFileItem::UpdateInfo(const CFileItem &item, bool replaceLabels /*=true*/)
     *GetGameInfoTag() = *item.GetGameInfoTag();
     SetInvalid();
   }
+  SetDynPath(item.GetDynPath());
   if (replaceLabels && !item.GetLabel().empty())
     SetLabel(item.GetLabel());
   if (replaceLabels && !item.GetLabel2().empty())
     SetLabel2(item.GetLabel2());
   if (!item.GetArt().empty())
     SetArt(item.GetArt());
-  if (!item.GetIconImage().empty())
-    SetIconImage(item.GetIconImage());
   AppendProperties(item);
 }
 
@@ -1726,6 +1729,14 @@ std::string CFileItem::GetOpticalMediaPath() const
     return path;
 
   path = URIUtils::AddFileToFolder(GetPath(), "BDMV", "index.bdmv");
+  if (CFile::Exists(path))
+    return path;
+
+  path = URIUtils::AddFileToFolder(GetPath(), "INDEX.BDM");
+  if (CFile::Exists(path))
+    return path;
+
+  path = URIUtils::AddFileToFolder(GetPath(), "BDMV", "INDEX.BDM");
   if (CFile::Exists(path))
     return path;
 #endif
@@ -2602,7 +2613,7 @@ void CFileItemList::StackFolders()
   // Precompile our REs
   VECCREGEXP folderRegExps;
   CRegExp folderRegExp(true, CRegExp::autoUtf8);
-  const std::vector<std::string>& strFolderRegExps = g_advancedSettings.m_folderStackRegExps;
+  const std::vector<std::string>& strFolderRegExps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_folderStackRegExps;
 
   std::vector<std::string>::const_iterator strExpression = strFolderRegExps.begin();
   while (strExpression != strFolderRegExps.end())
@@ -2701,7 +2712,7 @@ void CFileItemList::StackFiles()
   // Precompile our REs
   VECCREGEXP stackRegExps;
   CRegExp tmpRegExp(true, CRegExp::autoUtf8);
-  const std::vector<std::string>& strStackRegExps = g_advancedSettings.m_videoStackRegExps;
+  const std::vector<std::string>& strStackRegExps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoStackRegExps;
   std::vector<std::string>::const_iterator strRegExp = strStackRegExps.begin();
   while (strRegExp != strStackRegExps.end())
   {
@@ -2863,7 +2874,7 @@ void CFileItemList::StackFiles()
         // item->m_bIsFolder = true;  // don't treat stacked files as folders
         // the label may be in a different char set from the filename (eg over smb
         // the label is converted from utf8, but the filename is not)
-        if (!CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_FILELISTS_SHOWEXTENSIONS))
+        if (!CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_SHOWEXTENSIONS))
           URIUtils::RemoveExtension(stackName);
 
         item1->SetLabel(stackName);
@@ -2978,7 +2989,7 @@ std::string CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */, b
    || m_bIsShareOrDrive
    || IsInternetStream()
    || URIUtils::IsUPnP(m_strPath)
-   || (URIUtils::IsFTP(m_strPath) && !g_advancedSettings.m_bFTPThumbs)
+   || (URIUtils::IsFTP(m_strPath) && !CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bFTPThumbs)
    || IsPlugin()
    || IsAddonsPath()
    || IsLibraryFolder()
@@ -2999,9 +3010,9 @@ std::string CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */, b
   }
 
   // if a folder, check for folder.jpg
-  if (m_bIsFolder && !IsFileFolder() && (!IsRemote() || alwaysCheckRemote || CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICFILES_FINDREMOTETHUMBS)))
+  if (m_bIsFolder && !IsFileFolder() && (!IsRemote() || alwaysCheckRemote || CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICFILES_FINDREMOTETHUMBS)))
   {
-    std::vector<std::string> thumbs = StringUtils::Split(g_advancedSettings.m_musicThumbs, "|");
+    std::vector<std::string> thumbs = StringUtils::Split(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicThumbs, "|");
     for (std::vector<std::string>::const_iterator i = thumbs.begin(); i != thumbs.end(); ++i)
     {
       std::string folderThumb(GetFolderThumb(*i));
@@ -3070,7 +3081,7 @@ bool CFileItem::SkipLocalArt() const
        || m_bIsShareOrDrive
        || IsInternetStream()
        || URIUtils::IsUPnP(m_strPath)
-       || (URIUtils::IsFTP(m_strPath) && !g_advancedSettings.m_bFTPThumbs)
+       || (URIUtils::IsFTP(m_strPath) && !CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bFTPThumbs)
        || IsPlugin()
        || IsAddonsPath()
        || IsLibraryFolder()
@@ -3186,17 +3197,18 @@ std::string CFileItem::GetMovieName(bool bUseFolderNames /* = false */) const
 
   if (m_pvrRecordingInfoTag)
     return m_pvrRecordingInfoTag->m_strTitle;
-  else if (CUtil::IsTVRecording(m_strPath))
+  else if (URIUtils::IsPVRRecording(m_strPath))
   {
     std::string title = CPVRRecording::GetTitleFromURL(m_strPath);
     if (!title.empty())
       return title;
   }
 
-  std::string strMovieName = GetBaseMoviePath(bUseFolderNames);
-
-  if (URIUtils::IsStack(strMovieName))
-    strMovieName = CStackDirectory::GetStackedTitlePath(strMovieName);
+  std::string strMovieName;
+  if (URIUtils::IsStack(m_strPath))
+    strMovieName = CStackDirectory::GetStackedTitlePath(m_strPath);
+  else
+    strMovieName = GetBaseMoviePath(bUseFolderNames);
 
   URIUtils::RemoveSlashAtEnd(strMovieName);
 
@@ -3270,7 +3282,7 @@ std::string CFileItem::GetLocalFanart() const
    || IsPlugin()
    || IsAddonsPath()
    || IsDVD()
-   || (URIUtils::IsFTP(strFile) && !g_advancedSettings.m_bFTPThumbs)
+   || (URIUtils::IsFTP(strFile) && !CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_bFTPThumbs)
    || m_strPath.empty())
     return "";
 
@@ -3288,7 +3300,7 @@ std::string CFileItem::GetLocalFanart() const
     items.Append(moreItems);
   }
 
-  std::vector<std::string> fanarts = StringUtils::Split(g_advancedSettings.m_fanartImages, "|");
+  std::vector<std::string> fanarts = StringUtils::Split(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_fanartImages, "|");
 
   strFile = URIUtils::ReplaceExtension(strFile, "-fanart");
   fanarts.insert(m_bIsFolder ? fanarts.end() : fanarts.begin(), URIUtils::GetFileName(strFile));
@@ -3352,7 +3364,7 @@ bool CFileItem::LoadMusicTag()
   CLog::Log(LOGDEBUG, "%s: loading tag information for file: %s", __FUNCTION__, m_strPath.c_str());
   CMusicInfoTagLoaderFactory factory;
   std::unique_ptr<IMusicInfoTagLoader> pLoader (factory.CreateLoader(*this));
-  if (pLoader.get() != NULL)
+  if (pLoader)
   {
     if (pLoader->Load(m_strPath, *GetMusicInfoTag()))
       return true;
@@ -3377,9 +3389,9 @@ bool CFileItem::LoadMusicTag()
   {
     std::string fileName = URIUtils::GetFileName(m_strPath);
     URIUtils::RemoveExtension(fileName);
-    for (unsigned int i = 0; i < g_advancedSettings.m_musicTagsFromFileFilters.size(); i++)
+    for (const std::string& fileFilter : CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicTagsFromFileFilters)
     {
-      CLabelFormatter formatter(g_advancedSettings.m_musicTagsFromFileFilters[i], "");
+      CLabelFormatter formatter(fileFilter, "");
       if (formatter.FillMusicTag(fileName, GetMusicInfoTag()))
       {
         GetMusicInfoTag()->SetLoaded(true);
@@ -3554,7 +3566,7 @@ std::string CFileItem::FindTrailer() const
   // Precompile our REs
   VECCREGEXP matchRegExps;
   CRegExp tmpRegExp(true, CRegExp::autoUtf8);
-  const std::vector<std::string>& strMatchRegExps = g_advancedSettings.m_trailerMatchRegExps;
+  const std::vector<std::string>& strMatchRegExps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_trailerMatchRegExps;
 
   std::vector<std::string>::const_iterator strRegExp = strMatchRegExps.begin();
   while (strRegExp != strMatchRegExps.end())
@@ -3621,7 +3633,7 @@ CFileItem CFileItem::GetItemToPlay() const
 {
   if (HasEPGInfoTag())
   {
-    const CPVRChannelPtr channel(GetEPGInfoTag()->Channel());
+    const std::shared_ptr<CPVRChannel> channel = CServiceBroker::GetPVRManager().ChannelGroups()->GetChannelForEpgTag(GetEPGInfoTag());
     if (channel)
       return CFileItem(channel);
   }

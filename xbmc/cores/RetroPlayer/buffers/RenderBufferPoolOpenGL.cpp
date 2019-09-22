@@ -7,6 +7,7 @@
  */
 
 #include "RenderBufferPoolOpenGL.h"
+
 #include "RenderBufferOpenGL.h"
 #include "cores/RetroPlayer/rendering/RenderContext.h"
 #include "cores/RetroPlayer/rendering/RenderVideoSettings.h"
@@ -18,10 +19,7 @@ using namespace RETRO;
 
 bool CRenderBufferPoolOpenGL::IsCompatible(const CRenderVideoSettings &renderSettings) const
 {
-  if (!CRPRendererOpenGL::SupportsScalingMethod(renderSettings.GetScalingMethod()))
-    return false;
-
-  return true;
+  return CRPRendererOpenGL::SupportsScalingMethod(renderSettings.GetScalingMethod());
 }
 
 IRenderBuffer *CRenderBufferPoolOpenGL::CreateRenderBuffer(void *header /* = nullptr */)

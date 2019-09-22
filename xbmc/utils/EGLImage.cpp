@@ -7,10 +7,11 @@
  */
 
 #include "EGLImage.h"
+
 #include "EGLUtils.h"
 #include "log.h"
 
-/* --- CEGLImage -------------------------------------------*/
+#include <map>
 
 namespace
 {
@@ -50,6 +51,54 @@ namespace
     EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT,
   };
 #endif
+
+#define X(VAL) std::make_pair(VAL, #VAL)
+std::map<EGLint, const char*> eglAttributes =
+{
+  X(EGL_WIDTH),
+  X(EGL_HEIGHT),
+
+  // please keep attributes in accordance to:
+  // https://www.khronos.org/registry/EGL/extensions/EXT/EGL_EXT_image_dma_buf_import.txt
+  X(EGL_LINUX_DRM_FOURCC_EXT),
+  X(EGL_DMA_BUF_PLANE0_FD_EXT),
+  X(EGL_DMA_BUF_PLANE0_OFFSET_EXT),
+  X(EGL_DMA_BUF_PLANE0_PITCH_EXT),
+  X(EGL_DMA_BUF_PLANE1_FD_EXT),
+  X(EGL_DMA_BUF_PLANE1_OFFSET_EXT),
+  X(EGL_DMA_BUF_PLANE1_PITCH_EXT),
+  X(EGL_DMA_BUF_PLANE2_FD_EXT),
+  X(EGL_DMA_BUF_PLANE2_OFFSET_EXT),
+  X(EGL_DMA_BUF_PLANE2_PITCH_EXT),
+  X(EGL_YUV_COLOR_SPACE_HINT_EXT),
+  X(EGL_SAMPLE_RANGE_HINT_EXT),
+  X(EGL_YUV_CHROMA_VERTICAL_SITING_HINT_EXT),
+  X(EGL_YUV_CHROMA_HORIZONTAL_SITING_HINT_EXT),
+  X(EGL_ITU_REC601_EXT),
+  X(EGL_ITU_REC709_EXT),
+  X(EGL_ITU_REC2020_EXT),
+  X(EGL_YUV_FULL_RANGE_EXT),
+  X(EGL_YUV_NARROW_RANGE_EXT),
+  X(EGL_YUV_CHROMA_SITING_0_EXT),
+  X(EGL_YUV_CHROMA_SITING_0_5_EXT),
+
+#if defined(EGL_EXT_image_dma_buf_import_modifiers)
+  // please keep attributes in accordance to:
+  // https://www.khronos.org/registry/EGL/extensions/EXT/EGL_EXT_image_dma_buf_import_modifiers.txt
+  X(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT),
+  X(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT),
+  X(EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT),
+  X(EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT),
+  X(EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT),
+  X(EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT),
+  X(EGL_DMA_BUF_PLANE3_FD_EXT),
+  X(EGL_DMA_BUF_PLANE3_OFFSET_EXT),
+  X(EGL_DMA_BUF_PLANE3_PITCH_EXT),
+  X(EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT),
+  X(EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT),
+#endif
+};
+
 } // namespace
 
 CEGLImage::CEGLImage(EGLDisplay display) :
@@ -67,11 +116,13 @@ bool CEGLImage::CreateImage(EglAttrs imageAttrs)
                {EGL_HEIGHT, imageAttrs.height},
                {EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(imageAttrs.format)}});
 
-  /* this should be configurable at a later point */
-  attribs.Add({{EGL_YUV_COLOR_SPACE_HINT_EXT, EGL_ITU_REC709_EXT},
-               {EGL_SAMPLE_RANGE_HINT_EXT, EGL_YUV_NARROW_RANGE_EXT},
-               {EGL_YUV_CHROMA_VERTICAL_SITING_HINT_EXT, EGL_YUV_CHROMA_SITING_0_EXT},
-               {EGL_YUV_CHROMA_HORIZONTAL_SITING_HINT_EXT, EGL_YUV_CHROMA_SITING_0_EXT}});
+  if (imageAttrs.colorSpace != 0 && imageAttrs.colorRange != 0)
+  {
+    attribs.Add({{EGL_YUV_COLOR_SPACE_HINT_EXT, imageAttrs.colorSpace},
+                 {EGL_SAMPLE_RANGE_HINT_EXT, imageAttrs.colorRange},
+                 {EGL_YUV_CHROMA_VERTICAL_SITING_HINT_EXT, EGL_YUV_CHROMA_SITING_0_EXT},
+                 {EGL_YUV_CHROMA_HORIZONTAL_SITING_HINT_EXT, EGL_YUV_CHROMA_SITING_0_EXT}});
+  }
 
   for (int i = 0; i < MAX_NUM_PLANES; i++)
   {
@@ -82,7 +133,7 @@ bool CEGLImage::CreateImage(EglAttrs imageAttrs)
                    {eglDmabufPlanePitchAttr[i], imageAttrs.planes[i].pitch}});
 
 #if defined(EGL_EXT_image_dma_buf_import_modifiers)
-      if (imageAttrs.planes[i].modifier != DRM_FORMAT_MOD_INVALID)
+      if (imageAttrs.planes[i].modifier != DRM_FORMAT_MOD_INVALID && imageAttrs.planes[i].modifier != DRM_FORMAT_MOD_LINEAR)
         attribs.Add({{eglDmabufPlaneModifierLoAttr[i], static_cast<EGLint>(imageAttrs.planes[i].modifier & 0xFFFFFFFF)},
                      {eglDmabufPlaneModifierHiAttr[i], static_cast<EGLint>(imageAttrs.planes[i].modifier >> 32)}});
 #endif
@@ -93,7 +144,42 @@ bool CEGLImage::CreateImage(EglAttrs imageAttrs)
 
   if(!m_image)
   {
-    CLog::Log(LOGERROR, "CEGLImage::%s - failed to import buffer into EGL image: %d", __FUNCTION__, eglGetError());
+    CLog::Log(LOGERROR, "CEGLImage::{} - failed to import buffer into EGL image: {}", __FUNCTION__, eglGetError());
+
+    const EGLint* attrs = attribs.Get();
+
+    std::string eglString;
+
+    for (int i = 0; i < (attribs.Size()); i += 2)
+    {
+      std::string keyStr;
+      std::string valueStr;
+
+      auto eglAttr = eglAttributes.find(attrs[i]);
+      if (eglAttr != eglAttributes.end())
+      {
+        keyStr = eglAttr->second;
+      }
+      else
+      {
+        keyStr = std::to_string(attrs[i]);
+      }
+
+      eglAttr = eglAttributes.find(attrs[i + 1]);
+      if (eglAttr != eglAttributes.end())
+      {
+        valueStr = eglAttr->second;
+      }
+      else
+      {
+        valueStr = std::to_string(attrs[i + 1]);
+      }
+
+      eglString.append(StringUtils::Format("%s: %s\n", keyStr, valueStr));
+    }
+
+    CLog::Log(LOGDEBUG, "CEGLImage::{} - attributes:\n{}", __FUNCTION__, eglString);
+
     return false;
   }
 

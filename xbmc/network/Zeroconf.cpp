@@ -11,6 +11,7 @@
 
 #include "ServiceBroker.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/Atomics.h"
 #include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
@@ -20,7 +21,7 @@
 #include "platform/linux/network/ZeroconfAvahi.h"
 #elif defined(TARGET_DARWIN)
 //on osx use the native implementation
-#include "platform/darwin/osx/network/ZeroconfOSX.h"
+#include "platform/darwin/network/ZeroconfDarwin.h"
 #elif defined(TARGET_ANDROID)
 #include "platform/android/network/ZeroconfAndroid.h"
 #elif defined(HAS_MDNS)
@@ -105,9 +106,10 @@ bool CZeroconf::Start()
   CSingleLock lock(*mp_crit_sec);
   if(!IsZCdaemonRunning())
   {
-    CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_ZEROCONF, false);
-    if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_SERVICES_AIRPLAY))
-      CServiceBroker::GetSettings()->SetBool(CSettings::SETTING_SERVICES_AIRPLAY, false);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    settings->SetBool(CSettings::SETTING_SERVICES_ZEROCONF, false);
+    if (settings->GetBool(CSettings::SETTING_SERVICES_AIRPLAY))
+      settings->SetBool(CSettings::SETTING_SERVICES_AIRPLAY, false);
     return false;
   }
   if(m_started)
@@ -136,7 +138,7 @@ CZeroconf*  CZeroconf::GetInstance()
     smp_instance = new CZeroconfDummy;
 #else
 #if defined(TARGET_DARWIN)
-    smp_instance = new CZeroconfOSX;
+    smp_instance = new CZeroconfDarwin;
 #elif defined(HAS_AVAHI)
     smp_instance  = new CZeroconfAvahi;
 #elif defined(TARGET_ANDROID)
@@ -169,8 +171,9 @@ CZeroconf::CPublish::CPublish(const tServiceMap& servmap)
 
 bool CZeroconf::CPublish::DoWork()
 {
-  for(tServiceMap::const_iterator it = m_servmap.begin(); it != m_servmap.end(); ++it)
-    CZeroconf::GetInstance()->doPublishService(it->first, it->second.type, it->second.name, it->second.port, it->second.txt);
+  for (const auto& it : m_servmap)
+    CZeroconf::GetInstance()->doPublishService(it.first, it.second.type, it.second.name,
+                                               it.second.port, it.second.txt);
 
   return true;
 }

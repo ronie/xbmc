@@ -6,44 +6,43 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <math.h>
-
-#include "Application.h"
-#include "ServiceBroker.h"
-#include "CustomControllerTranslator.h"
 #include "InputManager.h"
+
+#include "AppInboundProtocol.h"
+#include "AppParamParser.h"
+#include "Application.h"
+#include "ButtonTranslator.h"
+#include "CustomControllerTranslator.h"
 #include "IRTranslator.h"
 #include "JoystickMapper.h"
 #include "KeymapEnvironment.h"
+#include "ServiceBroker.h"
 #include "TouchTranslator.h"
-#include "input/keyboard/interfaces/IKeyboardDriverHandler.h"
-#include "input/keyboard/KeyboardEasterEgg.h"
-#include "input/mouse/interfaces/IMouseDriverHandler.h"
-#include "input/mouse/MouseTranslator.h"
-#include "input/Key.h"
-#include "input/WindowTranslator.h"
-#include "messaging/ApplicationMessenger.h"
-#include "guilib/GUIComponent.h"
+#include "Util.h"
+#include "XBMC_vkeys.h"
 #include "guilib/GUIAudioManager.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIControl.h"
+#include "guilib/GUIMessage.h"
 #include "guilib/GUIWindow.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/GUIMessage.h"
+#include "input/Key.h"
+#include "input/keyboard/KeyboardEasterEgg.h"
+#include "input/keyboard/interfaces/IKeyboardDriverHandler.h"
+#include "input/mouse/MouseTranslator.h"
+#include "input/mouse/interfaces/IMouseDriverHandler.h"
+#include "messaging/ApplicationMessenger.h"
 #include "network/EventServer.h"
-#include "ButtonTranslator.h"
 #include "peripherals/Peripherals.h"
-#include "peripherals/devices/PeripheralImon.h"
-#include "XBMC_vkeys.h"
-#include "utils/Geometry.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "Util.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
-#include "AppParamParser.h"
-#include "AppInboundProtocol.h"
+#include "utils/Geometry.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
 
 #include <algorithm>
+#include <math.h>
 
 using EVENTSERVER::CEventServer;
 
@@ -67,7 +66,7 @@ CInputManager::CInputManager(const CAppParamParser &params) :
   // Register settings
   std::set<std::string> settingSet;
   settingSet.insert(CSettings::SETTING_INPUT_ENABLEMOUSE);
-  CServiceBroker::GetSettings()->RegisterCallback(this, settingSet);
+  CServiceBroker::GetSettingsComponent()->GetSettings()->RegisterCallback(this, settingSet);
 }
 
 CInputManager::~CInputManager()
@@ -75,7 +74,7 @@ CInputManager::~CInputManager()
   Deinitialize();
 
   // Unregister settings
-  CServiceBroker::GetSettings()->UnregisterCallback(this);
+  CServiceBroker::GetSettingsComponent()->GetSettings()->UnregisterCallback(this);
 
   UnregisterKeyboardDriverHandler(m_keyboardEasterEgg.get());
 
@@ -89,7 +88,7 @@ void CInputManager::InitializeInputs()
   m_Keyboard.Initialize();
 
   m_Mouse.Initialize();
-  m_Mouse.SetEnabled(CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
+  m_Mouse.SetEnabled(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
 }
 
 void CInputManager::Deinitialize()

@@ -6,22 +6,24 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <cstdlib>
-#include <sstream>
-
 #include "ListItem.h"
-#include "AddonUtils.h"
 
-#include "video/VideoInfoTag.h"
+#include "AddonUtils.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "games/GameTypes.h"
+#include "games/tags/GameInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
 #include "pictures/PictureInfoTag.h"
-#include "games/tags/GameInfoTag.h"
-#include "games/GameTypes.h"
-#include "utils/log.h"
-#include "utils/Variant.h"
-#include "utils/StringUtils.h"
 #include "settings/AdvancedSettings.h"
-#include "Util.h"
+#include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
+
+#include <cstdlib>
+#include <sstream>
 
 namespace XBMCAddon
 {
@@ -47,9 +49,9 @@ namespace XBMCAddon
       if (!label2.empty())
         item->SetLabel2( label2 );
       if (!iconImage.empty())
-        item->SetIconImage( iconImage );
+        CLog::Log(LOGWARNING, "Using iconImage in ListItem constructor results in NOP. Use setArt.");
       if (!thumbnailImage.empty())
-        item->SetArt("thumb",  thumbnailImage );
+        CLog::Log(LOGWARNING, "Using thumbnailImage in ListItem constructor results in NOP. Use setArt.");
       if (!path.empty())
         item->SetPath(path);
     }
@@ -107,20 +109,12 @@ namespace XBMCAddon
 
     void ListItem::setIconImage(const String& iconImage)
     {
-      if (!item) return;
-      {
-        XBMCAddonUtils::GuiLock lock(languageHook, m_offscreen);
-        item->SetIconImage(iconImage);
-      }
+      CLog::Log(LOGWARNING, "setIconImage results in NOP. Use setArt.");
     }
 
     void ListItem::setThumbnailImage(const String& thumbFilename)
     {
-      if (!item) return;
-      {
-        XBMCAddonUtils::GuiLock lock(languageHook, m_offscreen);
-        item->SetArt("thumb", thumbFilename);
-      }
+      CLog::Log(LOGWARNING, "setThumbnailImage results in NOP. Use setArt.");
     }
 
     void ListItem::setArt(const Properties& dictionary)
@@ -132,10 +126,7 @@ namespace XBMCAddon
         {
           std::string artName = it.first;
           StringUtils::ToLower(artName);
-          if (artName == "icon")
-            item->SetIconImage(it.second);
-          else
-            item->SetArt(artName, it.second);
+          item->SetArt(artName, it.second);
         }
       }
     }
@@ -582,11 +573,11 @@ namespace XBMCAddon
           else if (key == "musicbrainztrackid")
             musictag.SetMusicBrainzTrackID(value);
           else if (key == "musicbrainzartistid")
-            musictag.SetMusicBrainzArtistID(StringUtils::Split(value, g_advancedSettings.m_musicItemSeparator));
+            musictag.SetMusicBrainzArtistID(StringUtils::Split(value, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
           else if (key == "musicbrainzalbumid")
             musictag.SetMusicBrainzAlbumID(value);
           else if (key == "musicbrainzalbumartistid")
-            musictag.SetMusicBrainzAlbumArtistID(StringUtils::Split(value, g_advancedSettings.m_musicItemSeparator));
+            musictag.SetMusicBrainzAlbumArtistID(StringUtils::Split(value, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
           else if (key == "comment")
             musictag.SetComment(value);
           else if (key == "date")
@@ -741,10 +732,10 @@ namespace XBMCAddon
       GetVideoInfoTag()->m_fanart.Pack();
     }
 
-    void ListItem::addAvailableArtwork(std::string url, std::string art_type, std::string referrer, std::string cache, bool post, bool isgz, int season)
+    void ListItem::addAvailableArtwork(std::string url, std::string art_type, std::string preview, std::string referrer, std::string cache, bool post, bool isgz, int season)
     {
       XBMCAddonUtils::GuiLock lock(languageHook, m_offscreen);
-      GetVideoInfoTag()->m_strPictureURL.AddElement(url, art_type, referrer, cache, post, isgz, season);
+      GetVideoInfoTag()->m_strPictureURL.AddElement(url, art_type, preview, referrer, cache, post, isgz, season);
     }
 
     void ListItem::addStreamInfo(const char* cType, const Properties& dictionary)
@@ -856,7 +847,7 @@ namespace XBMCAddon
       {
         if (value.empty())
           value = alt.former();
-        return StringUtils::Split(value, g_advancedSettings.m_videoItemSeparator);
+        return StringUtils::Split(value, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoItemSeparator);
       }
 
       std::vector<std::string> els;

@@ -7,21 +7,23 @@
  */
 
 #include "MusicInfoLoader.h"
-#include "ServiceBroker.h"
+
+#include "Album.h"
+#include "Artist.h"
+#include "FileItem.h"
 #include "MusicDatabase.h"
-#include "music/tags/MusicInfoTagLoaderFactory.h"
+#include "MusicThumbLoader.h"
+#include "ServiceBroker.h"
+#include "filesystem/File.h"
 #include "filesystem/MusicDatabaseDirectory/DirectoryNode.h"
 #include "filesystem/MusicDatabaseDirectory/QueryParams.h"
-#include "utils/URIUtils.h"
 #include "music/tags/MusicInfoTag.h"
-#include "filesystem/File.h"
+#include "music/tags/MusicInfoTagLoaderFactory.h"
 #include "settings/Settings.h"
-#include "FileItem.h"
-#include "utils/log.h"
+#include "settings/SettingsComponent.h"
 #include "utils/Archive.h"
-#include "Artist.h"
-#include "Album.h"
-#include "MusicThumbLoader.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 using namespace XFILE;
 using namespace MUSIC_INFO;
@@ -124,7 +126,7 @@ bool CMusicInfoLoader::LoadAdditionalTagInfo(CFileItem* pItem)
   // fetch the lyrics and add it to the current music info tag
   CFileItem tempItem(path, false);
   std::unique_ptr<IMusicInfoTagLoader> pLoader (CMusicInfoTagLoaderFactory::CreateLoader(tempItem));
-  if (NULL != pLoader.get())
+  if (nullptr != pLoader)
   {
     CMusicInfoTag tag;
     pLoader->Load(path, tag);
@@ -146,7 +148,10 @@ bool CMusicInfoLoader::LoadItem(CFileItem* pItem)
 bool CMusicInfoLoader::LoadItemCached(CFileItem* pItem)
 {
   if ((pItem->m_bIsFolder && !pItem->IsAudio()) ||
-       pItem->IsPlayList() || pItem->IsNFO() || pItem->IsInternetStream())
+      pItem->IsPlayList() || pItem->IsSmartPlayList() ||
+      StringUtils::StartsWithNoCase(pItem->GetPath(), "newplaylist://") ||
+      StringUtils::StartsWithNoCase(pItem->GetPath(), "newsmartplaylist://") ||
+      pItem->IsNFO() || (pItem->IsInternetStream() && !pItem->IsMusicDb()))
     return false;
 
   // Get thumb for item
@@ -160,8 +165,11 @@ bool CMusicInfoLoader::LoadItemLookup(CFileItem* pItem)
   if (m_pProgressCallback && !pItem->m_bIsFolder)
     m_pProgressCallback->SetProgressAdvance();
 
-  if ((pItem->m_bIsFolder && !pItem->IsAudio()) || pItem->IsPlayList() ||
-       pItem->IsNFO() || pItem->IsInternetStream())
+  if ((pItem->m_bIsFolder && !pItem->IsAudio()) || 
+      pItem->IsPlayList() || pItem->IsSmartPlayList() ||
+      StringUtils::StartsWithNoCase(pItem->GetPath(), "newplaylist://") ||
+      StringUtils::StartsWithNoCase(pItem->GetPath(), "newsmartplaylist://") ||
+      pItem->IsNFO() || (pItem->IsInternetStream() && !pItem->IsMusicDb()))
     return false;
 
   if (!pItem->HasMusicInfoTag() || !pItem->GetMusicInfoTag()->Loaded())
@@ -213,12 +221,12 @@ bool CMusicInfoLoader::LoadItemLookup(CFileItem* pItem)
             pItem->SetArt("thumb", song.strThumb);
         }
       }
-      else if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICFILES_USETAGS) || pItem->IsCDDA())
+      else if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICFILES_USETAGS) || pItem->IsCDDA())
       { // Nothing found, load tag from file,
         // always try to load cddb info
         // get correct tag parser
         std::unique_ptr<IMusicInfoTagLoader> pLoader (CMusicInfoTagLoaderFactory::CreateLoader(*pItem));
-        if (NULL != pLoader.get())
+        if (nullptr != pLoader)
           // get tag
           pLoader->Load(pItem->GetPath(), *pItem->GetMusicInfoTag());
         m_tagReads++;

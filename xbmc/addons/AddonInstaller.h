@@ -8,15 +8,15 @@
 
 #pragma once
 
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "addons/Addon.h"
 #include "addons/Repository.h"
 #include "threads/Event.h"
 #include "utils/FileOperationJob.h"
 #include "utils/Stopwatch.h"
+
+#include <string>
+#include <utility>
+#include <vector>
 
 class CAddonDatabase;
 
@@ -27,7 +27,7 @@ public:
 
   bool IsDownloading() const;
   void GetInstallList(ADDON::VECADDONS &addons) const;
-  bool GetProgress(const std::string &addonID, unsigned int &percent) const;
+  bool GetProgress(const std::string& addonID, unsigned int& percent, bool& downloadFinshed) const;
   bool Cancel(const std::string &addonID);
 
   /*! \brief Installs the addon while showing a modal progress dialog
@@ -93,13 +93,11 @@ public:
   class CDownloadJob
   {
   public:
-    explicit CDownloadJob(unsigned int id)
-    {
-      jobID = id;
-      progress = 0;
-    }
+    explicit CDownloadJob(unsigned int id) : jobID(id) { }
+
     unsigned int jobID;
-    unsigned int progress;
+    unsigned int progress = 0;
+    bool downloadFinshed = false;
   };
 
   typedef std::map<std::string, CDownloadJob> JobMap;
@@ -146,12 +144,21 @@ public:
 
   bool DoWork() override;
 
-  /*! \brief Find the add-on and itshash for the given add-on ID
+  static constexpr const char* TYPE_DOWNLOAD = "DOWNLOAD";
+  static constexpr const char* TYPE_INSTALL = "INSTALL";
+  /*!
+   * \brief Returns the current processing type in the installation job
+   *
+   * \return The current processing type as string, can be \ref TYPE_DOWNLOAD or
+   *         \ref TYPE_INSTALL
+   */
+  const char* GetType() const override { return m_currentType; }
+
+  /*! \brief Find the add-on and its repository for the given add-on ID
    *  \param addonID ID of the add-on to find
-   *  \param repoID ID of the repo to use
-   *  \param addon Add-on with the given add-on ID
-   *  \param hash Hash of the add-on
-   *  \return True if the add-on and its hash were found, false otherwise.
+   *  \param[out] repo the repository to use
+   *  \param[out] addon Add-on with the given add-on ID
+   *  \return True if the add-on and its repository were found, false otherwise.
    */
   static bool GetAddon(const std::string& addonID, ADDON::RepositoryPtr& repo, ADDON::AddonPtr& addon);
 
@@ -174,6 +181,7 @@ private:
   ADDON::RepositoryPtr m_repo;
   bool m_isUpdate;
   bool m_isAutoUpdate;
+  const char* m_currentType = TYPE_DOWNLOAD;
 };
 
 class CAddonUnInstallJob : public CFileOperationJob

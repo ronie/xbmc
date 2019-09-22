@@ -7,14 +7,14 @@
  */
 
 #include "InputStreamAddon.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+
 #include "addons/binary-addons/AddonDll.h"
 #include "addons/binary-addons/BinaryAddonBase.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/VideoCodec.h"
-#include "cores/VideoPlayer/DVDClock.h"
 #include "cores/VideoPlayer/DVDDemuxers/DVDDemux.h"
 #include "cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.h"
 #include "cores/VideoPlayer/Interface/Addon/DemuxCrypto.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "filesystem/SpecialProtocol.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -356,6 +356,40 @@ CDemuxStream* CInputStreamAddon::GetStream(int streamId) const
     videoStream->fAspect = stream.m_Aspect;
     videoStream->iBitRate = stream.m_BitRate;
     videoStream->profile = ConvertVideoCodecProfile(stream.m_codecProfile);
+
+    if (GetAddonBase()->DependencyVersion(ADDON_INSTANCE_VERSION_INPUTSTREAM_XML_ID) >= AddonVersion("2.0.8"))
+    {
+      videoStream->colorSpace = static_cast<AVColorSpace>(stream.m_colorSpace);
+      videoStream->colorRange = static_cast<AVColorRange>(stream.m_colorRange);
+    }
+    if (GetAddonBase()->DependencyVersion(ADDON_INSTANCE_VERSION_INPUTSTREAM_XML_ID) >= AddonVersion("2.0.9"))
+    {
+      videoStream->colorPrimaries = static_cast<AVColorPrimaries>(stream.m_colorPrimaries);
+      videoStream->colorTransferCharacteristic = static_cast<AVColorTransferCharacteristic>(stream.m_colorTransferCharacteristic);
+
+      if (stream.m_masteringMetadata)
+      {
+        videoStream->masteringMetaData = std::shared_ptr<AVMasteringDisplayMetadata>(new AVMasteringDisplayMetadata);
+        videoStream->masteringMetaData->display_primaries[0][0] = av_d2q(stream.m_masteringMetadata->primary_r_chromaticity_x, INT_MAX);
+        videoStream->masteringMetaData->display_primaries[0][1] = av_d2q(stream.m_masteringMetadata->primary_r_chromaticity_y, INT_MAX);
+        videoStream->masteringMetaData->display_primaries[1][0] = av_d2q(stream.m_masteringMetadata->primary_g_chromaticity_x, INT_MAX);
+        videoStream->masteringMetaData->display_primaries[1][1] = av_d2q(stream.m_masteringMetadata->primary_g_chromaticity_y, INT_MAX);
+        videoStream->masteringMetaData->display_primaries[2][0] = av_d2q(stream.m_masteringMetadata->primary_b_chromaticity_x, INT_MAX);
+        videoStream->masteringMetaData->display_primaries[2][1] = av_d2q(stream.m_masteringMetadata->primary_b_chromaticity_y, INT_MAX);
+        videoStream->masteringMetaData->white_point[0] = av_d2q(stream.m_masteringMetadata->white_point_chromaticity_x, INT_MAX);
+        videoStream->masteringMetaData->white_point[1] = av_d2q(stream.m_masteringMetadata->white_point_chromaticity_y, INT_MAX);
+        videoStream->masteringMetaData->min_luminance = av_d2q(stream.m_masteringMetadata->luminance_min, INT_MAX);
+        videoStream->masteringMetaData->max_luminance = av_d2q(stream.m_masteringMetadata->luminance_max, INT_MAX);
+        videoStream->masteringMetaData->has_luminance = videoStream->masteringMetaData->has_primaries = 1;
+      }
+
+      if (stream.m_contentLightMetadata)
+      {
+        videoStream->contentLightMetaData = std::shared_ptr<AVContentLightMetadata>(new AVContentLightMetadata);
+        videoStream->contentLightMetaData->MaxCLL = stream.m_contentLightMetadata->max_cll;
+        videoStream->contentLightMetaData->MaxFALL = stream.m_contentLightMetadata->max_fall;
+      }
+    }
     demuxStream = videoStream;
   }
   else if (stream.m_streamType == INPUTSTREAM_INFO::TYPE_SUBTITLE)
@@ -372,6 +406,11 @@ CDemuxStream* CInputStreamAddon::GetStream(int streamId) const
   demuxStream->uniqueId = streamId;
   demuxStream->flags = static_cast<StreamFlags>(stream.m_flags);
   demuxStream->language = stream.m_language;
+
+  if (GetAddonBase()->DependencyVersion(ADDON_INSTANCE_VERSION_INPUTSTREAM_XML_ID) >= AddonVersion("2.0.8"))
+  {
+    demuxStream->codec_fourcc = stream.m_codecFourCC;
+  }
 
   if (stream.m_ExtraData && stream.m_ExtraSize)
   {
@@ -491,6 +530,14 @@ int CInputStreamAddon::ConvertVideoCodecProfile(STREAMCODEC_PROFILE profile)
     return FF_PROFILE_H264_HIGH_422;
   case H264CodecProfileHigh444Predictive:
     return FF_PROFILE_H264_HIGH_444_PREDICTIVE;
+  case VP9CodecProfile0:
+    return FF_PROFILE_VP9_0;
+  case VP9CodecProfile1:
+    return FF_PROFILE_VP9_1;
+  case VP9CodecProfile2:
+    return FF_PROFILE_VP9_2;
+  case VP9CodecProfile3:
+    return FF_PROFILE_VP9_3;
   default:
     return FF_PROFILE_UNKNOWN;
   }

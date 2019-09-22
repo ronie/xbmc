@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "AddonInfo.h"
+#include "addons/addoninfo/AddonInfo.h"
 
 #include <memory>
 #include <set>
@@ -82,6 +82,8 @@ namespace ADDON
     virtual void OnPostInstall(bool update, bool modal) =0;
     virtual void OnPreUnInstall() =0;
     virtual void OnPostUnInstall() =0;
+
+    // Derived property
+    bool IsBroken() const { return !Broken().empty(); }
   };
 };
-

@@ -7,6 +7,7 @@
  */
 
 #include "GUIRenderSettings.h"
+
 #include "GUIGameControl.h"
 #include "threads/SingleLock.h"
 
@@ -23,9 +24,9 @@ bool CGUIRenderSettings::HasVideoFilter() const
   return m_guiControl.HasVideoFilter();
 }
 
-bool CGUIRenderSettings::HasViewMode() const
+bool CGUIRenderSettings::HasStretchMode() const
 {
-  return m_guiControl.HasViewMode();
+  return m_guiControl.HasStretchMode();
 }
 
 bool CGUIRenderSettings::HasRotation() const
@@ -75,11 +76,11 @@ void CGUIRenderSettings::SetVideoFilter(const std::string &videoFilter)
   m_renderSettings.VideoSettings().SetVideoFilter(videoFilter);
 }
 
-void CGUIRenderSettings::SetViewMode(VIEWMODE viewMode)
+void CGUIRenderSettings::SetStretchMode(STRETCHMODE stretchMode)
 {
   CSingleLock lock(m_mutex);
 
-  m_renderSettings.VideoSettings().SetRenderViewMode(viewMode);
+  m_renderSettings.VideoSettings().SetRenderStretchMode(stretchMode);
 }
 
 void CGUIRenderSettings::SetRotationDegCCW(unsigned int rotationDegCCW)

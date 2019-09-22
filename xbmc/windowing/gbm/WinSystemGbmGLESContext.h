@@ -8,12 +8,20 @@
 
 #pragma once
 
-#include "utils/EGLUtils.h"
-#include "rendering/gles/RenderSystemGLES.h"
 #include "WinSystemGbmEGLContext.h"
+#include "rendering/gles/RenderSystemGLES.h"
+#include "utils/EGLUtils.h"
+
 #include <memory>
 
 class CVaapiProxy;
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
 
 class CWinSystemGbmGLESContext : public CWinSystemGbmEGLContext, public CRenderSystemGLES
 {
@@ -27,7 +35,11 @@ public:
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
   void PresentRender(bool rendered, bool videoLayer) override;
 protected:
-  void SetVSyncImpl(bool enable) override { return; };
+  void SetVSyncImpl(bool enable) override {}
   void PresentRenderImpl(bool rendered) override {};
   bool CreateContext() override;
 };
+
+}
+}
+}

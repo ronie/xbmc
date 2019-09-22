@@ -6,20 +6,24 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "XMLUtils.h"
 #include "ScraperUrl.h"
-#include "settings/AdvancedSettings.h"
+
 #include "CharsetConverter.h"
-#include "utils/CharsetDetection.h"
-#include "utils/StringUtils.h"
+#include "ServiceBroker.h"
+#include "URIUtils.h"
 #include "URL.h"
+#include "XMLUtils.h"
 #include "filesystem/CurlFile.h"
 #include "filesystem/ZipFile.h"
-#include "URIUtils.h"
-#include "utils/XBMCTinyXML.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/CharsetDetection.h"
 #include "utils/Mime.h"
+#include "utils/StringUtils.h"
+#include "utils/XBMCTinyXML.h"
 #include "utils/log.h"
 
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 
@@ -136,7 +140,7 @@ const CScraperUrl::SUrlEntry CScraperUrl::GetFirstThumb(const std::string &type)
 {
   for (std::vector<SUrlEntry>::const_iterator iter=m_url.begin();iter != m_url.end();++iter)
   {
-    if (iter->m_type == URL_TYPE_GENERAL && (type.empty() || type == "thumb" || iter->m_aspect == type))
+    if (iter->m_type == URL_TYPE_GENERAL && (type.empty() || iter->m_aspect == type))
       return *iter;
   }
 
@@ -182,12 +186,9 @@ bool CScraperUrl::Get(const SUrlEntry& scrURL, std::string& strHTML, XFILE::CCur
   http.SetReferer(scrURL.m_spoof);
   std::string strCachePath;
 
-  if (scrURL.m_isgz)
-    http.SetAcceptEncoding("gzip");
-
   if (!scrURL.m_cache.empty())
   {
-    strCachePath = URIUtils::AddFileToFolder(g_advancedSettings.m_cachePath,
+    strCachePath = URIUtils::AddFileToFolder(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cachePath,
                               "scrapers", cacheContext, scrURL.m_cache);
     if (XFILE::CFile::Exists(strCachePath))
     {
@@ -287,7 +288,7 @@ bool CScraperUrl::Get(const SUrlEntry& scrURL, std::string& strHTML, XFILE::CCur
 
   if (!scrURL.m_cache.empty())
   {
-    std::string strCachePath = URIUtils::AddFileToFolder(g_advancedSettings.m_cachePath,
+    std::string strCachePath = URIUtils::AddFileToFolder(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cachePath,
                               "scrapers", cacheContext, scrURL.m_cache);
     XFILE::CFile file;
     if (!file.OpenForWrite(strCachePath, true) || file.Write(strHTML.data(), strHTML.size()) != static_cast<ssize_t>(strHTML.size()))
@@ -325,7 +326,7 @@ bool CScraperUrl::ParseEpisodeGuide(std::string strUrls)
   return true;
 }
 
-void CScraperUrl::AddElement(std::string url, std::string aspect, std::string referrer, std::string cache, bool post, bool isgz, int season)
+void CScraperUrl::AddElement(std::string url, std::string aspect, std::string preview, std::string referrer, std::string cache, bool post, bool isgz, int season)
 {
   TiXmlElement thumb("thumb");
   thumb.SetAttribute("spoof", referrer);
@@ -340,6 +341,7 @@ void CScraperUrl::AddElement(std::string url, std::string aspect, std::string re
     thumb.SetAttribute("type", "season");
   }
   thumb.SetAttribute("aspect", aspect);
+  thumb.SetAttribute("preview", preview);
   TiXmlText text(url);
   thumb.InsertEndChild(text);
   m_xml << thumb;
@@ -370,16 +372,18 @@ std::string CScraperUrl::GetThumbURL(const CScraperUrl::SUrlEntry &entry)
   return entry.m_url + "|Referer=" + CURL::Encode(entry.m_spoof);
 }
 
-void CScraperUrl::GetThumbURLs(std::vector<std::string> &thumbs, const std::string &type, int season) const
+void CScraperUrl::GetThumbURLs(std::vector<std::string> &thumbs, const std::string &type, int season, bool unique) const
 {
   for (std::vector<SUrlEntry>::const_iterator iter = m_url.begin(); iter != m_url.end(); ++iter)
   {
-    if (iter->m_aspect == type || type.empty() || type == "thumb" || iter->m_aspect.empty())
+    if (iter->m_aspect == type || type.empty() || iter->m_aspect.empty())
     {
       if ((iter->m_type == CScraperUrl::URL_TYPE_GENERAL && season == -1)
        || (iter->m_type == CScraperUrl::URL_TYPE_SEASON && iter->m_season == season))
       {
-        thumbs.push_back(GetThumbURL(*iter));
+        std::string url = GetThumbURL(*iter);
+        if (!unique || std::find(thumbs.begin(), thumbs.end(), url) == thumbs.end())
+          thumbs.push_back(url);
       }
     }
   }

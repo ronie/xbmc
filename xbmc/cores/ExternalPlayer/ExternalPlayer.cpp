@@ -8,7 +8,6 @@
 
 #include "threads/SystemClock.h"
 #include "CompileInfo.h"
-#include "threads/SingleLock.h"
 #include "ExternalPlayer.h"
 #include "windowing/WinSystem.h"
 #include "dialogs/GUIDialogOK.h"
@@ -24,13 +23,13 @@
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
 #include "utils/Variant.h"
+#include "video/Bookmark.h"
 #include "ServiceBroker.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
 #include "cores/DataCacheCore.h"
-#include "input/InputManager.h"
 #if defined(TARGET_WINDOWS)
   #include "utils/CharsetConverter.h"
-  #include "Windows.h"
+  #include <Windows.h>
 #endif
 #if defined(TARGET_ANDROID)
   #include "platform/android/activity/XBMCApp.h"
@@ -311,7 +310,7 @@ void CExternalPlayer::Process()
   ret = ExecuteAppW32(strFName.c_str(),strFArgs.c_str());
 #elif defined(TARGET_ANDROID)
   ret = ExecuteAppAndroid(m_filename.c_str(), mainFile.c_str());
-#elif (defined(TARGET_POSIX) && !defined(TARGET_DARWIN_IOS)) || defined(TARGET_DARWIN_OSX)
+#elif defined(TARGET_POSIX) && !defined(TARGET_DARWIN_EMBEDDED)
   ret = ExecuteAppLinux(strFArgs.c_str());
 #endif
   int64_t elapsedMillis = XbmcThreads::SystemClockMillis() - m_playbackStartTime;
@@ -369,6 +368,12 @@ void CExternalPlayer::Process()
     SetCursorPos(m_xPos,m_yPos);
   }
 #endif
+
+  CBookmark bookmark;
+  bookmark.totalTimeInSeconds = 1;
+  bookmark.timeInSeconds = (elapsedMillis / 1000 >= m_playCountMinTime) ? 1 : 0;
+  bookmark.player = m_name;
+  m_callback.OnPlayerCloseFile(m_file, bookmark);
 
   /* Resume AE processing of XBMC native audio */
   if (!CServiceBroker::GetActiveAE()->Resume())
@@ -442,7 +447,7 @@ bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
 }
 #endif
 
-#if !defined(TARGET_ANDROID) && !defined(TARGET_DARWIN_IOS) && (defined(TARGET_POSIX) || defined(TARGET_DARWIN_OSX))
+#if !defined(TARGET_ANDROID) && !defined(TARGET_DARWIN_EMBEDDED) && defined(TARGET_POSIX)
 bool CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
 {
   CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);

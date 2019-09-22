@@ -8,13 +8,11 @@
 
 #pragma once
 
-#if defined(TARGET_DARWIN_OSX)
+#include "cores/AudioEngine/Sinks/osx/CoreAudioStream.h"
 
 #include <list>
 #include <string>
 #include <vector>
-
-#include "cores/AudioEngine/Sinks/osx/CoreAudioStream.h"
 
 #include <CoreAudio/CoreAudio.h>
 
@@ -38,7 +36,7 @@ public:
   void          RemoveObjectListenerProc(AudioObjectPropertyListenerProc callback, void *pClientData);
   bool          SetObjectListenerProc(AudioObjectPropertyListenerProc callback, void *pClientData);
 
-  AudioDeviceID GetId() {return m_DeviceId;}
+  AudioDeviceID GetId() const {return m_DeviceId;}
   std::string   GetName() const;
   bool          IsDigital() const;
   UInt32        GetTransportType() const;
@@ -93,5 +91,3 @@ protected:
                                              void*                               inClientData);
 
 };
-
-#endif

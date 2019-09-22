@@ -8,16 +8,18 @@
 
 #include "PVRGUIChannelNavigator.h"
 
+#include "FileItem.h"
 #include "GUIInfoManager.h"
 #include "ServiceBroker.h"
 #include "guilib/GUIComponent.h"
-#include "settings/Settings.h"
-#include "settings/lib/SettingsManager.h"
-
 #include "pvr/PVRGUIActions.h"
 #include "pvr/PVRJobs.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroup.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "threads/SingleLock.h"
+#include "utils/JobManager.h"
 
 namespace PVR
 {
@@ -60,14 +62,10 @@ namespace PVR
       if (group)
       {
         CSingleLock lock(m_critSection);
-        const CFileItemPtr item = bNext
-          ? group->GetNextChannel(m_currentChannel)
-          : group->GetPreviousChannel(m_currentChannel);;
-        if (item)
-          return item->GetPVRChannelInfoTag();
+        return bNext ? group->GetNextChannel(m_currentChannel) : group->GetPreviousChannel(m_currentChannel);
       }
     }
-    return CPVRChannelPtr();
+    return {};
   }
 
   void CPVRGUIChannelNavigator::SelectChannel(const CPVRChannelPtr channel, ChannelSwitchMode eSwitchMode)
@@ -80,7 +78,7 @@ namespace PVR
 
     if (IsPreview() && eSwitchMode == ChannelSwitchMode::INSTANT_OR_DELAYED_SWITCH)
     {
-      int iTimeout = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT);
+      int iTimeout = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT);
       if (iTimeout > 0)
       {
         // delayed switch
@@ -136,7 +134,7 @@ namespace PVR
 
   void CPVRGUIChannelNavigator::ShowInfo(bool bForce)
   {
-    int iTimeout = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO);
+    int iTimeout = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO);
 
     if (bForce || iTimeout > 0)
     {

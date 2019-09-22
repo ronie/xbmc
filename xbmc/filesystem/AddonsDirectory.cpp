@@ -6,31 +6,31 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <array>
-#include <algorithm>
-#include <functional>
-#include <set>
 #include "AddonsDirectory.h"
-#include "ServiceBroker.h"
-#include "addons/AddonDatabase.h"
-#include "addons/AddonSystemSettings.h"
-#include "guilib/LocalizeStrings.h"
-#include "interfaces/generic/ScriptInvocationManager.h"
+
 #include "FileItem.h"
+#include "ServiceBroker.h"
+#include "URL.h"
+#include "addons/AddonDatabase.h"
 #include "addons/AddonInstaller.h"
-#include "addons/BinaryAddonCache.h"
+#include "addons/AddonSystemSettings.h"
 #include "addons/PluginSource.h"
 #include "addons/RepositoryUpdater.h"
-#include "games/addons/GameClient.h"
 #include "games/GameUtils.h"
+#include "games/addons/GameClient.h"
+#include "guilib/LocalizeStrings.h"
 #include "guilib/TextureManager.h"
-#include "File.h"
+#include "interfaces/generic/ScriptInvocationManager.h"
 #include "messaging/helpers/DialogOKHelper.h"
 #include "settings/Settings.h"
-#include "SpecialProtocol.h"
-#include "utils/URIUtils.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
-#include "URL.h"
+#include "utils/URIUtils.h"
+
+#include <algorithm>
+#include <array>
+#include <functional>
+#include <set>
 
 using namespace KODI;
 using namespace ADDON;
@@ -612,48 +612,48 @@ static void RootDirectory(CFileItemList& items)
   {
     CFileItemPtr item(new CFileItem("addons://user/", true));
     item->SetLabel(g_localizeStrings.Get(24998));
-    item->SetIconImage("DefaultAddonsInstalled.png");
+    item->SetArt("icon", "DefaultAddonsInstalled.png");
     items.Add(item);
   }
   if (CServiceBroker::GetAddonMgr().HasAvailableUpdates())
   {
     CFileItemPtr item(new CFileItem("addons://outdated/", true));
     item->SetLabel(g_localizeStrings.Get(24043));
-    item->SetIconImage("DefaultAddonsUpdates.png");
+    item->SetArt("icon", "DefaultAddonsUpdates.png");
     items.Add(item);
   }
   if (CAddonInstaller::GetInstance().IsDownloading())
   {
     CFileItemPtr item(new CFileItem("addons://downloading/", true));
     item->SetLabel(g_localizeStrings.Get(24067));
-    item->SetIconImage("DefaultNetwork.png");
+    item->SetArt("icon", "DefaultNetwork.png");
     items.Add(item);
   }
-  if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == ADDON::AUTO_UPDATES_ON
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == ADDON::AUTO_UPDATES_ON
       && HasRecentlyUpdatedAddons())
   {
     CFileItemPtr item(new CFileItem("addons://recently_updated/", true));
     item->SetLabel(g_localizeStrings.Get(24004));
-    item->SetIconImage("DefaultAddonsRecentlyUpdated.png");
+    item->SetArt("icon", "DefaultAddonsRecentlyUpdated.png");
     items.Add(item);
   }
   if (CServiceBroker::GetAddonMgr().HasAddons(ADDON_REPOSITORY))
   {
     CFileItemPtr item(new CFileItem("addons://repos/", true));
     item->SetLabel(g_localizeStrings.Get(24033));
-    item->SetIconImage("DefaultAddonsRepo.png");
+    item->SetArt("icon", "DefaultAddonsRepo.png");
     items.Add(item);
   }
   {
     CFileItemPtr item(new CFileItem("addons://install/", false));
     item->SetLabel(g_localizeStrings.Get(24041));
-    item->SetIconImage("DefaultAddonsZip.png");
+    item->SetArt("icon", "DefaultAddonsZip.png");
     items.Add(item);
   }
   {
     CFileItemPtr item(new CFileItem("addons://search/", true));
     item->SetLabel(g_localizeStrings.Get(137));
-    item->SetIconImage("DefaultAddonsSearch.png");
+    item->SetArt("icon", "DefaultAddonsSearch.png");
     items.Add(item);
   }
 }
@@ -800,7 +800,7 @@ void CAddonsDirectory::GenerateAddonListing(const CURL &path,
       pItem->SetProperty("Addon.Status", g_localizeStrings.Get(24023));
     if (hasUpdate)
       pItem->SetProperty("Addon.Status", g_localizeStrings.Get(24068));
-    else if (!addon->Broken().empty())
+    else if (addon->IsBroken())
       pItem->SetProperty("Addon.Status", g_localizeStrings.Get(24098));
 
     items.Add(pItem);
@@ -823,7 +823,7 @@ CFileItemPtr CAddonsDirectory::FileItemFromAddon(const AddonPtr &addon,
   item->SetLabel(strLabel);
   item->SetArt(addon->Art());
   item->SetArt("thumb", addon->Icon());
-  item->SetIconImage("DefaultAddon.png");
+  item->SetArt("icon", "DefaultAddon.png");
 
   //! @todo fix hacks that depends on these
   item->SetProperty("Addon.ID", addon->ID());

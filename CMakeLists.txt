@@ -13,6 +13,7 @@ endif()
 
 # Set CORE_BUILD_DIR
 set(CORE_BUILD_DIR build)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "Source directory: ${CMAKE_SOURCE_DIR}")
 message(STATUS "Build directory: ${CMAKE_BINARY_DIR}")
@@ -35,13 +36,9 @@ include(cmake/scripts/common/Macros.cmake)
 include(cmake/scripts/common/ProjectMacros.cmake)
 core_find_versions()
 include(cmake/scripts/${CORE_SYSTEM_NAME}/PathSetup.cmake)
+include(cmake/scripts/common/CompilerSettings.cmake)
 include(ExternalProject)
 
-# Languages and global compiler settings
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} -x assembler-with-cpp")
 
 # general
 option(VERBOSE            "Enable verbose output?" OFF)
@@ -91,13 +88,11 @@ set(INCLUDES ${CMAKE_SOURCE_DIR}
              ${CMAKE_SOURCE_DIR}/xbmc/cores/VideoPlayer
              ${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR})
 
-find_package(PkgConfig)
-if(KODI_DEPENDSBUILD)
-  if(PKG_CONFIG_EXECUTABLE)
-    set(PKG_CONFIG_FOUND TRUE)
-  endif()
+if (NOT PLATFORMDEFS_DIR STREQUAL "")
+  list(APPEND INCLUDES ${CMAKE_SOURCE_DIR}/xbmc/${PLATFORMDEFS_DIR})
 endif()
 
+find_package(PkgConfig)
 find_package(Threads REQUIRED QUIET)
 list(APPEND DEPLIBS ${CMAKE_THREAD_LIBS_INIT})
 
@@ -107,13 +102,15 @@ foreach(depspec ${PLATFORM_REQUIRED_DEPS})
   # optional subdirectory for the specified platform to get built.
   split_dependency_specification(${depspec} dep version)
   string(TOUPPER ${dep} depup)
+  if(NOT ${ENABLE_${depup}} STREQUAL AUTO AND NOT ${ENABLE_${depup}})
+    message(WARNING "Your request to disable the dependency ${dep} required on platform ${CORE_PLATFORM_NAME} was ignored. Please choose another platform or add \"-DENABLE_${depup}=ON\" to your CMake command line to resolve this warning.")
+  endif()
   set(ENABLE_${depup} "ON" CACHE BOOL "Force enabling required ${depup} support" FORCE)
 endforeach()
 
 # Required dependencies. Keep in alphabetical order please
 set(required_deps ASS
                   Cdio
-                  Cpluff
                   CrossGUID
                   Curl
                   FFMPEG
@@ -125,21 +122,14 @@ set(required_deps ASS
                   Iconv
                   LibDvd
                   Lzo2
-                  OpenSSL
+                  OpenSSL>=1.0.2
                   PCRE
                   RapidJSON
                   Sqlite3
                   TagLib
                   TinyXML
+                  ZLIB
                   ${PLATFORM_REQUIRED_DEPS})
-if(NOT WIN32)
-  list(APPEND required_deps ZLIB)
-else()
-  list(APPEND required_deps D3DX11Effects)
-endif()
-if(CORE_SYSTEM_NAME STREQUAL android)
-  list(APPEND required_deps Zip)
-endif()
 
 # Optional dependencies. Keep in alphabetical order please
 set(optional_deps Alsa
@@ -149,12 +139,14 @@ set(optional_deps Alsa
                   CAP
                   CCache
                   CEC
+                  ClangFormat
                   DBus
                   LCMS2
                   LircClient
                   MDNS
                   MicroHttpd
                   NFS
+                  Plist
                   PulseAudio
                   Python
                   SmbClient
@@ -163,16 +155,12 @@ set(optional_deps Alsa
                   XSLT
                   ${PLATFORM_OPTIONAL_DEPS})
 
-# Optional, dyloaded deps. Keep in alphabetical order please
-set(dyload_optional Plist)
-
 # Required tools
 find_package(TexturePacker REQUIRED)
 find_package(JsonSchemaBuilder REQUIRED)
 
 # Check optional deps first, since their availability can influence required ones, e.g. ffmpeg
 core_optional_dep(${optional_deps})
-core_optional_dyload_dep(${dyload_optional})
 core_require_dep(${required_deps})
 
 if(ENABLE_MARIADBCLIENT AND NOT ENABLE_MARIADBCLIENT STREQUAL AUTO AND ENABLE_MYSQLCLIENT AND NOT ENABLE_MYSQLCLIENT STREQUAL AUTO)
@@ -201,7 +189,7 @@ endif()
 if(ENABLE_AIRTUNES)
   find_package(Shairplay)
   if(SHAIRPLAY_FOUND)
-    core_require_dyload_dep(Shairplay)
+    core_require_dep(Shairplay)
   endif()
 endif()
 
@@ -212,7 +200,8 @@ endif()
 # find all folders containing addon.xml.in
 # used to define ADDON_XML_OUTPUTS, ADDON_XML_DEPENDS and ADDON_INSTALL_DATA
 # Function defined in ./cmake/scripts/common/Macros.cmake
-find_addon_xml_in_files()
+set(outputFilterRegex "addons/xbmc.json")
+find_addon_xml_in_files(${outputFilterRegex})
 
 # Compile Info
 add_custom_command(OUTPUT ${CORE_BUILD_DIR}/xbmc/CompileInfo.cpp
@@ -223,9 +212,12 @@ add_custom_command(OUTPUT ${CORE_BUILD_DIR}/xbmc/CompileInfo.cpp
                                             -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
                                             -DARCH_DEFINES="${ARCH_DEFINES}"
                                             -DAPP_SCMID=${APP_SCMID}
+                                            -DAPP_COPYRIGHT_YEARS=${APP_COPYRIGHT_YEARS}
+                                            -DAPP_BUILD_DATE=${APP_BUILD_DATE}
                                             -Dprefix=${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}
                                             -P ${CMAKE_SOURCE_DIR}/cmake/scripts/common/GenerateVersionedFiles.cmake
                    DEPENDS ${CMAKE_SOURCE_DIR}/version.txt
+                           export-files
                            ${ADDON_XML_DEPENDS}
                            ${CMAKE_SOURCE_DIR}/xbmc/CompileInfo.cpp.in)
 list(APPEND install_data ${ADDON_INSTALL_DATA})
@@ -289,9 +281,11 @@ elseif(CORE_SYSTEM_NAME STREQUAL android)
                  ${CORE_BUILD_DIR}/DllPaths_generated_android.h @ONLY)
 endif()
 
+set(GLOBAL_TARGET_DEPS ffmpeg dvdnav crossguid fmt fstrcmp flatbuffers ${PLATFORM_GLOBAL_TARGET_DEPS})
+
 # main library (used for main binary and tests)
 add_library(lib${APP_NAME_LC} STATIC $<TARGET_OBJECTS:compileinfo>)
-add_dependencies(lib${APP_NAME_LC} libcpluff ffmpeg dvdnav crossguid fmt fstrcmp flatbuffers ${PLATFORM_GLOBAL_TARGET_DEPS})
+add_dependencies(lib${APP_NAME_LC} ${GLOBAL_TARGET_DEPS})
 set_target_properties(lib${APP_NAME_LC} PROPERTIES PREFIX "")
 
 # Other files (IDE)
@@ -299,6 +293,8 @@ set(OTHER_FILES cmake/README.md)
 
 # Subdirs
 core_add_subdirs_from_filelist(${CMAKE_SOURCE_DIR}/cmake/treedata/common/*.txt
+                               ${CMAKE_SOURCE_DIR}/cmake/treedata/common/${CORE_PLATFORM_NAME_LC}/*.txt
+                               ${CMAKE_SOURCE_DIR}/cmake/treedata/${CORE_SYSTEM_NAME}/${CORE_PLATFORM_NAME_LC}/*.txt
                                ${CMAKE_SOURCE_DIR}/cmake/treedata/${CORE_SYSTEM_NAME}/*.txt)
 core_add_optional_subdirs_from_filelist(${CMAKE_SOURCE_DIR}/cmake/treedata/optional/common/*.txt
                                         ${CMAKE_SOURCE_DIR}/cmake/treedata/optional/${CORE_SYSTEM_NAME}/*.txt)
@@ -338,9 +334,9 @@ if(WIN32)
   endif()
 elseif(CORE_SYSTEM_NAME STREQUAL android)
   # Nothing
-elseif(CORE_SYSTEM_NAME STREQUAL ios)
+elseif(CORE_SYSTEM_NAME STREQUAL darwin_embedded)
   set_target_properties(${APP_NAME_LC} PROPERTIES OUTPUT_NAME ${APP_NAME}
-                                                  MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/xbmc/platform/darwin/ios/Info.plist.in)
+                                                  MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/xbmc/platform/darwin/${CORE_PLATFORM_NAME}/Info.plist.in)
 else()
   set_target_properties(${APP_NAME_LC} PROPERTIES SUFFIX ${APP_BINARY_SUFFIX})
 endif()
@@ -448,7 +444,6 @@ file(COPY ${CORE_ADDON_BINDINGS_FILES} ${CORE_ADDON_BINDINGS_DIRS}/
 
 set(APP_LIB_DIR ${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/lib/${APP_NAME_LC})
 set(APP_INCLUDE_DIR ${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/include/${APP_NAME_LC})
-set(CXX11_SWITCH "-std=c++11")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/KodiConfig.cmake.in
                ${CORE_BUILD_DIR}/lib/${APP_NAME_LC}/${APP_NAME}Config.cmake @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/cmake/scripts/common/AddonHelpers.cmake
@@ -482,6 +477,7 @@ if(VERBOSE)
   message(STATUS "BINARY: ${APP_NAME_LC}${APP_BINARY_SUFFIX}")
   message(STATUS "#---------------------------------------------#")
   message(STATUS "GIT_REV: ${APP_SCMID}")
+  message(STATUS "Build date: ${APP_BUILD_DATE}")
   message(STATUS "#---------------------------------------------#")
   message(STATUS "CPACK_GENERATOR       : ${CPACK_GENERATOR}")
   message(STATUS "CPACK_SOURCE_GENERATOR: ${CPACK_SOURCE_GENERATOR}")

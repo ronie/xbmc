@@ -7,12 +7,12 @@
  */
 
 #include "GameClientPort.h"
+
 #include "GameClientDevice.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/kodi_game_types.h"
 #include "games/addons/GameClientTranslator.h"
 #include "games/controllers/Controller.h"
 #include "games/controllers/ControllerTopology.h"
-#include "games/controllers/ControllerTranslator.h"
 #include "utils/StringUtils.h"
 
 #include <algorithm>

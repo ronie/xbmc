@@ -7,6 +7,7 @@
  */
 
 #include "Scraper.h"
+
 #include "AddonManager.h"
 #include "FileItem.h"
 #include "ServiceBroker.h"
@@ -23,6 +24,7 @@
 #include "music/infoscanner/MusicAlbumInfo.h"
 #include "music/infoscanner/MusicArtistInfo.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/CharsetConverter.h"
 #include "utils/ScraperParser.h"
 #include "utils/ScraperUrl.h"
@@ -33,8 +35,9 @@
 #include "video/VideoDatabase.h"
 
 #include <algorithm>
-#include <fstrcmp.h>
 #include <sstream>
+
+#include <fstrcmp.h>
 
 using namespace XFILE;
 using namespace MUSIC_GRABBER;
@@ -114,63 +117,41 @@ static void CheckScraperError(const TiXmlElement *pxeRoot)
   throw CScraperError(sTitle, sMessage);
 }
 
-std::unique_ptr<CScraper> CScraper::FromExtension(CAddonInfo addonInfo, const cp_extension_t *ext)
+CScraper::CScraper(const AddonInfoPtr& addonInfo, TYPE addonType)
+    : CAddon(addonInfo, addonType)
+    , m_fLoaded(false)
+    , m_requiressettings(false)
+    , m_pathContent(CONTENT_NONE)
 {
-  bool requiressettings =
-      CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@requiressettings") == "true";
+  m_requiressettings = addonInfo->Type(addonType)->GetValue("@requiressettings").asBoolean();
 
   CDateTimeSpan persistence;
-  std::string tmp =
-      CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@cachepersistence");
+  std::string tmp = addonInfo->Type(addonType)->GetValue("@cachepersistence").asString();
   if (!tmp.empty())
-    persistence.SetFromTimeString(tmp);
+    m_persistence.SetFromTimeString(tmp);
 
-  CONTENT_TYPE pathContent(CONTENT_NONE);
-  switch (addonInfo.MainType())
+  switch (addonType)
   {
   case ADDON_SCRAPER_ALBUMS:
-    pathContent = CONTENT_ALBUMS;
+    m_pathContent = CONTENT_ALBUMS;
     break;
   case ADDON_SCRAPER_ARTISTS:
-    pathContent = CONTENT_ARTISTS;
+    m_pathContent = CONTENT_ARTISTS;
     break;
   case ADDON_SCRAPER_MOVIES:
-    pathContent = CONTENT_MOVIES;
+    m_pathContent = CONTENT_MOVIES;
     break;
   case ADDON_SCRAPER_MUSICVIDEOS:
-    pathContent = CONTENT_MUSICVIDEOS;
+    m_pathContent = CONTENT_MUSICVIDEOS;
     break;
   case ADDON_SCRAPER_TVSHOWS:
-    pathContent = CONTENT_TVSHOWS;
+    m_pathContent = CONTENT_TVSHOWS;
     break;
   default:
     break;
   }
 
-  return std::unique_ptr<CScraper>(
-      new CScraper(std::move(addonInfo), requiressettings, persistence, pathContent));
-}
-
-CScraper::CScraper(CAddonInfo addonInfo)
-    : CAddon(std::move(addonInfo))
-    , m_fLoaded(false)
-    , m_requiressettings(false)
-    , m_pathContent(CONTENT_NONE)
-{
-  m_isPython = URIUtils::GetExtension(LibPath()) == ".py";
-}
-
-CScraper::CScraper(CAddonInfo addonInfo,
-                   bool requiressettings,
-                   CDateTimeSpan persistence,
-                   CONTENT_TYPE pathContent)
-    : CAddon(std::move(addonInfo))
-    , m_fLoaded(false)
-    , m_requiressettings(requiressettings)
-    , m_persistence(persistence)
-    , m_pathContent(pathContent)
-{
-  m_isPython = URIUtils::GetExtension(LibPath()) == ".py";
+  m_isPython = URIUtils::GetExtension(addonInfo->Type(addonType)->LibPath()) == ".py";
 }
 
 bool CScraper::Supports(const CONTENT_TYPE &content) const
@@ -208,7 +189,7 @@ std::string CScraper::GetPathSettings()
 
 void CScraper::ClearCache()
 {
-  std::string strCachePath = URIUtils::AddFileToFolder(g_advancedSettings.m_cachePath, "scrapers");
+  std::string strCachePath = URIUtils::AddFileToFolder(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_cachePath, "scrapers");
 
   // create scraper cache dir if needed
   if (!CDirectory::Exists(strCachePath))
@@ -644,7 +625,13 @@ CMusicArtistInfo FromFileItem<CMusicArtistInfo>(const CFileItem &item)
   info = CMusicArtistInfo(sTitle, url);
   if (item.HasProperty("artist.genre"))
     info.GetArtist().genre = StringUtils::Split(item.GetProperty("artist.genre").asString(),
-                                                g_advancedSettings.m_musicItemSeparator);
+                                                CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
+  if (item.HasProperty("artist.disambiguation"))
+    info.GetArtist().strDisambiguation = item.GetProperty("artist.disambiguation").asString();
+  if (item.HasProperty("artist.type"))
+    info.GetArtist().strType = item.GetProperty("artist.type").asString();
+  if (item.HasProperty("artist.gender"))
+    info.GetArtist().strGender = item.GetProperty("artist.gender").asString();
   if (item.HasProperty("artist.born"))
     info.GetArtist().strBorn = item.GetProperty("artist.born").asString();
 
@@ -679,8 +666,8 @@ static std::string FromString(const CFileItem &item, const std::string &key)
 static std::vector<std::string> FromArray(const CFileItem &item, const std::string &key, int sep)
 {
   return StringUtils::Split(item.GetProperty(key).asString(),
-                            sep ? g_advancedSettings.m_videoItemSeparator
-                                : g_advancedSettings.m_musicItemSeparator);
+                            sep ? CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoItemSeparator
+                                : CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
 }
 
 static void ParseThumbs(CScraperUrl &scurl,
@@ -694,7 +681,8 @@ static void ParseThumbs(CScraperUrl &scurl,
     prefix << tag << i + 1;
     std::string url = FromString(item, prefix.str() + ".url");
     std::string aspect = FromString(item, prefix.str() + ".aspect");
-    scurl.AddElement(url, aspect);
+    std::string preview = FromString(item, prefix.str() + ".preview");
+    scurl.AddElement(url, aspect, preview);
   }
 }
 
@@ -756,6 +744,7 @@ void DetailsFromFileItem<CAlbum>(const CFileItem &item, CAlbum &album)
   album.fRating = item.GetProperty("album.rating").asFloat();
   album.iUserrating = item.GetProperty("album.user_rating").asInteger32();
   album.iVotes = item.GetProperty("album.votes").asInteger32();
+  album.art = item.GetArt();
 
   int nThumbs = item.GetProperty("album.thumbs").asInteger32();
   ParseThumbs(album.thumbURL, item, nThumbs, "album.thumb");
@@ -766,6 +755,9 @@ void DetailsFromFileItem<CArtist>(const CFileItem &item, CArtist &artist)
 {
   artist.strArtist = item.GetLabel();
   artist.strMusicBrainzArtistID = FromString(item, "artist.musicbrainzid");
+  artist.strDisambiguation = FromString(item, "artist.disambiguation");
+  artist.strType = FromString(item, "artist.type");
+  artist.strGender = FromString(item, "artist.gender");
   artist.genre = FromArray(item, "artist.genre", 0);
   artist.styles = FromArray(item, "artist.styles", 0);
   artist.moods = FromArray(item, "artist.moods", 0);
@@ -776,6 +768,7 @@ void DetailsFromFileItem<CArtist>(const CFileItem &item, CArtist &artist)
   artist.strBiography = FromString(item, "artist.biography");
   artist.strDied = FromString(item, "artist.died");
   artist.strDisbanded = FromString(item, "artist.disbanded");
+  artist.art = item.GetArt();
 
   int nAlbums = item.GetProperty("artist.albums").asInteger32();
   artist.discography.reserve(nAlbums);
@@ -1109,6 +1102,7 @@ std::vector<CMusicArtistInfo> CScraper::FindArtist(CCurlFile &fcurl, const std::
   //   <title>...</title>
   //   <year>...</year>
   //   <genre>...</genre>
+  //   <disambiguation>...</disambiguation>
   //   <url>...</url> (with the usual CScraperUrl decorations like post or spoof)
   //  </entity>
   //  ...
@@ -1148,7 +1142,8 @@ std::vector<CMusicArtistInfo> CScraper::FindArtist(CCurlFile &fcurl, const std::
         XMLUtils::GetString(pxeArtist, "genre", genre);
         if (!genre.empty())
           ari.GetArtist().genre =
-              StringUtils::Split(genre, g_advancedSettings.m_musicItemSeparator);
+              StringUtils::Split(genre, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
+        XMLUtils::GetString(pxeArtist, "disambiguation", ari.GetArtist().strDisambiguation);
         XMLUtils::GetString(pxeArtist, "year", ari.GetArtist().strBorn);
 
         vcari.push_back(ari);

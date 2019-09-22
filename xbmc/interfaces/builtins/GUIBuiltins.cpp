@@ -10,27 +10,26 @@
 
 #include "Application.h"
 #include "ServiceBroker.h"
-#include "messaging/ApplicationMessenger.h"
+#include "Util.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "filesystem/Directory.h"
-#include "input/ActionTranslator.h"
-#include "input/Key.h"
-#include "input/WindowTranslator.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/StereoscopicsManager.h"
 #include "input/ButtonTranslator.h"
+#include "input/WindowTranslator.h"
+#include "input/actions/ActionTranslator.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/DisplaySettings.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "Util.h"
-#include "utils/URIUtils.h"
-#include "utils/Screenshot.h"
-#include "utils/RssManager.h"
+#include "settings/SettingsComponent.h"
 #include "utils/AlarmClock.h"
+#include "utils/RssManager.h"
+#include "utils/Screenshot.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 #include "windows/GUIMediaWindow.h"
 
 using namespace KODI::MESSAGING;
@@ -371,7 +370,7 @@ static int SetStereoMode(const std::vector<std::string>& params)
  */
 static int ToggleDirty(const std::vector<std::string>&)
 {
-  g_advancedSettings.ToggleDirtyRegionVisualization();
+  CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->ToggleDirtyRegionVisualization();
 
   return 0;
 }

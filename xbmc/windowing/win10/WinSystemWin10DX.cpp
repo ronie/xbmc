@@ -6,11 +6,12 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "WinSystemWin10DX.h"
+
 #include "input/touch/generic/GenericTouchActionHandler.h"
 #include "input/touch/generic/GenericTouchInputHandler.h"
 #include "rendering/dx/DirectXHelper.h"
 #include "utils/log.h"
-#include "WinSystemWin10DX.h"
 
 std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
 {
@@ -52,8 +53,7 @@ bool CWinSystemWin10DX::CreateNewWindow(const std::string& name, bool fullScreen
   if (CWinSystemWin10::CreateNewWindow(name, fullScreen, res) && m_deviceResources->HasValidDevice())
   {
     CGenericTouchInputHandler::GetInstance().RegisterHandler(&CGenericTouchActionHandler::GetInstance());
-    CGenericTouchInputHandler::GetInstance().SetScreenDPI(DX::DisplayMetrics::Dpi100);
-    ChangeResolution(res, true);
+    CGenericTouchInputHandler::GetInstance().SetScreenDPI(m_deviceResources->GetDpi());
     return true;
   }
   return false;

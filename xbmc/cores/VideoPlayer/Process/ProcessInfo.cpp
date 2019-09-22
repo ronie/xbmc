@@ -7,8 +7,11 @@
  */
 
 #include "ProcessInfo.h"
+
+#include "ServiceBroker.h"
 #include "cores/DataCacheCore.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 
 CCriticalSection createSection;
@@ -577,7 +580,7 @@ float CProcessInfo::MaxTempoPlatform()
 bool CProcessInfo::IsTempoAllowed(float tempo)
 {
   if (tempo > MinTempoPlatform() &&
-      (tempo < MaxTempoPlatform() || tempo < g_advancedSettings.m_maxTempo))
+      (tempo < MaxTempoPlatform() || tempo < CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_maxTempo))
     return true;
 
   return false;
@@ -665,7 +668,7 @@ CVideoSettings CProcessInfo::GetVideoSettings()
 CVideoSettingsLocked& CProcessInfo::UpdateVideoSettings()
 {
   CSingleLock lock(m_settingsSection);
-  return *m_videoSettingsLocked.get();
+  return *m_videoSettingsLocked;
 }
 
 void CProcessInfo::SetVideoSettings(CVideoSettings &settings)

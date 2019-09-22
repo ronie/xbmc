@@ -8,24 +8,25 @@
 
 #include "GUIWindowPVRTimersBase.h"
 
+#include "FileItem.h"
 #include "GUIInfoManager.h"
 #include "ServiceBroker.h"
-#include "guilib/GUIMessage.h"
 #include "guilib/GUIComponent.h"
-#include "input/Key.h"
-#include "messaging/helpers/DialogOKHelper.h"
-#include "settings/Settings.h"
-#include "threads/SingleLock.h"
-#include "utils/URIUtils.h"
-#include "utils/Variant.h"
-
+#include "guilib/GUIMessage.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
 #include "pvr/PVRGUIActions.h"
 #include "pvr/PVRManager.h"
-#include "pvr/addons/PVRClients.h"
-#include "pvr/timers/PVRTimers.h"
+#include "pvr/timers/PVRTimerInfoTag.h"
+#include "pvr/timers/PVRTimersPath.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/URIUtils.h"
+
+#include <memory>
+#include <string>
 
 using namespace PVR;
-using namespace KODI::MESSAGING;
 
 CGUIWindowPVRTimersBase::CGUIWindowPVRTimersBase(bool bRadio, int id, const std::string &xmlFile) :
   CGUIWindowPVRBase(bRadio, id, xmlFile)
@@ -77,7 +78,7 @@ bool CGUIWindowPVRTimersBase::Update(const std::string &strDirectory, bool updat
 
 void CGUIWindowPVRTimersBase::UpdateButtons(void)
 {
-  SET_CONTROL_SELECTED(GetID(), CONTROL_BTNHIDEDISABLEDTIMERS, CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS));
+  SET_CONTROL_SELECTED(GetID(), CONTROL_BTNHIDEDISABLEDTIMERS, CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS));
 
   CGUIWindowPVRBase::UpdateButtons();
 
@@ -137,8 +138,9 @@ bool CGUIWindowPVRTimersBase::OnMessage(CGUIMessage &message)
       }
       else if (message.GetSenderId() == CONTROL_BTNHIDEDISABLEDTIMERS)
       {
-        CServiceBroker::GetSettings()->ToggleBool(CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS);
-        CServiceBroker::GetSettings()->Save();
+        const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+        settings->ToggleBool(CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS);
+        settings->Save();
         Update(GetDirectoryPath());
         bReturn = true;
       }
@@ -168,12 +170,6 @@ bool CGUIWindowPVRTimersBase::OnMessage(CGUIMessage &message)
 
 bool CGUIWindowPVRTimersBase::ActionShowTimer(const CFileItemPtr &item)
 {
-  if (!CServiceBroker::GetPVRManager().Clients()->SupportsTimers())
-  {
-    HELPERS::ShowOKDialogText(CVariant{19033}, CVariant{19215}); // "Information", "The PVR backend does not support timers."
-    return false;
-  }
-
   bool bReturn = false;
 
   /* Check if "Add timer..." entry is selected, if yes

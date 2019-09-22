@@ -7,17 +7,19 @@
  */
 
 #include "TextureCache.h"
+
+#include "ServiceBroker.h"
 #include "TextureCacheJob.h"
+#include "URL.h"
 #include "filesystem/File.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/Crc32.h"
-#include "settings/AdvancedSettings.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
-#include "URL.h"
-#include "ServiceBroker.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 using namespace XFILE;
 
@@ -55,16 +57,13 @@ bool CTextureCache::IsCachedImage(const std::string &url) const
   if (!CURL::IsFullPath(url))
     return true;
 
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (URIUtils::PathHasParent(url, "special://skin", true) ||
+  return URIUtils::PathHasParent(url, "special://skin", true) ||
       URIUtils::PathHasParent(url, "special://temp", true) ||
       URIUtils::PathHasParent(url, "resource://", true) ||
       URIUtils::PathHasParent(url, "androidapp://", true)   ||
-      URIUtils::PathHasParent(url, profileManager.GetThumbnailsFolder(), true))
-    return true;
-
-  return false;
+      URIUtils::PathHasParent(url, profileManager->GetThumbnailsFolder(), true);
 }
 
 bool CTextureCache::HasCachedImage(const std::string &url)
@@ -255,9 +254,9 @@ std::string CTextureCache::GetCacheFile(const std::string &url)
 
 std::string CTextureCache::GetCachedPath(const std::string &file)
 {
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  return URIUtils::AddFileToFolder(profileManager.GetThumbnailsFolder(), file);
+  return URIUtils::AddFileToFolder(profileManager->GetThumbnailsFolder(), file);
 }
 
 void CTextureCache::OnCachingComplete(bool success, CTextureCacheJob *job)

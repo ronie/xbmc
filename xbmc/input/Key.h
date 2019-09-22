@@ -14,11 +14,11 @@
  */
 
 //! @todo Remove dependence on CAction
-#include "Action.h"
-#include "ActionIDs.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
 
-#include <string>
 #include <stdint.h>
+#include <string>
 
 // Reserved 0 - 255
 //  IRRemote.h

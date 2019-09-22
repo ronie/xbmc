@@ -7,6 +7,7 @@
  */
 
 #include "GUIGameSettings.h"
+
 #include "cores/RetroPlayer/process/RPProcessInfo.h"
 #include "cores/RetroPlayer/rendering/RenderContext.h"
 #include "settings/GameSettings.h"
@@ -59,11 +60,11 @@ void CGUIGameSettings::UpdateSettings()
 
   // Get settings from GUI
   std::string videoFilter = m_guiSettings.VideoFilter();
-  VIEWMODE viewMode = m_guiSettings.ViewMode();
+  STRETCHMODE stretchMode = m_guiSettings.StretchMode();
   unsigned int rotationDegCCW = m_guiSettings.RotationDegCCW();
 
   // Save settings for renderer
   m_renderSettings.VideoSettings().SetVideoFilter(videoFilter);
-  m_renderSettings.VideoSettings().SetRenderViewMode(viewMode);
+  m_renderSettings.VideoSettings().SetRenderStretchMode(stretchMode);
   m_renderSettings.VideoSettings().SetRenderRotation(rotationDegCCW);
 }

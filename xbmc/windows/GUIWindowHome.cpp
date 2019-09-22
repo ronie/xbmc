@@ -7,19 +7,21 @@
  */
 
 #include "GUIWindowHome.h"
-#include "input/Key.h"
-#include "guilib/WindowIDs.h"
-#include "utils/JobManager.h"
-#include "utils/RecentlyAddedJob.h"
-#include "interfaces/AnnouncementManager.h"
-#include "utils/log.h"
-#include "settings/AdvancedSettings.h"
-#include "utils/Variant.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
+
 #include "Application.h"
 #include "ServiceBroker.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/WindowIDs.h"
+#include "input/Key.h"
+#include "interfaces/AnnouncementManager.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/JobManager.h"
+#include "utils/RecentlyAddedJob.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
 
 CGUIWindowHome::CGUIWindowHome(void) : CGUIWindow(WINDOW_HOME, "Home.xml")
 {
@@ -51,8 +53,8 @@ void CGUIWindowHome::OnInitWindow()
 {
   // for shared databases (ie mysql) always force an update on return to home
   // this is a temporary solution until remote announcements can be delivered
-  if (StringUtils::EqualsNoCase(g_advancedSettings.m_databaseVideo.type, "mysql") ||
-      StringUtils::EqualsNoCase(g_advancedSettings.m_databaseMusic.type, "mysql") )
+  if (StringUtils::EqualsNoCase(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_databaseVideo.type, "mysql") ||
+      StringUtils::EqualsNoCase(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_databaseMusic.type, "mysql") )
     m_updateRA = (Audio | Video | Totals);
   AddRecentlyAddedJobs( m_updateRA );
 

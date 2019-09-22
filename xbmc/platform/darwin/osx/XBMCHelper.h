@@ -8,9 +8,9 @@
 
 #pragma once
 
-#if !defined(__arm__) && !defined(__aarch64__)
-
 #include "settings/lib/ISettingCallback.h"
+
+#include <string>
 
 enum AppleRemoteOptions
 {
@@ -70,6 +70,3 @@ private:
 
   static XBMCHelper* smp_instance;
 };
-
-#endif
-

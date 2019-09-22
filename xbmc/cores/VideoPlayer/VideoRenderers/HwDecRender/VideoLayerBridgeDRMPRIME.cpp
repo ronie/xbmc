@@ -8,9 +8,11 @@
 
 #include "VideoLayerBridgeDRMPRIME.h"
 
-#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h"
+#include "cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h"
 #include "utils/log.h"
 #include "windowing/gbm/DRMUtils.h"
+
+using namespace KODI::WINDOWING::GBM;
 
 CVideoLayerBridgeDRMPRIME::CVideoLayerBridgeDRMPRIME(std::shared_ptr<CDRMUtils> drm)
   : m_DRM(drm)
@@ -26,12 +28,12 @@ CVideoLayerBridgeDRMPRIME::~CVideoLayerBridgeDRMPRIME()
 void CVideoLayerBridgeDRMPRIME::Disable()
 {
   // disable video plane
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", 0);
   m_DRM->AddProperty(plane, "CRTC_ID", 0);
 }
 
-void CVideoLayerBridgeDRMPRIME::Acquire(CVideoBufferDRMPRIME* buffer)
+void CVideoLayerBridgeDRMPRIME::Acquire(IVideoBufferDRMPRIME* buffer)
 {
   // release the buffer that is no longer presented on screen
   Release(m_prev_buffer);
@@ -44,7 +46,7 @@ void CVideoLayerBridgeDRMPRIME::Acquire(CVideoBufferDRMPRIME* buffer)
   m_buffer->Acquire();
 }
 
-void CVideoLayerBridgeDRMPRIME::Release(CVideoBufferDRMPRIME* buffer)
+void CVideoLayerBridgeDRMPRIME::Release(IVideoBufferDRMPRIME* buffer)
 {
   if (!buffer)
     return;
@@ -53,10 +55,13 @@ void CVideoLayerBridgeDRMPRIME::Release(CVideoBufferDRMPRIME* buffer)
   buffer->Release();
 }
 
-bool CVideoLayerBridgeDRMPRIME::Map(CVideoBufferDRMPRIME* buffer)
+bool CVideoLayerBridgeDRMPRIME::Map(IVideoBufferDRMPRIME* buffer)
 {
   if (buffer->m_fb_id)
     return true;
+
+  if (!buffer->Map())
+    return false;
 
   AVDRMFrameDescriptor* descriptor = buffer->GetDescriptor();
   uint32_t handles[4] = {0}, pitches[4] = {0}, offsets[4] = {0}, flags = 0;
@@ -106,7 +111,7 @@ bool CVideoLayerBridgeDRMPRIME::Map(CVideoBufferDRMPRIME* buffer)
   return true;
 }
 
-void CVideoLayerBridgeDRMPRIME::Unmap(CVideoBufferDRMPRIME* buffer)
+void CVideoLayerBridgeDRMPRIME::Unmap(IVideoBufferDRMPRIME* buffer)
 {
   if (buffer->m_fb_id)
   {
@@ -123,11 +128,13 @@ void CVideoLayerBridgeDRMPRIME::Unmap(CVideoBufferDRMPRIME* buffer)
       buffer->m_handles[i] = 0;
     }
   }
+
+  buffer->Unmap();
 }
 
-void CVideoLayerBridgeDRMPRIME::Configure(CVideoBufferDRMPRIME* buffer)
+void CVideoLayerBridgeDRMPRIME::Configure(IVideoBufferDRMPRIME* buffer)
 {
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  struct plane* plane = m_DRM->GetVideoPlane();
   if (m_DRM->SupportsProperty(plane, "COLOR_ENCODING") &&
       m_DRM->SupportsProperty(plane, "COLOR_RANGE"))
   {
@@ -136,7 +143,7 @@ void CVideoLayerBridgeDRMPRIME::Configure(CVideoBufferDRMPRIME* buffer)
   }
 }
 
-void CVideoLayerBridgeDRMPRIME::SetVideoPlane(CVideoBufferDRMPRIME* buffer, const CRect& destRect)
+void CVideoLayerBridgeDRMPRIME::SetVideoPlane(IVideoBufferDRMPRIME* buffer, const CRect& destRect)
 {
   if (!Map(buffer))
   {
@@ -144,7 +151,7 @@ void CVideoLayerBridgeDRMPRIME::SetVideoPlane(CVideoBufferDRMPRIME* buffer, cons
     return;
   }
 
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", buffer->m_fb_id);
   m_DRM->AddProperty(plane, "CRTC_ID", m_DRM->GetCrtc()->crtc->crtc_id);
   m_DRM->AddProperty(plane, "SRC_X", 0);
@@ -162,7 +169,11 @@ void CVideoLayerBridgeDRMPRIME::UpdateVideoPlane()
   if (!m_buffer || !m_buffer->m_fb_id)
     return;
 
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  // release the buffer that is no longer presented on screen
+  Release(m_prev_buffer);
+  m_prev_buffer = nullptr;
+
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", m_buffer->m_fb_id);
   m_DRM->AddProperty(plane, "CRTC_ID", m_DRM->GetCrtc()->crtc->crtc_id);
 }

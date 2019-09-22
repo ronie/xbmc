@@ -7,14 +7,14 @@ endif
 DEPENDS = \
 	pcre expat gettext sqlite3 libgpg-error \
 	libgcrypt bzip2 libfstrcmp liblzo2 libzip freetype2 fontconfig \
-	openssl gmp nettle gnutls curl \
+	openssl gmp nettle gnutls curl nghttp2 \
 	libjpeg-turbo libpng fribidi libass \
 	libxml2 rapidjson libmicrohttpd mariadb libffi \
 	python27 libshairplay libfmt \
 	libplist libcec libbluray tinyxml \
 	taglib libusb libnfs \
 	pythonmodule-pil pythonmodule-pycryptodome pythonmodule-setuptools \
-	libxslt ffmpeg platform crossguid \
+	libxslt ffmpeg crossguid \
 	libdvdread libdvdnav libdvdcss p8-platform flatbuffers
 
 
@@ -26,7 +26,7 @@ else
   DEPENDS+=samba libcdio
 endif
 
-ifeq ($(OS),ios)
+ifeq ($(OS),darwin_embedded)
   EXCLUDED_DEPENDS = libcec libusb
   ifeq ($(TARGET_PLATFORM),appletvos)
     DEPENDS += boblight
@@ -43,7 +43,7 @@ ifeq ($(OS),android)
   EXCLUDED_DEPENDS = libcec libusb
   DEPENDS += dummy-libxbmc libuuid libandroidjni
   PYMODULE_DEPS = dummy-libxbmc
-  CROSSGUID_DEPS = libuuid
+  LIBUUID = libuuid
 endif
 
 DEPENDS := $(filter-out $(EXCLUDED_DEPENDS),$(DEPENDS))
@@ -71,16 +71,14 @@ ifeq ($(OS),linux)
   endif
   DEPENDS += alsa-lib
   ALSA_LIB = alsa-lib
-  CROSSGUID_DEPS = libuuid
-  ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),raspberry-pi aml gbm))
+  LIBUUID = libuuid
+  ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),raspberry-pi gbm))
     DEPENDS += libxkbcommon libinput libudev libevdev mtdev
   endif
 endif
 
 ifeq ($(TARGET_PLATFORM),wayland)
   DEPENDS += wayland waylandpp wayland-protocols
-else ifeq ($(TARGET_PLATFORM),aml)
-  DEPENDS += libamcodec
 endif
 
 .PHONY: $(DEPENDS)
@@ -89,8 +87,8 @@ all: .installed-$(PLATFORM)
 
 gettext: $(ICONV)
 libgcrypt: libgpg-error
-fontconfig: freetype2 expat $(ICONV)
-curl: openssl
+fontconfig: freetype2 expat $(ICONV) $(LIBUUID)
+curl: openssl nghttp2
 libass: fontconfig fribidi libpng freetype2 expat $(ICONV)
 libmicrohttpd: gnutls libgcrypt libgpg-error
 python27: expat gettext libxml2 sqlite3 openssl libffi
@@ -109,9 +107,8 @@ pythonmodule-pil: bzip2 $(PYMODULE_DEPS) $(ZLIB) libjpeg-turbo libpng freetype2 
 pythonmodule-setuptools: $(PYMODULE_DEPS) python27
 libxslt: libgcrypt libxml2
 ffmpeg: $(ICONV) $(ZLIB) bzip2 $(FFMPEG_DEPENDS)
-platform: p8-platform
 libcec: p8-platform
-crossguid: $(CROSSGUID_DEPS)
+crossguid: $(LIBUUID)
 libdvdnav: libdvdread
 libdvdread: libdvdcss
 wayland: expat libffi
@@ -119,6 +116,7 @@ waylandpp: wayland $(WAYLANDPP_DEPS)
 dbus: expat
 libinput: mtdev libevdev
 libevdev: libudev
+taglib: $(ZLIB)
 
 .installed-$(PLATFORM): $(DEPENDS)
 	touch $@

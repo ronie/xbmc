@@ -8,18 +8,20 @@
 
 #pragma once
 
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
+#include "pvr/PVRTypes.h"
+
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-
-#include "pvr/PVRTypes.h"
 
 struct PVR_TIMER_TYPE;
 
 namespace PVR
 {
+  class CPVRClient;
+
   static const int DEFAULT_RECORDING_PRIORITY = 50;
   static const int DEFAULT_RECORDING_LIFETIME = 99; // days
   static const unsigned int DEFAULT_RECORDING_DUPLICATEHANDLING = 0;
@@ -27,7 +29,6 @@ namespace PVR
   class CPVRTimerType
   {
   public:
-
     /*!
      * @brief Return a list with all known timer types.
      * @return A list of timer types or an empty list if no types available.
@@ -35,10 +36,11 @@ namespace PVR
     static const std::vector<CPVRTimerTypePtr> GetAllTypes();
 
     /*!
-     * @brief Return the first available timer type.
+     * @brief Return the first available timer type from given client.
+     * @param client the PVR client.
      * @return A timer type or NULL if none available.
      */
-    static const CPVRTimerTypePtr GetFirstAvailableType();
+    static const CPVRTimerTypePtr GetFirstAvailableType(const std::shared_ptr<CPVRClient>& client);
 
     /*!
      * @brief Create a timer type from given timer type id and client id.
@@ -59,6 +61,7 @@ namespace PVR
 
     CPVRTimerType();
     CPVRTimerType(const PVR_TIMER_TYPE &type, int iClientId);
+    CPVRTimerType(unsigned int iTypeId, unsigned int iAttributes, const std::string& strDescription = "");
 
     virtual ~CPVRTimerType();
 
@@ -87,10 +90,22 @@ namespace PVR
     const std::string& GetDescription() const { return m_strDescription; }
 
     /*!
+     * @brief Get the attributes of this type.
+     * @return The attributes.
+     */
+    unsigned int GetAttributes() const { return m_iAttributes; }
+
+    /*!
      * @brief Check whether this type is for timer rules or one time timers.
      * @return True if type represents a timer rule, false otherwise.
      */
     bool IsTimerRule() const { return (m_iAttributes & PVR_TIMER_TYPE_IS_REPEATING) > 0; }
+
+    /*!
+     * @brief Check whether this type is for reminder timers or recording timers.
+     * @return True if type represents a reminder timer, false otherwise.
+     */
+    bool IsReminder() const { return (m_iAttributes & PVR_TIMER_TYPE_IS_REMINDER) > 0; }
 
     /*!
      * @brief Check whether this type is for timer rules or one time timers.
@@ -139,6 +154,12 @@ namespace PVR
      * @return True if readonly, false otherwise.
      */
     bool IsReadOnly() const { return (m_iAttributes & PVR_TIMER_TYPE_IS_READONLY) > 0; }
+
+    /*!
+     * @brief Check whether this type allows deletion.
+     * @return True if type allows deletion, false otherwise.
+     */
+    bool AllowsDelete() const { return !IsReadOnly() || SupportsReadOnlyDelete(); }
 
     /*!
      * @brief Check whether this type forbids creation of new timers of this type.
@@ -281,6 +302,12 @@ namespace PVR
     bool SupportsAnyChannel() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_ANY_CHANNEL) > 0; }
 
     /*!
+     * @brief Check whether this type supports deletion of an otherwise read-only timer.
+     * @return True if read-only deletion is supported, false otherwise.
+     */
+    bool SupportsReadOnlyDelete() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_READONLY_DELETE) > 0; }
+
+    /*!
      * @brief Obtain a list with all possible values for the priority attribute.
      * @param list out, the list with the values or an empty list, if priority is not supported by this type.
      */
@@ -341,6 +368,7 @@ namespace PVR
     int GetRecordingGroupDefault() const { return m_iRecordingGroupDefault; }
 
   private:
+    void InitDescription();
     void InitAttributeValues(const PVR_TIMER_TYPE &type);
     void InitPriorityValues(const PVR_TIMER_TYPE &type);
     void InitLifetimeValues(const PVR_TIMER_TYPE &type);
@@ -353,13 +381,13 @@ namespace PVR
     unsigned int  m_iAttributes;
     std::string   m_strDescription;
     std::vector< std::pair<std::string, int> > m_priorityValues;
-    int           m_iPriorityDefault = 50;
+    int           m_iPriorityDefault = DEFAULT_RECORDING_PRIORITY;
     std::vector< std::pair<std::string, int> > m_lifetimeValues;
-    int           m_iLifetimeDefault = 365;
+    int           m_iLifetimeDefault = DEFAULT_RECORDING_LIFETIME;
     std::vector< std::pair<std::string, int> > m_maxRecordingsValues;
     int           m_iMaxRecordingsDefault = 0;
     std::vector< std::pair<std::string, int> > m_preventDupEpisodesValues;
-    unsigned int  m_iPreventDupEpisodesDefault = 0;
+    unsigned int  m_iPreventDupEpisodesDefault = DEFAULT_RECORDING_DUPLICATEHANDLING;
     std::vector< std::pair<std::string, int> > m_recordingGroupValues;
     unsigned int  m_iRecordingGroupDefault = 0;
   };

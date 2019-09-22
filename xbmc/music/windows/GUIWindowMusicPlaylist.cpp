@@ -7,31 +7,32 @@
  */
 
 #include "GUIWindowMusicPlaylist.h"
-#include "dialogs/GUIDialogSmartPlaylistEditor.h"
-#include "view/GUIViewState.h"
-#include "Util.h"
-#include "playlists/PlayListM3U.h"
+
 #include "Application.h"
-#include "PlayListPlayer.h"
-#include "PartyModeManager.h"
-#include "ServiceBroker.h"
-#include "cores/playercorefactory/PlayerCoreFactory.h"
-#include "utils/LabelFormatter.h"
-#include "music/tags/MusicInfoTag.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/GUIKeyboardFactory.h"
-#include "input/Key.h"
 #include "GUIUserMessages.h"
-#include "favourites/FavouritesService.h"
-#include "profiles/ProfilesManager.h"
+#include "PartyModeManager.h"
+#include "PlayListPlayer.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "cores/playercorefactory/PlayerCoreFactory.h"
+#include "dialogs/GUIDialogSmartPlaylistEditor.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIKeyboardFactory.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "music/tags/MusicInfoTag.h"
+#include "playlists/PlayListM3U.h"
+#include "profiles/ProfileManager.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
-#include "guilib/LocalizeStrings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/LabelFormatter.h"
 #include "utils/StringUtils.h"
-#include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
+#include "view/GUIViewState.h"
 
 using namespace PLAYLIST;
 
@@ -138,7 +139,7 @@ bool CGUIWindowMusicPlayList::OnMessage(CGUIMessage& message)
         {
           CServiceBroker::GetPlaylistPlayer().SetShuffle(PLAYLIST_MUSIC, !(CServiceBroker::GetPlaylistPlayer().IsShuffled(PLAYLIST_MUSIC)));
           CMediaSettings::GetInstance().SetMusicPlaylistShuffled(CServiceBroker::GetPlaylistPlayer().IsShuffled(PLAYLIST_MUSIC));
-          CServiceBroker::GetSettings()->Save();
+          CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
           UpdateButtons();
           Refresh();
         }
@@ -188,7 +189,7 @@ bool CGUIWindowMusicPlayList::OnMessage(CGUIMessage& message)
 
         // save settings
         CMediaSettings::GetInstance().SetMusicPlaylistRepeat(CServiceBroker::GetPlaylistPlayer().GetRepeat(PLAYLIST_MUSIC) == PLAYLIST::REPEAT_ALL);
-        CServiceBroker::GetSettings()->Save();
+        CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
 
         UpdateButtons();
       }
@@ -288,7 +289,7 @@ void CGUIWindowMusicPlayList::SavePlayList()
     strNewFileName = CUtil::MakeLegalFileName(strNewFileName);
     strNewFileName += ".m3u";
     std::string strPath = URIUtils::AddFileToFolder(
-      CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH),
+      CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH),
       "music",
       strNewFileName);
 
@@ -424,7 +425,7 @@ bool CGUIWindowMusicPlayList::OnPlayMedia(int iItem, const std::string &player)
     int iPlaylist=m_guiState->GetPlaylist();
     if (iPlaylist!=PLAYLIST_NONE)
     {
-      if (m_guiState.get())
+      if (m_guiState)
         m_guiState->SetPlaylistDirectory(m_vecItems->GetPath());
 
       CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist( iPlaylist );
@@ -448,9 +449,10 @@ void CGUIWindowMusicPlayList::OnItemLoaded(CFileItem* pItem)
 {
   if (pItem->HasMusicInfoTag() && pItem->GetMusicInfoTag()->Loaded())
   { // set label 1+2 from tags
-    std::string strTrack=CServiceBroker::GetSettings()->GetString(CSettings::SETTING_MUSICFILES_NOWPLAYINGTRACKFORMAT);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    std::string strTrack = settings->GetString(CSettings::SETTING_MUSICFILES_NOWPLAYINGTRACKFORMAT);
     if (strTrack.empty())
-      strTrack = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT);
+      strTrack = settings->GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT);
     CLabelFormatter formatter(strTrack, "%D");
     formatter.FormatLabels(pItem);
   } // if (pItem->m_musicInfoTag.Loaded())
@@ -521,10 +523,6 @@ void CGUIWindowMusicPlayList::GetContextButtons(int itemNumber, CContextButtons 
       if (players.size() > 1)
         buttons.Add(CONTEXT_BUTTON_PLAY_WITH, 15213); // Play With...
 
-      if (CServiceBroker::GetFavouritesService().IsFavourited(*item.get(), GetID()))
-        buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
-      else
-        buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
       if (itemNumber > (g_partyModeManager.IsEnabled() ? 1 : 0))
         buttons.Add(CONTEXT_BUTTON_MOVE_ITEM_UP, 13332);
       if (itemNumber + 1 < m_vecItems->Size())
@@ -589,22 +587,15 @@ bool CGUIWindowMusicPlayList::OnContextButton(int itemNumber, CONTEXT_BUTTON but
     RemovePlayListItem(itemNumber);
     return true;
 
-  case CONTEXT_BUTTON_ADD_FAVOURITE:
-    {
-      CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CServiceBroker::GetFavouritesService().AddOrRemove(*item.get(), GetID());
-      return true;
-    }
-
   case CONTEXT_BUTTON_CANCEL_PARTYMODE:
     g_partyModeManager.Disable();
     return true;
 
   case CONTEXT_BUTTON_EDIT_PARTYMODE:
   {
-    const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+    const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-    std::string playlist = profileManager.GetUserDataItem("PartyMode.xsp");
+    std::string playlist = profileManager->GetUserDataItem("PartyMode.xsp");
     if (CGUIDialogSmartPlaylistEditor::EditPlaylist(playlist))
     {
       // apply new rules

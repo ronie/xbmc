@@ -8,21 +8,23 @@
 
 
 #include "GUIDialogSimpleMenu.h"
-#include "ServiceBroker.h"
-#include "dialogs/GUIDialogBusy.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
+
 #include "GUIDialogSelect.h"
-#include "settings/DiscSettings.h"
-#include "settings/Settings.h"
-#include "utils/URIUtils.h"
+#include "ServiceBroker.h"
+#include "URL.h"
+#include "dialogs/GUIDialogBusy.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
+#include "settings/DiscSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/IRunnable.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "utils/log.h"
 #include "video/VideoInfoTag.h"
-#include "URL.h"
-#include "utils/Variant.h"
 
 namespace
 {
@@ -48,7 +50,7 @@ protected:
 
 bool CGUIDialogSimpleMenu::ShowPlaySelection(CFileItem& item)
 {
-  if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_DISC_PLAYBACK) != BD_PLAYBACK_SIMPLE_MENU)
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_DISC_PLAYBACK) != BD_PLAYBACK_SIMPLE_MENU)
     return true;
 
   std::string path;

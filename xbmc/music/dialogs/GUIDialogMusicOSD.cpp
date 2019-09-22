@@ -7,14 +7,16 @@
  */
 
 #include "GUIDialogMusicOSD.h"
+
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "GUIUserMessages.h"
-#include "input/Key.h"
 #include "input/InputManager.h"
+#include "input/Key.h"
 #include "settings/Settings.h"
-#include "ServiceBroker.h"
+#include "settings/SettingsComponent.h"
 
 #define CONTROL_VIS_BUTTON       500
 #define CONTROL_LOCK_BUTTON      501
@@ -39,8 +41,9 @@ bool CGUIDialogMusicOSD::OnMessage(CGUIMessage &message)
         std::string addonID;
         if (CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_VIZ, addonID, true) == 1)
         {
-          CServiceBroker::GetSettings()->SetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION, addonID);
-          CServiceBroker::GetSettings()->Save();
+          const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+          settings->SetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION, addonID);
+          settings->Save();
           CServiceBroker::GetGUI()->GetWindowManager().SendMessage(GUI_MSG_VISUALISATION_RELOAD, 0, 0);
         }
       }

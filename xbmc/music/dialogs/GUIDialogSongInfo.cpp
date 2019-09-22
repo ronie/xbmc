@@ -7,28 +7,28 @@
  */
 
 #include "GUIDialogSongInfo.h"
+
+#include "GUIDialogMusicInfo.h"
+#include "GUIPassword.h"
+#include "GUIUserMessages.h"
+#include "ServiceBroker.h"
+#include "TextureCache.h"
+#include "Util.h"
 #include "dialogs/GUIDialogBusy.h"
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "dialogs/GUIDialogSelect.h"
 #include "filesystem/File.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "GUIDialogMusicInfo.h"
-#include "GUIUserMessages.h"
-#include "GUIPassword.h"
 #include "input/Key.h"
-#include "music/Album.h"
 #include "music/MusicDatabase.h"
 #include "music/MusicUtils.h"
 #include "music/tags/MusicInfoTag.h"
 #include "music/windows/GUIWindowMusicBase.h"
-#include "profiles/ProfilesManager.h"
-#include "ServiceBroker.h"
+#include "profiles/ProfileManager.h"
 #include "settings/MediaSourceSettings.h"
+#include "settings/SettingsComponent.h"
 #include "storage/MediaManager.h"
-#include "TextureCache.h"
-#include "Util.h"
 
 using namespace XFILE;
 
@@ -239,9 +239,9 @@ void CGUIDialogSongInfo::OnInitWindow()
     CONTROL_ENABLE(CONTROL_USERRATING);
 
   // Disable the Choose Art button if the user isn't allowed it
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
   CONTROL_ENABLE_ON_CONDITION(CONTROL_BTN_GET_THUMB,
-    profileManager.GetCurrentProfile().canWriteDatabases() || g_passwordManager.bMasterUser);
+    profileManager->GetCurrentProfile().canWriteDatabases() || g_passwordManager.bMasterUser);
 
   SET_CONTROL_HIDDEN(CONTROL_BTN_REFRESH);
   SET_CONTROL_LABEL(CONTROL_USERRATING, 38023);
@@ -346,7 +346,7 @@ void CGUIDialogSongInfo::OnGetArt()
     // Add item for current artwork, could a fallback from album/artist
     CFileItemPtr item(new CFileItem("thumb://Current", false));
     item->SetArt("thumb", m_song->GetArt(type));
-    item->SetIconImage("DefaultPicture.png");
+    item->SetArt("icon", "DefaultPicture.png");
     item->SetLabel(g_localizeStrings.Get(13512));  //! @todo: label fallback art so user knows?
     items.Add(item);
   }
@@ -357,7 +357,7 @@ void CGUIDialogSongInfo::OnGetArt()
     {
       CFileItemPtr item(new CFileItem("thumb://Thumb", false));
       item->SetArt("thumb", m_song->GetArt("thumb"));
-      item->SetIconImage("DefaultAlbumCover.png");
+      item->SetArt("icon", "DefaultAlbumCover.png");
       item->SetLabel(g_localizeStrings.Get(21371));
       items.Add(item);
     }

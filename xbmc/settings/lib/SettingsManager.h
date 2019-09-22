@@ -8,10 +8,6 @@
 
 #pragma once
 
-#include <map>
-#include <set>
-#include <vector>
-
 #include "ISettingCallback.h"
 #include "ISettingControlCreator.h"
 #include "ISettingCreator.h"
@@ -22,6 +18,10 @@
 #include "SettingDefinitions.h"
 #include "SettingDependency.h"
 #include "threads/SharedSection.h"
+
+#include <map>
+#include <set>
+#include <vector>
 
 class CSettingCategory;
 class CSettingGroup;
@@ -223,8 +223,9 @@ public:
    \brief Registers the given ISettingsHandler implementation.
 
    \param settingsHandler ISettingsHandler implementation
+   \param bFront If True, insert the handler in front of other registered handlers, insert at the end otherwise.
    */
-  void RegisterSettingsHandler(ISettingsHandler *settingsHandler);
+  void RegisterSettingsHandler(ISettingsHandler *settingsHandler, bool bFront = false);
   /*!
    \brief Unregisters the given ISettingsHandler implementation.
 
@@ -450,7 +451,14 @@ public:
    \param condition Implementation of the dynamic condition
    \param data Opaque data pointer, will be passed back to SettingConditionCheck function
    */
-  void AddCondition(const std::string &identifier, SettingConditionCheck condition, void *data = nullptr);
+  void AddDynamicCondition(const std::string &identifier, SettingConditionCheck condition, void *data = nullptr);
+
+  /*!
+   \brief Removes the given dynamic condition.
+
+   \param identifier Identifier of the dynamic condition
+   */
+  void RemoveDynamicCondition(const std::string &identifier);
 
 private:
   // implementation of ISettingCallback

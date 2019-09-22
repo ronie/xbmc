@@ -6,24 +6,25 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "ServiceBroker.h"
-#include "windowing/WinSystem.h"
-#include "settings/AdvancedSettings.h"
-#include "settings/Settings.h"
-#include "utils/MathUtils.h"
 #include "VideoPlayerVideo.h"
-#include "DVDCodecs/DVDFactoryCodec.h"
+
 #include "DVDCodecs/DVDCodecUtils.h"
+#include "DVDCodecs/DVDFactoryCodec.h"
 #include "DVDCodecs/Video/DVDVideoCodecFFmpeg.h"
-#include "DVDDemuxers/DVDDemux.h"
+#include "ServiceBroker.h"
 #include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "windowing/GraphicContext.h"
-#include <sstream>
-#include <iomanip>
-#include <numeric>
-#include <iterator>
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/MathUtils.h"
 #include "utils/log.h"
+#include "windowing/GraphicContext.h"
+#include "windowing/WinSystem.h"
+
+#include <iomanip>
+#include <iterator>
+#include <numeric>
+#include <sstream>
 
 class CDVDMsgVideoCodecChange : public CDVDMsg
 {
@@ -463,6 +464,7 @@ void CVideoPlayerVideo::Process()
       }
 
       m_renderManager.DiscardBuffer();
+      FlushMessages();
     }
     else if (pMsg->IsType(CDVDMsg::PLAYER_SETSPEED))
     {
@@ -671,7 +673,14 @@ bool CVideoPlayerVideo::ProcessDecoderOutput(double &frametime, double &pts)
 
     // use forced aspect if any
     if (m_fForcedAspectRatio != 0.0f)
+    {
       m_picture.iDisplayWidth = (int) (m_picture.iDisplayHeight * m_fForcedAspectRatio);
+      if (m_picture.iDisplayWidth > m_picture.iWidth)
+      {
+        m_picture.iDisplayWidth =  m_picture.iWidth;
+        m_picture.iDisplayHeight = (int) (m_picture.iDisplayWidth / m_fForcedAspectRatio);
+      }
+    }
 
     // set stereo mode if not set by decoder
     if (m_picture.stereoMode.empty())
@@ -770,7 +779,6 @@ void CVideoPlayerVideo::Flush(bool sync)
   /* flush using message as this get's called from VideoPlayer thread */
   /* and any demux packet that has been taken out of queue need to */
   /* be disposed of before we flush */
-  FlushMessages();
   SendMessage(new CDVDMsgBool(CDVDMsg::GENERAL_FLUSH, sync), 1);
   m_bAbortOutput = true;
 }
@@ -951,7 +959,7 @@ void CVideoPlayerVideo::ResetFrameRateCalc()
   m_iFrameRateCount = 0;
   m_iFrameRateLength = 1;
   m_iFrameRateErr = 0;
-  m_bAllowDrop = g_advancedSettings.m_videoFpsDetect == 0;
+  m_bAllowDrop = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoFpsDetect == 0;
 }
 
 double CVideoPlayerVideo::GetCurrentPts()
@@ -980,7 +988,7 @@ double CVideoPlayerVideo::GetCurrentPts()
 
 void CVideoPlayerVideo::CalcFrameRate()
 {
-  if (m_iFrameRateLength >= 128 || g_advancedSettings.m_videoFpsDetect == 0)
+  if (m_iFrameRateLength >= 128 || CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoFpsDetect == 0)
     return; //don't calculate the fps
 
   if (!m_ptsTracker.HasFullBuffer())
@@ -993,7 +1001,7 @@ void CVideoPlayerVideo::CalcFrameRate()
     frameduration = m_ptsTracker.GetMinFrameDuration();
 
   if ((frameduration==DVD_NOPTS_VALUE) ||
-      ((g_advancedSettings.m_videoFpsDetect == 1) && ((m_ptsTracker.GetPatternLength() > 1) && !m_ptsTracker.VFRDetection())))
+      ((CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoFpsDetect == 1) && ((m_ptsTracker.GetPatternLength() > 1) && !m_ptsTracker.VFRDetection())))
   {
     //reset the stored framerates if no good framerate was detected
     m_fStableFrameRate = 0.0;

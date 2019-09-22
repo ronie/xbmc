@@ -9,16 +9,16 @@
 #pragma once
 
 #include "RPBaseRenderer.h"
-#include "cores/RetroPlayer/buffers/video/RenderBufferSysMem.h"
-#include "cores/RetroPlayer/buffers/BaseRenderBufferPool.h"
-#include "cores/RetroPlayer/process/RPProcessInfo.h"
 #include "cores/GameSettings.h"
-
-#include "system_gl.h"
+#include "cores/RetroPlayer/buffers/BaseRenderBufferPool.h"
+#include "cores/RetroPlayer/buffers/video/RenderBufferSysMem.h"
+#include "cores/RetroPlayer/process/RPProcessInfo.h"
 
 #include <atomic>
 #include <stdint.h>
 #include <vector>
+
+#include "system_gl.h"
 
 namespace KODI
 {
@@ -67,6 +67,9 @@ namespace RETRO
 
     virtual void Render(uint8_t alpha);
 
+    GLuint m_mainIndexVBO;
+    GLuint m_mainVertexVBO;
+    GLuint m_blackbarsVertexVBO;
     GLenum m_textureTarget = GL_TEXTURE_2D;
     float m_clearColour = 0.0f;
   };

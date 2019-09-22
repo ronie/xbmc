@@ -8,21 +8,19 @@
 
 #pragma once
 
-#include <vector>
-
-#include "ListItem.h"
-#include "PlayList.h"
-#include "InfoTagVideo.h"
-#include "Exception.h"
+#include "AddonCallback.h"
 #include "AddonString.h"
+#include "Alternative.h"
+#include "Exception.h"
 #include "InfoTagMusic.h"
 #include "InfoTagRadioRDS.h"
-#include "AddonCallback.h"
-#include "Alternative.h"
-
+#include "InfoTagVideo.h"
+#include "ListItem.h"
+#include "PlayList.h"
+#include "cores/IPlayerCallback.h"
 #include "swighelper.h"
 
-#include "cores/IPlayerCallback.h"
+#include <vector>
 
 namespace XBMCAddon
 {
@@ -206,7 +204,11 @@ namespace XBMCAddon
       ///-----------------------------------------------------------------------
       /// onPlayBackStarted method.
       ///
-      /// Will be called when Kodi starts playing a file. Video or audio might not be available at this point.
+      /// Will be called when Kodi player starts. Video or audio might not be available at this point.
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 Use onAVStarted() instead if you need to detect if Kodi is actually playing a media file
+      /// (i.e, if a stream is available)
       ///
       onPlayBackStarted();
 #else
@@ -221,7 +223,10 @@ namespace XBMCAddon
       ///-----------------------------------------------------------------------
       /// onAVStarted method.
       ///
-      /// Will be called when Kodi has a video- or audiostream.
+      /// Will be called when Kodi has a video or audiostream.
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 New function added.
       ///
       onAVStarted();
 #else
@@ -237,6 +242,9 @@ namespace XBMCAddon
       /// onAVChange method.
       ///
       /// Will be called when Kodi has a video, audio or subtitle stream. Also happens when the stream changes.
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 New function added.
       ///
       onAVChange();
 #else
@@ -552,16 +560,6 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_Player
-      /// @brief \python_func{ DisableSubtitles() }
-      ///-----------------------------------------------------------------------
-      /// @python_v12 Deprecated. Use **showSubtitles** instead.
-      /// @python_v17 Completely removed function.
-      ///
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_Player
       /// @brief \python_func{ getSubtitles() }
       ///-----------------------------------------------------------------------
       /// Get subtitle stream name.
@@ -623,9 +621,7 @@ namespace XBMCAddon
       ///
       /// @throws Exception          If player is not playing a file
       ///
-      ///-----------------------------------------------------------------------
       /// @python_v18 New function added.
-      ///-----------------------------------------------------------------------
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}

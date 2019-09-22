@@ -7,10 +7,11 @@
  */
 
 #include "GUIDialogAxisDetection.h"
+
 #include "guilib/LocalizeStrings.h"
-#include "input/joysticks/interfaces/IButtonMap.h"
 #include "input/joysticks/DriverPrimitive.h"
 #include "input/joysticks/JoystickTranslator.h"
+#include "input/joysticks/interfaces/IButtonMap.h"
 #include "utils/StringUtils.h"
 
 #include <algorithm>
@@ -47,6 +48,19 @@ bool CGUIDialogAxisDetection::MapPrimitiveInternal(JOYSTICK::IButtonMap* buttonM
     AddAxis(buttonMap->DeviceName(), primitive.Index());
 
   return true;
+}
+
+bool CGUIDialogAxisDetection::AcceptsPrimitive(JOYSTICK::PRIMITIVE_TYPE type) const
+{
+  switch (type)
+  {
+  case JOYSTICK::PRIMITIVE_TYPE::SEMIAXIS:
+    return true;
+  default:
+    break;
+  }
+
+  return false;
 }
 
 void CGUIDialogAxisDetection::OnLateAxis(const JOYSTICK::IButtonMap* buttonMap, unsigned int axisIndex)

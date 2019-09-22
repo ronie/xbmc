@@ -6,32 +6,33 @@
  *  SPDX-License-Identifier: GPL-2.0-or-later
  *  See LICENSES/README.md for more information.
  */
-#include <Platinum/Source/Platinum/Platinum.h>
-#include <Platinum/Source/Devices/MediaRenderer/PltMediaController.h>
-#include <Platinum/Source/Devices/MediaServer/PltDidl.h>
-
-#include "ServiceBroker.h"
 #include "UPnPPlayer.h"
+
+#include "Application.h"
+#include "FileItem.h"
+#include "GUIInfoManager.h"
+#include "ServiceBroker.h"
+#include "ThumbLoader.h"
 #include "UPnP.h"
 #include "UPnPInternal.h"
-#include "FileItem.h"
-#include "threads/Event.h"
-#include "utils/log.h"
-#include "utils/TimeUtils.h"
-#include "utils/Variant.h"
-#include "GUIInfoManager.h"
-#include "guilib/GUIComponent.h"
-#include "ThumbLoader.h"
-#include "video/VideoThumbLoader.h"
-#include "music/MusicThumbLoader.h"
-#include "messaging/ApplicationMessenger.h"
-#include "messaging/helpers/DialogHelper.h"
-#include "Application.h"
 #include "cores/DataCacheCore.h"
 #include "dialogs/GUIDialogBusy.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
+#include "messaging/ApplicationMessenger.h"
+#include "messaging/helpers/DialogHelper.h"
+#include "music/MusicThumbLoader.h"
+#include "threads/Event.h"
+#include "utils/TimeUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/VideoThumbLoader.h"
 #include "windowing/WinSystem.h"
+
+#include <Platinum/Source/Devices/MediaRenderer/PltMediaController.h>
+#include <Platinum/Source/Devices/MediaServer/PltDidl.h>
+#include <Platinum/Source/Platinum/Platinum.h>
 
 using namespace KODI::MESSAGING;
 
@@ -54,7 +55,7 @@ public:
     , m_callback(callback)
     , m_postime(0)
   {
-    memset(&m_posinfo, 0, sizeof(m_posinfo));
+    m_posinfo = {};
     m_device->FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", m_transport);
   }
 
@@ -398,7 +399,7 @@ bool CUPnPPlayer::QueueNextFile(const CFileItem& file)
     thumb_loader = NPT_Reference<CThumbLoader>(new CMusicThumbLoader());
 
 
-  obj = BuildObject(item, path, 0, thumb_loader, NULL, CUPnP::GetServer(), UPnPPlayer);
+  obj = BuildObject(item, path, false, thumb_loader, NULL, CUPnP::GetServer(), UPnPPlayer);
   if(!obj.IsNull())
   {
     NPT_CHECK_LABEL_SEVERE(PLT_Didl::ToDidl(*obj, "", tmp), failed);
@@ -465,7 +466,6 @@ void CUPnPPlayer::Pause()
   return;
 failed:
   CLog::Log(LOGERROR, "UPNP: CUPnPPlayer::CloseFile - unable to pause/unpause playback");
-  return;
 }
 
 void CUPnPPlayer::SeekTime(int64_t ms)
@@ -563,7 +563,6 @@ void CUPnPPlayer::SetVolume(float volume)
   return;
 failed:
   CLog::Log(LOGERROR, "UPNP: CUPnPPlayer - unable to set volume");
-  return;
 }
 
 int64_t CUPnPPlayer::GetTime()

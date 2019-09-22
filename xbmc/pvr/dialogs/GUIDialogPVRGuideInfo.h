@@ -9,8 +9,9 @@
 #pragma once
 
 #include "guilib/GUIDialog.h"
-
 #include "pvr/PVRTypes.h"
+
+class CGUIMessage;
 
 namespace PVR
 {
@@ -37,6 +38,7 @@ namespace PVR
     bool OnClickButtonPlay(CGUIMessage &message);
     bool OnClickButtonFind(CGUIMessage &message);
     bool OnClickButtonAddTimer(CGUIMessage &message);
+    bool OnClickButtonSetReminder(CGUIMessage& message);
 
     CPVREpgInfoTagPtr m_progItem;
   };

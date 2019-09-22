@@ -8,28 +8,27 @@
 
 #include "RssManager.h"
 
-#include <utility>
-
+#include "ServiceBroker.h"
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
-#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "interfaces/builtins/Builtins.h"
-#include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
-#include "profiles/ProfilesManager.h"
-#include "settings/lib/Setting.h"
+#include "profiles/ProfileManager.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
 #include "utils/RssReader.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
+
+#include <utility>
 
 using namespace XFILE;
 using namespace KODI::MESSAGING;
 
-using KODI::MESSAGING::HELPERS::DialogResponse;
 
 CRssManager::CRssManager()
 {
@@ -94,11 +93,11 @@ void CRssManager::Stop()
 
 bool CRssManager::Load()
 {
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
   CSingleLock lock(m_critical);
 
-  std::string rssXML = profileManager.GetUserDataItem("RssFeeds.xml");
+  std::string rssXML = profileManager->GetUserDataItem("RssFeeds.xml");
   if (!CFile::Exists(rssXML))
     return false;
 

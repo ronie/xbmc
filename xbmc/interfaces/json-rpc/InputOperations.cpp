@@ -7,18 +7,16 @@
  */
 
 #include "InputOperations.h"
+
 #include "Application.h"
-#include "messaging/ApplicationMessenger.h"
 #include "guilib/GUIAudioManager.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindow.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/GUIKeyboardFactory.h"
-#include "input/ActionTranslator.h"
 #include "input/Key.h"
+#include "input/actions/ActionTranslator.h"
+#include "messaging/ApplicationMessenger.h"
 #include "utils/Variant.h"
-#include "input/XBMC_keyboard.h"
-#include "input/XBMC_vkeys.h"
-#include "threads/SingleLock.h"
 
 using namespace JSONRPC;
 using namespace KODI::MESSAGING;

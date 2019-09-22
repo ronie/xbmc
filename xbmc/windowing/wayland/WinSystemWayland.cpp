@@ -33,6 +33,7 @@
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "ShellSurfaceWlShell.h"
 #include "ShellSurfaceXdgShell.h"
 #include "ShellSurfaceXdgShellUnstableV6.h"
@@ -240,6 +241,9 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_outputsInPreparation.clear();
   m_outputs.clear();
   m_frameCallback = wayland::callback_t{};
+  m_screenSaverManager.reset();
+
+  m_seatInputProcessing.reset();
 
   if (m_registry)
   {
@@ -295,6 +299,19 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   m_windowDecorator.reset(new CWindowDecorator(*this, *m_connection, m_surface));
 
+  m_seatInputProcessing.reset(new CSeatInputProcessing(m_surface, *this));
+  m_seatRegistry.reset(new CRegistry{*m_connection});
+  // version 2 adds name event -> optional
+  // version 4 adds wl_keyboard repeat_info -> optional
+  // version 5 adds discrete axis events in wl_pointer -> unused
+  m_seatRegistry->Request<wayland::seat_t>(1, 5, std::bind(&CWinSystemWayland::OnSeatAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnSeatRemoved, this, _1));
+  m_seatRegistry->Bind();
+
+  if (m_seats.empty())
+  {
+    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+  }
+
   if (fullScreen)
   {
     m_shellSurfaceState.set(IShellSurface::STATE_FULLSCREEN);
@@ -318,7 +335,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   if (fullScreen)
   {
     // Try to start on correct monitor and with correct buffer scale
-    auto output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
+    auto output = FindOutputByUserFriendlyName(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
     auto wlOutput = output ? output->GetWaylandOutput() : wayland::output_t{};
     m_lastSetOutput = wlOutput;
     m_shellSurface->SetFullScreen(wlOutput, res.fRefreshRate);
@@ -343,20 +360,8 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   ApplyWindowGeometry();
 
   // Update resolution with real size as it could have changed due to configure()
-  UpdateDesktopResolution(res, m_bufferSize.Width(), m_bufferSize.Height(), res.fRefreshRate, 0);
+  UpdateDesktopResolution(res, res.strOutput, m_bufferSize.Width(), m_bufferSize.Height(), res.fRefreshRate, 0);
   res.bFullScreen = fullScreen;
-
-  m_seatRegistry.reset(new CRegistry{*m_connection});
-  // version 2 adds name event -> optional
-  // version 4 adds wl_keyboard repeat_info -> optional
-  // version 5 adds discrete axis events in wl_pointer -> unused
-  m_seatRegistry->Request<wayland::seat_t>(1, 5, std::bind(&CWinSystemWayland::OnSeatAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnSeatRemoved, this, _1));
-  m_seatRegistry->Bind();
-
-  if (m_seatProcessors.empty())
-  {
-    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
-  }
 
   // Now start processing events
   //
@@ -398,7 +403,7 @@ bool CWinSystemWayland::DestroyWindow()
   // waylandpp automatically calls wl_surface_destroy when the last reference is removed
   m_surface = wayland::surface_t();
   m_windowDecorator.reset();
-  m_seatProcessors.clear();
+  m_seats.clear();
   m_lastSetOutput.proxy_release();
   m_surfaceOutputs.clear();
   m_surfaceSubmissions.clear();
@@ -423,7 +428,7 @@ void CWinSystemWayland::GetConnectedOutputs(std::vector<std::string>* outputs)
 
 bool CWinSystemWayland::UseLimitedColor()
 {
-  return CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
 }
 
 void CWinSystemWayland::UpdateResolutions()
@@ -434,7 +439,7 @@ void CWinSystemWayland::UpdateResolutions()
 
   // Mimic X11:
   // Only show resolutions for the currently selected output
-  std::string userOutput = CServiceBroker::GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  std::string userOutput = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
 
   CSingleLock lock(m_outputsMutex);
 
@@ -470,8 +475,7 @@ void CWinSystemWayland::UpdateResolutions()
     CLog::LogF(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.size.Width(), mode.size.Height(), mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
 
     RESOLUTION_INFO res;
-    UpdateDesktopResolution(res, mode.size.Width(), mode.size.Height(), mode.GetRefreshInHz(), 0);
-    res.strOutput = outputName;
+    UpdateDesktopResolution(res, outputName, mode.size.Width(), mode.size.Height(), mode.GetRefreshInHz(), 0);
     res.fPixelRatio = pixelRatio;
 
     if (isCurrent)
@@ -884,8 +888,8 @@ void CWinSystemWayland::SetResolutionInternal(CSizeInt size, std::int32_t scale,
       {
         // Add new resolution if none found
         RESOLUTION_INFO newResInfo;
-        UpdateDesktopResolution(newResInfo, sizes.bufferSize.Width(), sizes.bufferSize.Height(), refreshRate, 0);
-        newResInfo.strOutput = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput; // we just assume the compositor put us on the right output
+        // we just assume the compositor put us on the right output
+        UpdateDesktopResolution(newResInfo, CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput, sizes.bufferSize.Width(), sizes.bufferSize.Height(), refreshRate, 0);
         CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
         CDisplaySettings::GetInstance().ApplyCalibrations();
         res = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);
@@ -1055,9 +1059,9 @@ bool CWinSystemWayland::Minimize()
 
 bool CWinSystemWayland::HasCursor()
 {
-  CSingleLock lock(m_seatProcessorsMutex);
-  return std::any_of(m_seatProcessors.cbegin(), m_seatProcessors.cend(),
-                     [](decltype(m_seatProcessors)::value_type const& entry)
+  CSingleLock lock(m_seatsMutex);
+  return std::any_of(m_seats.cbegin(), m_seats.cend(),
+                     [](decltype(m_seats)::value_type const& entry)
                      {
                        return entry.second.HasPointerCapability();
                      });
@@ -1111,20 +1115,29 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::proxy_t&& proxy)
 {
-  CSingleLock lock(m_seatProcessorsMutex);
+  CSingleLock lock(m_seatsMutex);
 
   wayland::seat_t seat(proxy);
-  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
-                                                 std::forward_as_tuple(name),
-                                                 std::forward_as_tuple(name, seat, m_surface, *m_connection, static_cast<IInputHandler&> (*this)));
-  newSeatEmplace.first->second.SetCoordinateScale(m_scale);
+  auto newSeatEmplace = m_seats.emplace(std::piecewise_construct,
+                                           std::forward_as_tuple(name),
+                                                 std::forward_as_tuple(name, seat, *m_connection));
+
+  auto& seatInst = newSeatEmplace.first->second;
+  m_seatInputProcessing->AddSeat(&seatInst);
+  m_windowDecorator->AddSeat(&seatInst);
 }
 
 void CWinSystemWayland::OnSeatRemoved(std::uint32_t name)
 {
-  CSingleLock lock(m_seatProcessorsMutex);
+  CSingleLock lock(m_seatsMutex);
 
-  m_seatProcessors.erase(name);
+  auto seatI = m_seats.find(name);
+  if (seatI != m_seats.end())
+  {
+    m_seatInputProcessing->RemoveSeat(&seatI->second);
+    m_windowDecorator->RemoveSeat(&seatI->second);
+    m_seats.erase(name);
+  }
 }
 
 void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::proxy_t&& proxy)
@@ -1178,7 +1191,7 @@ void CWinSystemWayland::SendFocusChange(bool focus)
   }
 }
 
-void CWinSystemWayland::OnEnter(std::uint32_t seatGlobalName, InputType type)
+void CWinSystemWayland::OnEnter(InputType type)
 {
   // Couple to keyboard focus
   if (type == InputType::KEYBOARD)
@@ -1191,7 +1204,7 @@ void CWinSystemWayland::OnEnter(std::uint32_t seatGlobalName, InputType type)
   }
 }
 
-void CWinSystemWayland::OnLeave(std::uint32_t seatGlobalName, InputType type)
+void CWinSystemWayland::OnLeave(InputType type)
 {
   // Couple to keyboard focus
   if (type == InputType::KEYBOARD)
@@ -1204,25 +1217,31 @@ void CWinSystemWayland::OnLeave(std::uint32_t seatGlobalName, InputType type)
   }
 }
 
-void CWinSystemWayland::OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event)
+void CWinSystemWayland::OnEvent(InputType type, XBMC_Event& event)
 {
   // FIXME
   dynamic_cast<CWinEventsWayland&>(*m_winEvents).MessagePush(&event);
 }
 
-void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial)
+void CWinSystemWayland::OnSetCursor(std::uint32_t seatGlobalName, std::uint32_t serial)
 {
+  auto seatI = m_seats.find(seatGlobalName);
+  if (seatI == m_seats.end())
+  {
+    return;
+  }
+
   if (m_osCursorVisible)
   {
     LoadDefaultCursor();
     if (m_cursorSurface) // Cursor loading could have failed
     {
-      pointer.set_cursor(serial, m_cursorSurface, m_cursorImage.hotspot_x(), m_cursorImage.hotspot_y());
+      seatI->second.SetCursor(serial, m_cursorSurface, m_cursorImage.hotspot_x(), m_cursorImage.hotspot_y());
     }
   }
   else
   {
-    pointer.set_cursor(serial, wayland::surface_t{}, 0, 0);
+    seatI->second.SetCursor(serial, wayland::surface_t{}, 0, 0);
   }
 }
 
@@ -1243,11 +1262,7 @@ void CWinSystemWayland::ApplyBufferScale()
   CLog::LogF(LOGINFO, "Setting Wayland buffer scale to %d", m_scale);
   m_surface.set_buffer_scale(m_scale);
   m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
-  CSingleLock lock(m_seatProcessorsMutex);
-  for (auto& seatProcessor : m_seatProcessors)
-  {
-    seatProcessor.second.SetCoordinateScale(m_scale);
-  }
+  m_seatInputProcessing->SetCoordinateScale(m_scale);
 }
 
 void CWinSystemWayland::UpdateTouchDpi()
@@ -1369,16 +1384,24 @@ void CWinSystemWayland::PrepareFramePresentation()
     // while it is minimized (since the wait needs to be interrupted for that).
     // -> Use Wait with timeout here so we can maintain a reasonable frame rate
     //    even when the window is not visible and we do not get any frame callbacks.
-    m_frameCallbackEvent.WaitMSec(50);
-    m_frameCallbackEvent.Reset();
+    if (m_frameCallbackEvent.WaitMSec(50))
+    {
+      // Only reset frame callback object a callback was received so a
+      // new one is not requested continuously
+      m_frameCallback = {};
+      m_frameCallbackEvent.Reset();
+    }
   }
 
-  // Get frame callback event for checking in the next call to this function
-  m_frameCallback = m_surface.frame();
-  m_frameCallback.on_done() = [this](std::uint32_t)
+  if (!m_frameCallback)
   {
-    m_frameCallbackEvent.Set();
-  };
+    // Get frame callback event for checking in the next call to this function
+    m_frameCallback = m_surface.frame();
+    m_frameCallback.on_done() = [this](std::uint32_t)
+    {
+      m_frameCallbackEvent.Set();
+    };
+  }
 }
 
 void CWinSystemWayland::FinishFramePresentation()
@@ -1457,12 +1480,12 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
 
 std::string CWinSystemWayland::GetClipboardText()
 {
-  CSingleLock lock(m_seatProcessorsMutex);
+  CSingleLock lock(m_seatsMutex);
   // Get text of first seat with non-empty selection
   // Actually, the value of the seat that received the Ctrl+V keypress should be used,
   // but this would need a workaround or proper multi-seat support in Kodi - it's
   // probably just not that relevant in practice
-  for (auto const& seat : m_seatProcessors)
+  for (auto const& seat : m_seats)
   {
     auto text = seat.second.GetSelectionText();
     if (text != "")

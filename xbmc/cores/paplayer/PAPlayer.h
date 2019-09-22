@@ -8,19 +8,17 @@
 
 #pragma once
 
+#include "AudioDecoder.h"
+#include "FileItem.h"
+#include "cores/AudioEngine/Interfaces/IAudioCallback.h"
+#include "cores/IPlayer.h"
+#include "threads/CriticalSection.h"
+#include "threads/Thread.h"
+#include "utils/Job.h"
+
 #include <atomic>
 #include <list>
 #include <vector>
-
-#include "FileItem.h"
-#include "cores/IPlayer.h"
-#include "threads/Thread.h"
-#include "AudioDecoder.h"
-#include "threads/CriticalSection.h"
-#include "utils/Job.h"
-
-#include "cores/AudioEngine/Interfaces/IAudioCallback.h"
-#include "cores/AudioEngine/Utils/AEChannelInfo.h"
 
 class IAEStream;
 class CFileItem;
@@ -146,8 +144,8 @@ private:
   void UpdateStreamInfoPlayNextAtFrame(StreamInfo *si, unsigned int crossFadingTime);
   void UpdateGUIData(StreamInfo *si);
   int64_t GetTimeInternal();
-  void SetTimeInternal(int64_t time);
-  void SetTotalTimeInternal(int64_t time);
+  bool SetTimeInternal(int64_t time);
+  bool SetTotalTimeInternal(int64_t time);
   void CloseFileCB(StreamInfo &si);
   void AdvancePlaylistOnError(CFileItem &fileItem);
 };

@@ -91,8 +91,8 @@
   <FullscreenVideo>
     <joystick profile="game.controller.default">
       <a>Pause</a>
-      <b>Fullscreen</b>
-      <b holdtime="500">Stop</b>
+      <b>Stop</b>
+      <b holdtime="500">FullScreen</b>
       <x>OSD</x>
       <y>FullScreen</y>
       <start>Info</start>
@@ -155,10 +155,8 @@
       <x hotkey="back">OSD</x>
       <y hotkey="back">OSD</y>
       <start hotkey="back">Stop</start>
-      <!--
-      <rightbumper hotkey="back">Save</rightbumper>
-      <leftbumper hotkey="back">Load</leftbumper>
-      -->
+      <rightbumper hotkey="back">AnalogFastForward</rightbumper>
+      <leftbumper hotkey="back">AnalogRewind</leftbumper>
       <righttrigger hotkey="back">AnalogFastForward</righttrigger>
       <lefttrigger hotkey="back">AnalogRewind</lefttrigger>
       <!--
@@ -171,22 +169,44 @@
   </FullscreenGame>
   <FullscreenLiveTV>
     <joystick profile="game.controller.default">
+      <a>Pause</a>
+      <b>Stop</b>
+      <b holdtime="500">FullScreen</b>
+      <x>OSD</x>
+      <back>OSD</back>
       <guide>OSD</guide>
+      <start>Info</start>
       <up>ChannelUp</up>
       <down>ChannelDown</down>
       <left>StepBack</left>
       <right>StepForward</right>
     </joystick>
   </FullscreenLiveTV>
+  <TVGuide>
+    <joystick profile="game.controller.default">
+      <back>Menu</back>
+    </joystick>
+  </TVGuide>
   <FullscreenRadio>
     <joystick profile="game.controller.default">
+      <a>Pause</a>
+      <b>Stop</b>
+      <b holdtime="500">FullScreen</b>
+      <x>OSD</x>
+      <back>OSD</back>
       <guide>OSD</guide>
+      <start>Info</start>
       <up>ChannelUp</up>
       <down>ChannelDown</down>
       <left>StepBack</left>
       <right>StepForward</right>
     </joystick>
   </FullscreenRadio>
+  <RadioGuide>
+    <joystick profile="game.controller.default">
+      <back>Menu</back>
+    </joystick>
+  </RadioGuide>
   <FullscreenInfo>
     <joystick profile="game.controller.default">
       <b>Close</b>
@@ -209,7 +229,7 @@
     <joystick profile="game.controller.default">
       <a>Pause</a>
       <b>Stop</b>
-      <x>ActivateWindow(AddonSettings)</x>
+      <x>Addon.Default.OpenSettings(xbmc.player.musicviz)</x>
       <y>ActivateWindow(VisualisationPresetList)</y>
       <start>Info</start>
       <rightthumb>ActivateWindow(MusicOSD)</rightthumb>

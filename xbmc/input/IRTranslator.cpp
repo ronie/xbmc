@@ -7,14 +7,16 @@
  */
 
 #include "IRTranslator.h"
+
 #include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "input/remote/IRRemote.h"
-#include "profiles/ProfilesManager.h"
-#include "utils/log.h"
+#include "profiles/ProfileManager.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 
 #include <stdlib.h>
 #include <vector>
@@ -38,7 +40,7 @@ void CIRTranslator::Load(const std::string &irMapName)
   else
     CLog::Log(LOGDEBUG, "CIRTranslator::Load - no system %s found, skipping", irMapName.c_str());
 
-  irMapPath = CServiceBroker::GetProfileManager().GetUserDataItem(irMapName);
+  irMapPath = CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetUserDataItem(irMapName);
   if (XFILE::CFile::Exists(irMapPath))
     success |= LoadIRMap(irMapPath);
   else

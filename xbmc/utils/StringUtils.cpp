@@ -217,7 +217,7 @@ std::string StringUtils::FormatV(const char *fmt, va_list args)
   int size = FORMAT_BLOCK_SIZE;
   va_list argCopy;
 
-  while (1)
+  while (true)
   {
     char *cstr = reinterpret_cast<char*>(malloc(sizeof(char) * size));
     if (!cstr)
@@ -261,7 +261,7 @@ std::wstring StringUtils::FormatV(const wchar_t *fmt, va_list args)
   int size = FORMAT_BLOCK_SIZE;
   va_list argCopy;
 
-  while (1)
+  while (true)
   {
     wchar_t *cstr = reinterpret_cast<wchar_t*>(malloc(sizeof(wchar_t) * size));
     if (!cstr)
@@ -964,7 +964,7 @@ std::string StringUtils::SizeToString(int64_t size)
   }
 
   if (!i)
-    strLabel = StringUtils::Format("%.0lf B", s);
+    strLabel = StringUtils::Format("%.lf B", s);
   else if (i == ARRAY_SIZE(prefixes))
   {
     if (s >= 1000.0)
@@ -1265,7 +1265,7 @@ std::string StringUtils::FormatFileSize(uint64_t bytes)
     value /= 1024.0;
   }
   unsigned int decimals = value < 9.995 ? 2 : (value < 99.95 ? 1 : 0);
-  auto frmt = "%.0" + Format("%u", decimals) + "f%s";
+  auto frmt = "%." + Format("%u", decimals) + "f%s";
   return Format(frmt.c_str(), value, units[i].c_str());
 }
 

@@ -25,6 +25,7 @@
 #include "FileItem.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "guilib/LocalizeStrings.h"
 #include "PasswordManager.h"
 #include "URL.h"
@@ -228,15 +229,16 @@ void CGUIDialogMediaSource::OnMediaSourceChanged(const std::string& type, const 
 
 void CGUIDialogMediaSource::OnPathBrowse(int item)
 {
-  if (item < 0 || item > m_paths->Size()) return;
+  if (item < 0 || item >= m_paths->Size()) return;
   // Browse is called.  Open the filebrowser dialog.
   // Ignore current path is best at this stage??
-  std::string path;
+  std::string path = m_paths->Get(item)->GetPath();
   bool allowNetworkShares(m_type != "programs");
   VECSOURCES extraShares;
 
-  if (m_name != CUtil::GetTitleFromPath(m_paths->Get(item)->GetPath()))
+  if (m_name != CUtil::GetTitleFromPath(path))
     m_bNameChanged = true;
+  path.clear();
 
   std::string strDevices = g_localizeStrings.Get(33040); //"% Devices"
 
@@ -287,7 +289,7 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
       extraShares.push_back(share1);
     }
 
-    if (CServiceBroker::GetSettings()->GetString(CSettings::SETTING_AUDIOCDS_RECORDINGPATH) != "")
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_AUDIOCDS_RECORDINGPATH) != "")
     {
       share1.strPath = "special://recordings/";
       share1.strName = g_localizeStrings.Get(21883);
@@ -384,7 +386,7 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
 #endif
 
     share1.m_ignore = true;
-    if (CServiceBroker::GetSettings()->GetString(CSettings::SETTING_DEBUG_SCREENSHOTPATH) != "")
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_DEBUG_SCREENSHOTPATH) != "")
     {
       share1.strPath = "special://screenshots/";
       share1.strName = g_localizeStrings.Get(20008);
@@ -416,12 +418,12 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
 
 void CGUIDialogMediaSource::OnPath(int item)
 {
-  if (item < 0 || item > m_paths->Size()) return;
-
-  if (m_name != CUtil::GetTitleFromPath(m_paths->Get(item)->GetPath()))
-    m_bNameChanged = true;
+  if (item < 0 || item >= m_paths->Size()) return;
 
   std::string path(m_paths->Get(item)->GetPath());
+  if (m_name != CUtil::GetTitleFromPath(path))
+    m_bNameChanged = true;
+
   CGUIKeyboardFactory::ShowAndGetInput(path, CVariant{ g_localizeStrings.Get(1021) }, false);
   m_paths->Get(item)->SetPath(path);
 
@@ -549,7 +551,7 @@ int CGUIDialogMediaSource::GetSelectedItem()
   CGUIMessage message(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_PATH);
   OnMessage(message);
   int value = message.GetParam1();
-  if (value < 0 || value > m_paths->Size()) return 0;
+  if (value < 0 || value >= m_paths->Size()) return 0;
   return value;
 }
 

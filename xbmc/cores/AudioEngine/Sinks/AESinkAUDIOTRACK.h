@@ -45,7 +45,6 @@ protected:
   static jni::CJNIAudioTrack *CreateAudioTrack(int stream, int sampleRate, int channelMask, int encoding, int bufferSize);
   static bool IsSupported(int sampleRateInHz, int channelConfig, int audioFormat);
   static bool VerifySinkConfiguration(int sampleRate, int channelMask, int encoding);
-  static bool HasAmlHD();
   static void UpdateAvailablePCMCapabilities();
   static void UpdateAvailablePassthroughCapabilities();
 
@@ -75,6 +74,7 @@ private:
   static CAEDeviceInfo m_info;
   static std::set<unsigned int>       m_sink_sampleRates;
   static bool m_sinkSupportsFloat;
+  static bool m_sinkSupportsMultiChannelFloat;
 
   AEAudioFormat      m_format;
   double             m_volume;

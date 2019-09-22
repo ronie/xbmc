@@ -40,8 +40,8 @@
 #include <signal.h>
 #ifdef TARGET_POSIX
 #include "PlatformDefs.h" // for __stat64
-#include "XFileUtils.h"
-#include "XTimeUtils.h"
+#include "platform/posix/XFileUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 #include "ServiceBroker.h"
 #include "Util.h"
@@ -49,6 +49,7 @@
 #include "URL.h"
 #include "filesystem/File.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "FileItem.h"
 #include "filesystem/Directory.h"
 
@@ -186,23 +187,25 @@ extern "C" void __stdcall init_emu_environ()
 
 extern "C" void __stdcall update_emu_environ()
 {
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+
   // Use a proxy, if the GUI was configured as such
-  if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_NETWORK_USEHTTPPROXY)
-      && !CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER).empty()
-      && CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT) > 0
-      && CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYTYPE) == 0)
+  if (settings->GetBool(CSettings::SETTING_NETWORK_USEHTTPPROXY)
+      && !settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER).empty()
+      && settings->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT) > 0
+      && settings->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYTYPE) == 0)
   {
     std::string strProxy;
-    if (!CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME).empty() &&
-        !CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD).empty())
+    if (!settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME).empty() &&
+        !settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD).empty())
     {
       strProxy = StringUtils::Format("%s:%s@",
-                                     CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME).c_str(),
-                                     CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD).c_str());
+                                     settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME).c_str(),
+                                     settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD).c_str());
     }
 
-    strProxy += CServiceBroker::GetSettings()->GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER);
-    strProxy += StringUtils::Format(":%d", CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT));
+    strProxy += settings->GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER);
+    strProxy += StringUtils::Format(":%d", settings->GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT));
 
     CEnvironment::setenv( "HTTP_PROXY", "http://" + strProxy, true );
     CEnvironment::setenv( "HTTPS_PROXY", "http://" + strProxy, true );
@@ -1598,9 +1601,6 @@ extern "C"
   {
     if (!strnicmp(path, "shout://", 8)) // don't stat shoutcast
       return -1;
-    if (!strnicmp(path, "http://", 7)
-    ||  !strnicmp(path, "https://", 8)) // don't stat http
-      return -1;
     if (!strnicmp(path, "mms://", 6)) // don't stat mms
       return -1;
 
@@ -1643,9 +1643,6 @@ extern "C"
   int dll_stat64(const char *path, struct __stat64 *buffer)
   {
     if (!strnicmp(path, "shout://", 8)) // don't stat shoutcast
-      return -1;
-    if (!strnicmp(path, "http://", 7)
-    ||  !strnicmp(path, "https://", 8)) // don't stat http
       return -1;
     if (!strnicmp(path, "mms://", 6)) // don't stat mms
       return -1;
@@ -2040,66 +2037,6 @@ extern "C"
 #endif
   }
 
-#if _MSC_VER < 1900
-  int dll_filbuf(FILE *fp)
-  {
-    if (fp == NULL)
-      return EOF;
-
-    if(IS_STD_STREAM(fp))
-      return EOF;
-
-    CFile* pFile = g_emuFileWrapper.GetFileXbmcByStream(fp);
-    if (pFile)
-    {
-      unsigned char data;
-      if(pFile->Read(&data, 1) == 1)
-      {
-        pFile->Seek(-1, SEEK_CUR);
-        return (int)data;
-      }
-      else
-        return EOF;
-    }
-#ifdef TARGET_POSIX
-    return EOF;
-#else
-    return _filbuf(fp);
-#endif
-  }
-
-  int dll_flsbuf(int data, FILE *fp)
-  {
-    if (fp == NULL)
-      return EOF;
-
-    if(IS_STDERR_STREAM(fp) || IS_STDOUT_STREAM(fp))
-    {
-      CLog::Log(LOGDEBUG, "dll_flsbuf() - %c", data);
-      return data;
-    }
-
-    if(IS_STD_STREAM(fp))
-      return EOF;
-
-    CFile* pFile = g_emuFileWrapper.GetFileXbmcByStream(fp);
-    if (pFile)
-    {
-      pFile->Flush();
-      unsigned char c = (unsigned char)data;
-      if(pFile->Write(&c, 1) == 1)
-        return data;
-      else
-        return EOF;
-    }
-#ifdef TARGET_POSIX
-    return EOF;
-#else
-    return _flsbuf(data, fp);
-#endif
-  }
-
-#endif
   // this needs to be wrapped, since dll's have their own file
   // descriptor list, but we always use app's list with our wrappers
   int __cdecl dll_open_osfhandle(intptr_t _OSFileHandle, int _Flags)

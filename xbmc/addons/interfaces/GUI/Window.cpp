@@ -8,15 +8,14 @@
 
 #include "addons/kodi-addon-dev-kit/include/kodi/gui/Window.h"
 
-#include "Window.h"
-#include "General.h"
-#include "controls/Rendering.h"
-
 #include "Application.h"
 #include "FileItem.h"
+#include "General.h"
 #include "ServiceBroker.h"
-#include "addons/binary-addons/AddonDll.h"
+#include "Window.h"
 #include "addons/Skin.h"
+#include "addons/binary-addons/AddonDll.h"
+#include "controls/Rendering.h"
 #include "filesystem/File.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIRenderingControl.h"
@@ -24,10 +23,10 @@
 #include "guilib/TextureManager.h"
 #include "input/Key.h"
 #include "messaging/ApplicationMessenger.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 
 using namespace ADDON;
 using namespace KODI::MESSAGING;
@@ -56,6 +55,8 @@ void Interface_GUIWindow::Init(AddonGlobalInterface* addonInterface)
   addonInterface->toKodi->kodi_gui->window->set_focus_id = set_focus_id;
   addonInterface->toKodi->kodi_gui->window->get_focus_id = get_focus_id;
   addonInterface->toKodi->kodi_gui->window->set_control_label = set_control_label;
+  addonInterface->toKodi->kodi_gui->window->set_control_visible = set_control_visible;
+  addonInterface->toKodi->kodi_gui->window->set_control_selected = set_control_selected;
 
   /* Window property functions */
   addonInterface->toKodi->kodi_gui->window->set_property = set_property;
@@ -132,7 +133,7 @@ void* Interface_GUIWindow::create(void* kodiBase, const char* xml_filename,
   if (!XFILE::CFile::Exists(strSkinPath))
   {
     std::string str("none");
-    ADDON::CAddonInfo addonInfo(str, ADDON::ADDON_SKIN);
+    ADDON::AddonInfoPtr addonInfo = std::make_shared<ADDON::CAddonInfo>(str, ADDON::ADDON_SKIN);
 
     // Check for the matching folder for the skin in the fallback skins folder
     std::string fallbackPath = URIUtils::AddFileToFolder(addon->Path(), "resources", "skins");
@@ -143,7 +144,7 @@ void* Interface_GUIWindow::create(void* kodiBase, const char* xml_filename,
     // Check for the matching folder for the skin in the fallback skins folder (if it exists)
     if (XFILE::CFile::Exists(basePath))
     {
-      addonInfo.SetPath(basePath);
+      addonInfo->SetPath(basePath);
       ADDON::CSkinInfo skinInfo(addonInfo, res);
       skinInfo.Start();
       strSkinPath = skinInfo.GetSkinPath(xml_filename, &res);
@@ -152,7 +153,7 @@ void* Interface_GUIWindow::create(void* kodiBase, const char* xml_filename,
     if (!XFILE::CFile::Exists(strSkinPath))
     {
       // Finally fallback to the DefaultSkin as it didn't exist in either the Kodi Skin folder or the fallback skin folder
-      addonInfo.SetPath(URIUtils::AddFileToFolder(fallbackPath, default_skin));
+      addonInfo->SetPath(URIUtils::AddFileToFolder(fallbackPath, default_skin));
       ADDON::CSkinInfo skinInfo(addonInfo, res);
 
       skinInfo.Start();
@@ -229,7 +230,7 @@ void Interface_GUIWindow::set_callbacks(void* kodiBase, void* handle, void* clie
                                         bool (*CBOnInit)(void*),
                                         bool (*CBOnFocus)(void*, int),
                                         bool (*CBOnClick)(void*, int),
-                                        bool (*CBOnAction)(void*, int),
+                                        bool (*CBOnAction)(void*, int, uint32_t, wchar_t),
                                         void (*CBGetContextButtons)(void* , int, gui_context_menu_pair*, unsigned int*),
                                         bool (*CBOnContextButton)(void*, int, unsigned int))
 {
@@ -406,6 +407,42 @@ void Interface_GUIWindow::set_control_label(void* kodiBase, void* handle, int co
   Interface_GUIGeneral::lock();
   CGUIMessage msg(GUI_MSG_LABEL_SET, pAddonWindow->m_windowId, control_id);
   msg.SetLabel(label);
+  pAddonWindow->OnMessage(msg);
+  Interface_GUIGeneral::unlock();
+}
+
+void Interface_GUIWindow::set_control_visible(void* kodiBase, void* handle, int control_id, bool visible)
+{
+  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+  CGUIAddonWindow* pAddonWindow = static_cast<CGUIAddonWindow*>(handle);
+  if (!addon || !pAddonWindow)
+  {
+    CLog::Log(LOGERROR,
+              "Interface_GUIWindow::%s - invalid handler data (kodiBase='%p', handle='%p') on addon '%s'",
+              __FUNCTION__, kodiBase, handle, addon ? addon->ID().c_str() : "unknown");
+    return;
+  }
+
+  Interface_GUIGeneral::lock();
+  CGUIMessage msg(visible ? GUI_MSG_VISIBLE : GUI_MSG_HIDDEN, pAddonWindow->m_windowId, control_id);
+  pAddonWindow->OnMessage(msg);
+  Interface_GUIGeneral::unlock();
+}
+
+void Interface_GUIWindow::set_control_selected(void* kodiBase, void* handle, int control_id, bool selected)
+{
+  CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
+  CGUIAddonWindow* pAddonWindow = static_cast<CGUIAddonWindow*>(handle);
+  if (!addon || !pAddonWindow)
+  {
+    CLog::Log(LOGERROR,
+              "Interface_GUIWindow::%s - invalid handler data (kodiBase='%p', handle='%p') on addon '%s'",
+              __FUNCTION__, kodiBase, handle, addon ? addon->ID().c_str() : "unknown");
+    return;
+  }
+
+  Interface_GUIGeneral::lock();
+  CGUIMessage msg(selected ? GUI_MSG_SET_SELECTED : GUI_MSG_SET_DESELECTED, pAddonWindow->m_windowId, control_id);
   pAddonWindow->OnMessage(msg);
   Interface_GUIGeneral::unlock();
 }
@@ -1040,7 +1077,7 @@ CGUIControl* CGUIAddonWindow::GetAddonControl(int controlId, CGUIControl::GUICON
 bool CGUIAddonWindow::OnAction(const CAction& action)
 {
   // Let addon decide whether it wants to handle action first
-  if (CBOnAction && CBOnAction(m_clientHandle, action.GetID()))
+  if (CBOnAction && CBOnAction(m_clientHandle, action.GetID(), action.GetButtonCode(), action.GetUnicode()))
     return true;
 
   return CGUIWindow::OnAction(action);
@@ -1114,7 +1151,7 @@ bool CGUIAddonWindow::OnMessage(CGUIMessage& message)
             {
               // Check addon want to handle right click for a context menu, if
               // not used from addon becomes "GetContextButtons(...)" called.
-              if (CBOnAction(m_clientHandle, ACTION_CONTEXT_MENU))
+              if (CBOnAction(m_clientHandle, ACTION_CONTEXT_MENU, 0, 0))
                 return true;
             }
           }

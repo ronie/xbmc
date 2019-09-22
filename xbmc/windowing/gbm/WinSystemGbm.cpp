@@ -7,24 +7,28 @@
  */
 
 #include "WinSystemGbm.h"
-#include "ServiceBroker.h"
-#include "settings/DisplaySettings.h"
-#include "settings/Settings.h"
-#include "settings/lib/Setting.h"
-#include <string.h>
 
-#include "OptionalsReg.h"
-#include "platform/linux/OptionalsReg.h"
-#include "windowing/GraphicContext.h"
-#include "platform/linux/powermanagement/LinuxPowerSyscall.h"
-#include "settings/DisplaySettings.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
 #include "DRMAtomic.h"
 #include "DRMLegacy.h"
+#include "GBMDPMSSupport.h"
 #include "OffScreenModeSetting.h"
+#include "OptionalsReg.h"
+#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
+#include "settings/DisplaySettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 
+#include "platform/linux/OptionalsReg.h"
+#include "platform/linux/powermanagement/LinuxPowerSyscall.h"
+
+#include <string.h>
+
+using namespace KODI::WINDOWING::GBM;
 
 CWinSystemGbm::CWinSystemGbm() :
   m_DRM(nullptr),
@@ -64,6 +68,7 @@ CWinSystemGbm::CWinSystemGbm() :
     }
   }
 
+  m_dpms = std::make_shared<CGBMDPMSSupport>();
   CLinuxPowerSyscall::Register();
   m_lirc.reset(OPTIONALS::LircRegister());
   m_libinput->Start();
@@ -107,48 +112,12 @@ bool CWinSystemGbm::InitWindowSystem()
 
 bool CWinSystemGbm::DestroyWindowSystem()
 {
-  m_GBM->DestroySurface();
   m_GBM->DestroyDevice();
 
   CLog::Log(LOGDEBUG, "CWinSystemGbm::%s - deinitialized DRM", __FUNCTION__);
-  return true;
-}
 
-bool CWinSystemGbm::CreateNewWindow(const std::string& name,
-                                    bool fullScreen,
-                                    RESOLUTION_INFO& res)
-{
-  //Notify other subsystems that we change resolution
-  OnLostDevice();
+  m_libinput.reset();
 
-  if(!m_DRM->SetMode(res))
-  {
-    CLog::Log(LOGERROR, "CWinSystemGbm::%s - failed to set DRM mode", __FUNCTION__);
-    return false;
-  }
-
-  std::vector<uint64_t> *modifiers = m_DRM->GetOverlayPlaneModifiersForFormat(m_DRM->GetOverlayPlane()->format);
-
-  if (!m_GBM->CreateSurface(res.iWidth, res.iHeight, modifiers->data(), modifiers->size()))
-  {
-    CLog::Log(LOGERROR, "CWinSystemGbm::%s - failed to initialize GBM", __FUNCTION__);
-    return false;
-  }
-
-  m_bFullScreen = fullScreen;
-  m_nWidth = res.iWidth;
-  m_nHeight = res.iHeight;
-  m_fRefreshRate = res.fRefreshRate;
-
-  CLog::Log(LOGDEBUG, "CWinSystemGbm::%s - initialized GBM", __FUNCTION__);
-  return true;
-}
-
-bool CWinSystemGbm::DestroyWindow()
-{
-  m_GBM->DestroySurface();
-
-  CLog::Log(LOGDEBUG, "CWinSystemGbm::%s - deinitialized GBM", __FUNCTION__);
   return true;
 }
 
@@ -223,7 +192,7 @@ bool CWinSystemGbm::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     m_GBM->ReleaseBuffer();
   }
 
-  int delay = CServiceBroker::GetSettings()->GetInt("videoscreen.delayrefreshchange");
+  int delay = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt("videoscreen.delayrefreshchange");
   if (delay > 0)
   {
     m_delayDispReset = true;
@@ -241,11 +210,19 @@ void CWinSystemGbm::FlipPage(bool rendered, bool videoLayer)
     m_videoLayerBridge->Disable();
   }
 
-  struct gbm_bo *bo = m_GBM->LockFrontBuffer();
+  struct gbm_bo *bo = nullptr;
+
+  if (rendered)
+  {
+    bo = m_GBM->LockFrontBuffer();
+  }
 
   m_DRM->FlipPage(bo, rendered, videoLayer);
 
-  m_GBM->ReleaseBuffer();
+  if (rendered)
+  {
+    m_GBM->ReleaseBuffer();
+  }
 
   if (m_videoLayerBridge && !videoLayer)
   {
@@ -256,7 +233,7 @@ void CWinSystemGbm::FlipPage(bool rendered, bool videoLayer)
 
 bool CWinSystemGbm::UseLimitedColor()
 {
-  return CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE);
 }
 
 bool CWinSystemGbm::Hide()

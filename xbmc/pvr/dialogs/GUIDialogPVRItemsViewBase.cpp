@@ -12,12 +12,13 @@
 #include "FileItem.h"
 #include "ServiceBroker.h"
 #include "dialogs/GUIDialogContextMenu.h"
-#include "input/Action.h"
-#include "input/ActionIDs.h"
-#include "view/ViewState.h"
-
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
 #include "pvr/PVRGUIActions.h"
 #include "pvr/PVRManager.h"
+#include "view/ViewState.h"
+
+#include <utility>
 
 #define CONTROL_LIST 11
 
@@ -56,20 +57,23 @@ void CGUIDialogPVRItemsViewBase::OnDeinitWindow(int nextWindowID)
 
 bool CGUIDialogPVRItemsViewBase::OnAction(const CAction &action)
 {
-  switch (action.GetID())
+  if (m_viewControl.HasControl(GetFocusedControlID()))
   {
-    case ACTION_SHOW_INFO:
-    case ACTION_SELECT_ITEM:
-    case ACTION_MOUSE_LEFT_CLICK:
-      ShowInfo(m_viewControl.GetSelectedItem());
-      return true;
+    switch (action.GetID())
+    {
+      case ACTION_SHOW_INFO:
+      case ACTION_SELECT_ITEM:
+      case ACTION_MOUSE_LEFT_CLICK:
+        ShowInfo(m_viewControl.GetSelectedItem());
+        return true;
 
-    case ACTION_CONTEXT_MENU:
-    case ACTION_MOUSE_RIGHT_CLICK:
-      return ContextMenu(m_viewControl.GetSelectedItem());
+      case ACTION_CONTEXT_MENU:
+      case ACTION_MOUSE_RIGHT_CLICK:
+        return ContextMenu(m_viewControl.GetSelectedItem());
 
-    default:
-      break;
+      default:
+        break;
+    }
   }
   return CGUIDialog::OnAction(action);
 }
@@ -87,10 +91,11 @@ void CGUIDialogPVRItemsViewBase::ShowInfo(int itemIdx)
   if (itemIdx < 0 || itemIdx >= m_vecItems->Size())
     return;
 
-  // Preserve the item before closing self, because this will clear m_vecItems
-  const CFileItemPtr itemptr = m_vecItems->Get(itemIdx);
-  Close();
-  CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(itemptr);
+  const std::shared_ptr<CFileItem> item = m_vecItems->Get(itemIdx);
+  if (!item)
+    return;
+
+  CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(item);
 }
 
 bool CGUIDialogPVRItemsViewBase::ContextMenu(int itemIdx)

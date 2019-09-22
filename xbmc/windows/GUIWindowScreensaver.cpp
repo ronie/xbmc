@@ -7,14 +7,16 @@
  */
 
 #include "GUIWindowScreensaver.h"
-#include "GUIPassword.h"
+
 #include "Application.h"
+#include "GUIPassword.h"
 #include "GUIUserMessages.h"
 #include "ServiceBroker.h"
 #include "addons/ScreenSaver.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 
 CGUIWindowScreensaver::CGUIWindowScreensaver(void)
   : CGUIWindow(WINDOW_SCREENSAVER, "")
@@ -71,7 +73,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
 
       CServiceBroker::GetWinSystem()->GetGfxContext().CaptureStateBlock();
 
-      const ADDON::BinaryAddonBasePtr addonBase = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(CServiceBroker::GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE), ADDON::ADDON_SCREENSAVER);
+      const ADDON::BinaryAddonBasePtr addonBase = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SCREENSAVER_MODE), ADDON::ADDON_SCREENSAVER);
       if (!addonBase)
         return false;
       m_addon = new ADDON::CScreenSaver(addonBase);

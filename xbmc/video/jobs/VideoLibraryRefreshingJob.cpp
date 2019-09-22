@@ -7,12 +7,10 @@
  */
 
 #include "VideoLibraryRefreshingJob.h"
-#include "NfoFile.h"
+
 #include "ServiceBroker.h"
 #include "TextureDatabase.h"
 #include "addons/Scraper.h"
-#include "dialogs/GUIDialogExtendedProgressBar.h"
-#include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogSelect.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "filesystem/PluginDirectory.h"
@@ -22,9 +20,9 @@
 #include "guilib/LocalizeStrings.h"
 #include "media/MediaType.h"
 #include "messaging/helpers/DialogOKHelper.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 #include "video/VideoDatabase.h"
 #include "video/VideoInfoDownloader.h"
 #include "video/VideoInfoScanner.h"

@@ -23,6 +23,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/lib/Setting.h"
 #include "utils/JobManager.h"
@@ -32,7 +33,7 @@
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
 #ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
+#include "platform/posix/XTimeUtils.h"
 #endif
 
 #ifdef HAS_UPNP
@@ -213,9 +214,9 @@ bool CMACDiscoveryJob::DoWork()
   }
 
   std::vector<CNetworkInterface*>& ifaces = CServiceBroker::GetNetwork().GetInterfaceList();
-  for (std::vector<CNetworkInterface*>::const_iterator it = ifaces.begin(); it != ifaces.end(); ++it)
+  for (const auto& it : ifaces)
   {
-    if ((*it)->GetHostMacAddress(ipAddress, m_macAddress))
+    if (it->GetHostMacAddress(ipAddress, m_macAddress))
       return true;
   }
 
@@ -269,7 +270,11 @@ public:
   explicit ProgressDialogHelper (const std::string& heading) : m_dialog(0)
   {
     if (g_application.IsCurrentThread())
-      m_dialog = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+    {
+      CGUIComponent *gui = CServiceBroker::GetGUI();
+      if (gui)
+        m_dialog = gui->GetWindowManager().GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+    }
 
     if (m_dialog)
     {
@@ -561,10 +566,8 @@ bool CWakeOnAccess::FindOrTouchHostEntry(const std::string& hostName, bool upnpM
 
   UPnPServer* upnp = upnpMode ? LookupUPnPServer(m_UPnPServers, hostName) : nullptr;
 
-  for (EntriesVector::iterator i = m_entries.begin();i != m_entries.end(); ++i)
+  for (auto& server : m_entries)
   {
-    WakeUpEntry& server = *i;
-
     if (upnp ? StringUtils::EqualsNoCase(upnp->m_mac, server.mac) : StringUtils::EqualsNoCase(hostName, server.host))
     {
       CDateTime now = CDateTime::GetCurrentDateTime();
@@ -601,10 +604,8 @@ void CWakeOnAccess::TouchHostEntry(const std::string& hostName, bool upnpMode)
 
   UPnPServer* upnp = upnpMode ? LookupUPnPServer(m_UPnPServers, hostName) : nullptr;
 
-  for (EntriesVector::iterator i = m_entries.begin();i != m_entries.end(); ++i)
+  for (auto& server : m_entries)
   {
-    WakeUpEntry& server = *i;
-
     if (upnp ? StringUtils::EqualsNoCase(upnp->m_mac, server.mac) : StringUtils::EqualsNoCase(hostName, server.host))
     {
       server.nextWake = CDateTime::GetCurrentDateTime() + server.timeout;
@@ -619,8 +620,8 @@ void CWakeOnAccess::TouchHostEntry(const std::string& hostName, bool upnpMode)
 
 static void AddHost (const std::string& host, std::vector<std::string>& hosts)
 {
-  for (std::vector<std::string>::const_iterator it = hosts.begin(); it != hosts.end(); ++it)
-    if (StringUtils::EqualsNoCase(host, *it))
+  for (const auto& it : hosts)
+    if (StringUtils::EqualsNoCase(host, it))
       return; // allready there ..
 
   if (!host.empty())
@@ -646,9 +647,9 @@ void CWakeOnAccess::QueueMACDiscoveryForHost(const std::string& host)
 
 static void AddHostsFromMediaSource(const CMediaSource& source, std::vector<std::string>& hosts)
 {
-  for (std::vector<std::string>::const_iterator it = source.vecPaths.begin() ; it != source.vecPaths.end(); ++it)
+  for (const auto& it : source.vecPaths)
   {
-    CURL url(*it);
+    CURL url(it);
 
     std::string host_name = url.GetHostName();
 
@@ -661,8 +662,8 @@ static void AddHostsFromMediaSource(const CMediaSource& source, std::vector<std:
 
 static void AddHostsFromVecSource(const VECSOURCES& sources, std::vector<std::string>& hosts)
 {
-  for (VECSOURCES::const_iterator it = sources.begin(); it != sources.end(); ++it)
-    AddHostsFromMediaSource(*it, hosts);
+  for (const auto& it : sources)
+    AddHostsFromMediaSource(it, hosts);
 }
 
 static void AddHostsFromVecSource(const VECSOURCES* sources, std::vector<std::string>& hosts)
@@ -684,36 +685,37 @@ void CWakeOnAccess::QueueMACDiscoveryForAllRemotes()
   AddHostsFromVecSource(ms.GetSources("pictures"), hosts);
   AddHostsFromVecSource(ms.GetSources("programs"), hosts);
 
+  const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
+
   // add mysql servers
-  AddHostFromDatabase(g_advancedSettings.m_databaseVideo, hosts);
-  AddHostFromDatabase(g_advancedSettings.m_databaseMusic, hosts);
-  AddHostFromDatabase(g_advancedSettings.m_databaseEpg, hosts);
-  AddHostFromDatabase(g_advancedSettings.m_databaseTV, hosts);
+  AddHostFromDatabase(advancedSettings->m_databaseVideo, hosts);
+  AddHostFromDatabase(advancedSettings->m_databaseMusic, hosts);
+  AddHostFromDatabase(advancedSettings->m_databaseEpg, hosts);
+  AddHostFromDatabase(advancedSettings->m_databaseTV, hosts);
 
   // add from path substitutions ..
-  for (CAdvancedSettings::StringMapping::iterator i = g_advancedSettings.m_pathSubstitutions.begin(); i != g_advancedSettings.m_pathSubstitutions.end(); ++i)
+  for (const auto& pathPair : advancedSettings->m_pathSubstitutions)
   {
-    CURL url(i->second);
-
+    CURL url(pathPair.second);
     AddHost (url.GetHostName(), hosts);
   }
 
-  for (std::vector<std::string>::const_iterator it = hosts.begin(); it != hosts.end(); ++it)
-    QueueMACDiscoveryForHost(*it);
+  for (const std::string& host : hosts)
+    QueueMACDiscoveryForHost(host);
 }
 
 void CWakeOnAccess::SaveMACDiscoveryResult(const std::string& host, const std::string& mac)
 {
   CLog::Log(LOGNOTICE, "%s - Mac discovered for host '%s' -> '%s'", __FUNCTION__, host.c_str(), mac.c_str());
 
-  for (EntriesVector::iterator i = m_entries.begin(); i != m_entries.end(); ++i)
+  for (auto& i : m_entries)
   {
-    if (StringUtils::EqualsNoCase(host, i->host))
+    if (StringUtils::EqualsNoCase(host, i.host))
     {
-      i->mac = mac;
+      i.mac = mac;
       ShowDiscoveryMessage(__FUNCTION__, host.c_str(), false);
 
-      AddMatchingUPnPServers(m_UPnPServers, host, mac, i->timeout);
+      AddMatchingUPnPServers(m_UPnPServers, host, mac, i.timeout);
       SaveToXML();
       return;
     }
@@ -794,7 +796,7 @@ void CWakeOnAccess::SetEnabled(bool enabled)
 
 void CWakeOnAccess::LoadFromXML()
 {
-  bool enabled = CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_POWERMANAGEMENT_WAKEONACCESS);
+  bool enabled = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_POWERMANAGEMENT_WAKEONACCESS);
 
   CXBMCTinyXML xmlDoc;
   if (!xmlDoc.LoadFile(GetSettingFile()))
@@ -916,20 +918,20 @@ void CWakeOnAccess::SaveToXML()
   XMLUtils::SetInt(pRoot, "netinittimeout", m_netinit_sec);
   XMLUtils::SetInt(pRoot, "netsettletime", m_netsettle_ms);
 
-  for (EntriesVector::const_iterator i = m_entries.begin(); i != m_entries.end(); ++i)
+  for (const auto& i : m_entries)
   {
     TiXmlElement xmlSetting("wakeup");
     TiXmlNode* pWakeUpNode = pRoot->InsertEndChild(xmlSetting);
     if (pWakeUpNode)
     {
-      XMLUtils::SetString(pWakeUpNode, "host", i->host);
-      XMLUtils::SetString(pWakeUpNode, "mac", i->mac);
-      XMLUtils::SetInt(pWakeUpNode, "pingport", i->ping_port);
-      XMLUtils::SetInt(pWakeUpNode, "pingmode", i->ping_mode);
-      XMLUtils::SetInt(pWakeUpNode, "timeout", GetTotalSeconds(i->timeout));
-      XMLUtils::SetInt(pWakeUpNode, "waitonline", i->wait_online1_sec);
-      XMLUtils::SetInt(pWakeUpNode, "waitonline2", i->wait_online2_sec);
-      XMLUtils::SetInt(pWakeUpNode, "waitservices", i->wait_services_sec);
+      XMLUtils::SetString(pWakeUpNode, "host", i.host);
+      XMLUtils::SetString(pWakeUpNode, "mac", i.mac);
+      XMLUtils::SetInt(pWakeUpNode, "pingport", i.ping_port);
+      XMLUtils::SetInt(pWakeUpNode, "pingmode", i.ping_mode);
+      XMLUtils::SetInt(pWakeUpNode, "timeout", GetTotalSeconds(i.timeout));
+      XMLUtils::SetInt(pWakeUpNode, "waitonline", i.wait_online1_sec);
+      XMLUtils::SetInt(pWakeUpNode, "waitonline2", i.wait_online2_sec);
+      XMLUtils::SetInt(pWakeUpNode, "waitservices", i.wait_services_sec);
     }
   }
 

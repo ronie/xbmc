@@ -7,30 +7,31 @@
  */
 
 #include "DirectoryNode.h"
-#include "utils/URIUtils.h"
-#include "QueryParams.h"
-#include "DirectoryNodeRoot.h"
-#include "DirectoryNodeOverview.h"
-#include "DirectoryNodeGrouped.h"
-#include "DirectoryNodeArtist.h"
+
 #include "DirectoryNodeAlbum.h"
-#include "DirectoryNodeSong.h"
+#include "DirectoryNodeAlbumCompilations.h"
+#include "DirectoryNodeAlbumCompilationsSongs.h"
 #include "DirectoryNodeAlbumRecentlyAdded.h"
 #include "DirectoryNodeAlbumRecentlyAddedSong.h"
 #include "DirectoryNodeAlbumRecentlyPlayed.h"
 #include "DirectoryNodeAlbumRecentlyPlayedSong.h"
-#include "DirectoryNodeTop100.h"
-#include "DirectoryNodeSongTop100.h"
 #include "DirectoryNodeAlbumTop100.h"
 #include "DirectoryNodeAlbumTop100Song.h"
-#include "DirectoryNodeAlbumCompilations.h"
-#include "DirectoryNodeAlbumCompilationsSongs.h"
+#include "DirectoryNodeArtist.h"
+#include "DirectoryNodeGrouped.h"
+#include "DirectoryNodeOverview.h"
+#include "DirectoryNodeRoot.h"
+#include "DirectoryNodeSingles.h"
+#include "DirectoryNodeSong.h"
+#include "DirectoryNodeSongTop100.h"
+#include "DirectoryNodeTop100.h"
 #include "DirectoryNodeYearAlbum.h"
 #include "DirectoryNodeYearSong.h"
-#include "DirectoryNodeSingles.h"
-#include "URL.h"
 #include "FileItem.h"
+#include "QueryParams.h"
+#include "URL.h"
 #include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
@@ -81,7 +82,7 @@ void CDirectoryNode::GetDatabaseInfo(const std::string& strPath, CQueryParams& p
 {
   std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
 
-  if (!pNode.get())
+  if (!pNode)
     return;
 
   pNode->CollectQueryParams(params);
@@ -249,7 +250,7 @@ bool CDirectoryNode::GetChilds(CFileItemList& items)
   std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
 
   bool bSuccess=false;
-  if (pNode.get())
+  if (pNode)
   {
     pNode->m_options = m_options;
     bSuccess=pNode->GetContent(items);

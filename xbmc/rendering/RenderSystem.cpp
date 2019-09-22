@@ -7,11 +7,13 @@
  */
 
 #include "RenderSystem.h"
+
+#include "Util.h"
+#include "guilib/GUIFontManager.h"
 #include "guilib/GUIImage.h"
 #include "guilib/GUILabelControl.h"
-#include "guilib/GUIFontManager.h"
 #include "settings/AdvancedSettings.h"
-#include "Util.h"
+#include "settings/SettingsComponent.h"
 
 CRenderSystemBase::CRenderSystemBase()
 {
@@ -55,7 +57,7 @@ bool CRenderSystemBase::SupportsStereo(RENDER_STEREO_MODE mode) const
 
 void CRenderSystemBase::ShowSplash(const std::string& message)
 {
-  if (!g_advancedSettings.m_splashImage && !(m_splashImage || !message.empty()))
+  if (!CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_splashImage && !(m_splashImage || !message.empty()))
     return;
 
   if (!m_splashImage)

@@ -8,13 +8,12 @@
 
 #pragma once
 
+#include "input/actions/Action.h"
+#include "network/EventClient.h"
+
 #include <map>
 #include <set>
 #include <string>
-
-#include "Action.h"
-
-#include "network/EventClient.h"
 
 class CKey;
 class TiXmlNode;

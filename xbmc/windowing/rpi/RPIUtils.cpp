@@ -8,18 +8,21 @@
 
 #include "RPIUtils.h"
 
-#include <math.h>
 #include "ServiceBroker.h"
-#include "utils/log.h"
+#include "guilib/StereoscopicsManager.h"
 #include "guilib/gui3d.h"
+#include "rendering/RenderSystem.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
 #include "platform/linux/DllBCM.h"
 #include "platform/linux/RBP.h"
-#include "utils/StringUtils.h"
-#include "settings/Settings.h"
-#include "windowing/GraphicContext.h"
-#include "guilib/StereoscopicsManager.h"
-#include "rendering/RenderSystem.h"
+
 #include <cassert>
+#include <math.h>
 
 #ifndef __VIDEOCORE4__
 #define __VIDEOCORE4__
@@ -128,7 +131,9 @@ bool CRPIUtils::SetNativeResolution(const RESOLUTION_INFO res, EGLSurface m_nati
       /* inform TV of any 3D settings. Note this property just applies to next hdmi mode change, so no need to call for 2D modes */
       HDMI_PROPERTY_PARAM_T property;
       property.property = HDMI_PROPERTY_3D_STRUCTURE;
-      if (CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOSCREEN_FRAMEPACKING) && CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_SUPPORTMVC) && res.fRefreshRate <= 30.0f)
+      const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+      if (settings->GetBool(CSettings::SETTING_VIDEOSCREEN_FRAMEPACKING) &&
+          settings->GetBool(CSettings::SETTING_VIDEOPLAYER_SUPPORTMVC) && res.fRefreshRate <= 30.0f)
         property.param1 = HDMI_3D_FORMAT_FRAME_PACKING;
       else if (stereo_mode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
         property.param1 = HDMI_3D_FORMAT_SBS_HALF;

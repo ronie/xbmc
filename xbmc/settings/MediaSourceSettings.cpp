@@ -6,21 +6,23 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <cstdlib>
-#include <string>
-
 #include "MediaSourceSettings.h"
+
+#include "ServiceBroker.h"
 #include "URL.h"
 #include "Util.h"
 #include "filesystem/File.h"
-#include "profiles/ProfilesManager.h"
-#include "utils/log.h"
+#include "network/WakeOnAccess.h"
+#include "profiles/ProfileManager.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
-#include "network/WakeOnAccess.h"
-#include "ServiceBroker.h"
+#include "utils/log.h"
+
+#include <cstdlib>
+#include <string>
 
 #define SOURCES_FILE  "sources.xml"
 #define XML_SOURCES   "sources"
@@ -43,13 +45,13 @@ CMediaSourceSettings& CMediaSourceSettings::GetInstance()
 
 std::string CMediaSourceSettings::GetSourcesFile()
 {
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
   std::string file;
-  if (profileManager.GetCurrentProfile().hasSources())
-    file = profileManager.GetProfileUserDataFolder();
+  if (profileManager->GetCurrentProfile().hasSources())
+    file = profileManager->GetProfileUserDataFolder();
   else
-    file = profileManager.GetUserDataFolder();
+    file = profileManager->GetUserDataFolder();
 
   return URIUtils::AddFileToFolder(file, SOURCES_FILE);
 }

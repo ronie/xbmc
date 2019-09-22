@@ -8,10 +8,9 @@
 
 #pragma once
 
-#include "windowing/Resolution.h"
-#include "rendering/RenderSystemTypes.h"
 #include "utils/Color.h"
 #include "utils/Geometry.h"
+#include "windowing/Resolution.h"
 
 class CCriticalSection;
 class CDisplaySettings;

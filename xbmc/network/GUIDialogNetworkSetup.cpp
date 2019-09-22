@@ -8,25 +8,24 @@
 
 #include "GUIDialogNetworkSetup.h"
 
-#include <utility>
-
+#include "ServiceBroker.h"
+#include "URL.h"
 #include "addons/AddonManager.h"
 #include "addons/VFSEntry.h"
 #include "addons/binary-addons/BinaryAddonBase.h"
-#include "ServiceBroker.h"
-
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "messaging/helpers/DialogOKHelper.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIEditControl.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "messaging/helpers/DialogOKHelper.h"
 #include "settings/lib/Setting.h"
 #include "settings/windows/GUIControlSettings.h"
-#include "URL.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
+
+#include <utility>
 
 
 using namespace ADDON;
@@ -446,10 +445,14 @@ void CGUIDialogNetworkSetup::UpdateAvailableProtocols()
     {
       const auto& info = addon->GetProtocolInfo();
       if (!addon->GetProtocolInfo().type.empty())
+      {
+        // only use first protocol
+        auto prots = StringUtils::Split(info.type, "|");
         m_protocols.emplace_back(Protocol{ info.supportPath, info.supportUsername,
           info.supportPassword, info.supportPort,
           info.supportBrowsing, info.defaultPort,
-          info.type, info.label });
+          prots.front(), info.label });
+      }
     }
   }
   // internals

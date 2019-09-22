@@ -7,6 +7,8 @@
  */
 
 #include "GUIDialogSelectGameClient.h"
+
+#include "ServiceBroker.h"
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
 #include "cores/RetroPlayer/savestates/ISavestate.h"
@@ -19,11 +21,9 @@
 #include "guilib/LocalizeStrings.h"
 #include "guilib/WindowIDs.h"
 #include "messaging/helpers/DialogOKHelper.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "ServiceBroker.h"
-#include "URL.h"
+#include "utils/log.h"
 
 using namespace KODI;
 using namespace KODI::MESSAGING;
@@ -58,6 +58,7 @@ std::string CGUIDialogSelectGameClient::ShowAndGetGameClient(const std::string &
   {
     // Turn the addons into items
     CFileItemList items;
+    CFileItemList installableItems;
     for (const auto &candidate : candidates)
     {
       CFileItemPtr item(XFILE::CAddonsDirectory::FileItemFromAddon(candidate, candidate->ID()));
@@ -69,9 +70,12 @@ std::string CGUIDialogSelectGameClient::ShowAndGetGameClient(const std::string &
     for (const auto &addon : installable)
     {
       CFileItemPtr item(XFILE::CAddonsDirectory::FileItemFromAddon(addon, addon->ID()));
-      items.Add(std::move(item));
+      installableItems.Add(std::move(item));
     }
     items.Sort(SortByLabel, SortOrderAscending);
+    installableItems.Sort(SortByLabel, SortOrderAscending);
+
+    items.Append(installableItems);
 
     dialog->SetItems(items);
 

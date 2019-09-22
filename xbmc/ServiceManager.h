@@ -8,23 +8,25 @@
 
 #pragma once
 
-#include <memory>
 #include "platform/Platform.h"
+
+#include <memory>
 
 class CAppParamParser;
 
-namespace ADDON {
-class CAddonMgr;
-class CBinaryAddonManager;
-class CBinaryAddonCache;
-class CVFSAddonCache;
-class CServiceAddonManager;
-class CRepositoryUpdater;
+namespace ADDON
+{
+  class CAddonMgr;
+  class CBinaryAddonManager;
+  class CBinaryAddonCache;
+  class CVFSAddonCache;
+  class CServiceAddonManager;
+  class CRepositoryUpdater;
 }
 
 namespace PVR
 {
-class CPVRManager;
+  class CPVRManager;
 }
 
 namespace PLAYLIST
@@ -66,7 +68,7 @@ class CInputManager;
 class CFileExtensionProvider;
 class CPlayerCoreFactory;
 class CDatabaseManager;
-class CProfilesManager;
+class CProfileManager;
 class CEventLog;
 
 class CServiceManager
@@ -77,14 +79,13 @@ public:
 
   bool InitForTesting();
   bool InitStageOne();
-  bool InitStageOnePointFive(); // Services that need our DllLoaders emu env
-  bool InitStageTwo(const CAppParamParser &params);
-  bool InitStageThree();
+  bool InitStageTwo(const CAppParamParser &params, const std::string& profilesUserDataFolder);
+  bool InitStageThree(const std::shared_ptr<CProfileManager>& profileManager);
   void DeinitTesting();
   void DeinitStageThree();
   void DeinitStageTwo();
-  void DeinitStageOnePointFive();
   void DeinitStageOne();
+
   ADDON::CAddonMgr& GetAddonMgr();
   ADDON::CBinaryAddonManager& GetBinaryAddonManager();
   ADDON::CBinaryAddonCache& GetBinaryAddonCache();
@@ -120,10 +121,6 @@ public:
   CPlayerCoreFactory &GetPlayerCoreFactory();
 
   CDatabaseManager &GetDatabaseManager();
-
-  CProfilesManager &GetProfileManager();
-
-  CEventLog &GetEventLog();
 
 protected:
   struct delete_dataCacheCore
@@ -167,5 +164,4 @@ protected:
   std::unique_ptr<CWeatherManager> m_weatherManager;
   std::unique_ptr<CPlayerCoreFactory> m_playerCoreFactory;
   std::unique_ptr<CDatabaseManager> m_databaseManager;
-  std::unique_ptr<CProfilesManager> m_profileManager;
 };

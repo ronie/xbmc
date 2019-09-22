@@ -7,24 +7,26 @@
  */
 
 #include "AudioLibrary.h"
-#include "music/MusicDatabase.h"
+
 #include "FileItem.h"
 #include "ServiceBroker.h"
+#include "TextureDatabase.h"
 #include "Util.h"
+#include "filesystem/Directory.h"
+#include "messaging/ApplicationMessenger.h"
+#include "music/Album.h"
+#include "music/Artist.h"
+#include "music/MusicDatabase.h"
+#include "music/MusicThumbLoader.h"
+#include "music/Song.h"
+#include "music/tags/MusicInfoTag.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
-#include "music/tags/MusicInfoTag.h"
-#include "music/Artist.h"
-#include "music/Album.h"
-#include "music/MusicThumbLoader.h"
-#include "music/Song.h"
-#include "messaging/ApplicationMessenger.h"
-#include "filesystem/Directory.h"
-#include "settings/Settings.h"
-#include "settings/AdvancedSettings.h"
-#include "TextureDatabase.h"
 
 using namespace MUSIC_INFO;
 using namespace JSONRPC;
@@ -103,7 +105,7 @@ JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLa
     musicUrl.AddOption("xsp", xsp);
   }
 
-  bool albumArtistsOnly = !CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS);
+  bool albumArtistsOnly = !CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS);
   if (parameterObject["albumartistsonly"].isBoolean())
     albumArtistsOnly = parameterObject["albumartistsonly"].asBoolean();
   musicUrl.AddOption("albumartistsonly", albumArtistsOnly);
@@ -263,10 +265,10 @@ JSONRPC_STATUS CAudioLibrary::GetAlbums(const std::string &method, ITransportLay
         {
           CGUIListItem::ArtMap artMap = item.GetArt();
           CVariant artObj(CVariant::VariantTypeObject);
-          for (CGUIListItem::ArtMap::const_iterator artIt = artMap.begin(); artIt != artMap.end(); ++artIt)
+          for (const auto& artIt : artMap)
           {
-            if (!artIt->second.empty())
-              artObj[artIt->first] = CTextureUtils::GetWrappedImageURL(artIt->second);
+            if (!artIt.second.empty())
+              artObj[artIt.first] = CTextureUtils::GetWrappedImageURL(artIt.second);
           }
           result["albums"][index]["art"] = artObj;
         }
@@ -431,10 +433,10 @@ JSONRPC_STATUS CAudioLibrary::GetSongs(const std::string &method, ITransportLaye
         {
           CGUIListItem::ArtMap artMap = item.GetArt();
           CVariant artObj(CVariant::VariantTypeObject);
-          for (CGUIListItem::ArtMap::const_iterator artIt = artMap.begin(); artIt != artMap.end(); ++artIt)
+          for (const auto& artIt : artMap)
           {
-            if (!artIt->second.empty())
-              artObj[artIt->first] = CTextureUtils::GetWrappedImageURL(artIt->second);
+            if (!artIt.second.empty())
+              artObj[artIt.first] = CTextureUtils::GetWrappedImageURL(artIt.second);
           }
           result["songs"][index]["art"] = artObj;
         }
@@ -742,7 +744,7 @@ JSONRPC_STATUS CAudioLibrary::SetAlbumDetails(const std::string &method, ITransp
       CopyStringArray(parameterObject["musicbrainzalbumartistid"], mbids);
     // When display artist is not provided and yet artists is changing make by concatenation
     if (!ParameterNotNull(parameterObject, "displayartist"))
-      album.strArtistDesc = StringUtils::Join(artists, g_advancedSettings.m_musicItemSeparator);
+      album.strArtistDesc = StringUtils::Join(artists, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
     album.SetArtistCredits(artists, std::vector<std::string>(), mbids);
     // On updatealbum artists will be changed
     album.bArtistSongMerge = true;
@@ -841,7 +843,7 @@ JSONRPC_STATUS CAudioLibrary::SetSongDetails(const std::string &method, ITranspo
       CopyStringArray(parameterObject["musicbrainzartistid"], mbids);
     // When display artist is not provided and yet artists is changing make by concatenation
     if (!ParameterNotNull(parameterObject, "displayartist"))
-      song.strArtistDesc = StringUtils::Join(artists, g_advancedSettings.m_musicItemSeparator);
+      song.strArtistDesc = StringUtils::Join(artists, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator);
     song.SetArtistCredits(artists, std::vector<std::string>(), mbids);
   }
 
@@ -1027,11 +1029,11 @@ bool CAudioLibrary::FillFileItemList(const CVariant &parameterObject, CFileItemL
     // If we retrieved the list of songs by "artistid"
     // we sort by album (and implicitly by track number)
     if (artistID != -1)
-      list.Sort(SortByAlbum, SortOrderAscending, CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
+      list.Sort(SortByAlbum, SortOrderAscending, CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
     // If we retrieve the list of songs by "genreid"
     // we sort by artist (and implicitly by album and track number)
     else if (genreID != -1)
-      list.Sort(SortByArtist, SortOrderAscending, CServiceBroker::GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
+      list.Sort(SortByArtist, SortOrderAscending, CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
     // otherwise we sort by track number
     else
       list.Sort(SortByTrackNumber, SortOrderAscending);
@@ -1045,8 +1047,8 @@ void CAudioLibrary::FillItemArtistIDs(const std::vector<int> artistids, CFileIte
 {
   // Add artistIds as separate property as not part of CMusicInfoTag
   CVariant artistidObj(CVariant::VariantTypeArray);
-  for (std::vector<int>::const_iterator artistid = artistids.begin(); artistid != artistids.end(); ++artistid)
-    artistidObj.push_back(*artistid);
+  for (const auto& artistid : artistids)
+    artistidObj.push_back(artistid);
 
   item->SetProperty("artistid", artistidObj);
 }
@@ -1184,8 +1186,8 @@ JSONRPC_STATUS CAudioLibrary::GetAdditionalSongDetails(const CVariant &parameter
       if (musicdatabase.GetGenresBySong(item->GetMusicInfoTag()->GetDatabaseId(), genreids))
       {
         CVariant genreidObj(CVariant::VariantTypeArray);
-        for (std::vector<int>::const_iterator genreid = genreids.begin(); genreid != genreids.end(); ++genreid)
-          genreidObj.push_back(*genreid);
+        for (const auto& genreid : genreids)
+          genreidObj.push_back(genreid);
 
         item->SetProperty("genreid", genreidObj);
       }

@@ -11,8 +11,8 @@
 #include "GUIDialogButtonCapture.h"
 
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace KODI
 {
@@ -26,6 +26,7 @@ namespace GAME
     virtual ~CGUIDialogAxisDetection() = default;
 
     // specialization of IButtonMapper via CGUIDialogButtonCapture
+    bool AcceptsPrimitive(JOYSTICK::PRIMITIVE_TYPE type) const override;
     void OnLateAxis(const JOYSTICK::IButtonMap* buttonMap, unsigned int axisIndex) override;
 
   protected:

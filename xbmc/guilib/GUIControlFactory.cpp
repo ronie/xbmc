@@ -7,51 +7,53 @@
  */
 
 #include "GUIControlFactory.h"
-#include "LocalizeStrings.h"
-#include "GUIButtonControl.h"
-#include "GUIRadioButtonControl.h"
-#include "GUISpinControl.h"
-#include "GUIRSSControl.h"
-#include "GUIImage.h"
+
+#include "GUIAction.h"
 #include "GUIBorderedImage.h"
-#include "GUILabelControl.h"
-#include "GUIEditControl.h"
-#include "GUIFadeLabelControl.h"
-#include "GUIToggleButtonControl.h"
-#include "GUITextBox.h"
-#include "GUIVideoControl.h"
-#include "GUIProgressControl.h"
-#include "GUISliderControl.h"
-#include "GUIMoverControl.h"
-#include "GUIRenderingControl.h"
-#include "GUIResizeControl.h"
-#include "GUISpinControlEx.h"
-#include "GUIVisualisationControl.h"
-#include "GUISettingsSliderControl.h"
-#include "GUIMultiImage.h"
+#include "GUIButtonControl.h"
+#include "GUIColorManager.h"
 #include "GUIControlGroup.h"
 #include "GUIControlGroupList.h"
-#include "GUIScrollBarControl.h"
-#include "GUIListContainer.h"
+#include "GUIEditControl.h"
+#include "GUIFadeLabelControl.h"
 #include "GUIFixedListContainer.h"
-#include "GUIWrappingListContainer.h"
-#include "pvr/windows/GUIEPGGridContainer.h"
-#include "GUIPanelContainer.h"
-#include "GUIListLabel.h"
-#include "GUIListGroup.h"
-#include "GUIInfoManager.h"
-#include "input/Key.h"
-#include "addons/Skin.h"
-#include "utils/CharsetConverter.h"
-#include "utils/XMLUtils.h"
 #include "GUIFontManager.h"
-#include "GUIColorManager.h"
-#include "utils/RssManager.h"
-#include "utils/StringUtils.h"
-#include "GUIAction.h"
+#include "GUIImage.h"
+#include "GUIInfoManager.h"
+#include "GUILabelControl.h"
+#include "GUIListContainer.h"
+#include "GUIListGroup.h"
+#include "GUIListLabel.h"
+#include "GUIMoverControl.h"
+#include "GUIMultiImage.h"
+#include "GUIPanelContainer.h"
+#include "GUIProgressControl.h"
+#include "GUIRSSControl.h"
+#include "GUIRadioButtonControl.h"
+#include "GUIRangesControl.h"
+#include "GUIRenderingControl.h"
+#include "GUIResizeControl.h"
+#include "GUIScrollBarControl.h"
+#include "GUISettingsSliderControl.h"
+#include "GUISliderControl.h"
+#include "GUISpinControl.h"
+#include "GUISpinControlEx.h"
+#include "GUITextBox.h"
+#include "GUIToggleButtonControl.h"
+#include "GUIVideoControl.h"
+#include "GUIVisualisationControl.h"
+#include "GUIWrappingListContainer.h"
+#include "LocalizeStrings.h"
+#include "Util.h"
+#include "addons/Skin.h"
 #include "cores/RetroPlayer/guicontrols/GUIGameControl.h"
 #include "games/controllers/guicontrols/GUIGameController.h"
-#include "Util.h"
+#include "input/Key.h"
+#include "pvr/windows/GUIEPGGridContainer.h"
+#include "utils/CharsetConverter.h"
+#include "utils/RssManager.h"
+#include "utils/StringUtils.h"
+#include "utils/XMLUtils.h"
 
 using namespace KODI;
 using namespace KODI::GUILIB;
@@ -96,7 +98,8 @@ static const ControlMapping controls[] =
     {"wraplist",          CGUIControl::GUICONTAINER_WRAPLIST},
     {"fixedlist",         CGUIControl::GUICONTAINER_FIXEDLIST},
     {"epggrid",           CGUIControl::GUICONTAINER_EPGGRID},
-    {"panel",             CGUIControl::GUICONTAINER_PANEL}};
+    {"panel",             CGUIControl::GUICONTAINER_PANEL},
+    {"ranges",            CGUIControl::GUICONTROL_RANGES}};
 
 CGUIControl::GUICONTROLTYPES CGUIControlFactory::TranslateControlType(const std::string &type)
 {
@@ -1143,9 +1146,9 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
       GetInfoLabel(pControlNode, "videofilter", videoFilter, parentID);
       static_cast<RETRO::CGUIGameControl*>(control)->SetVideoFilter(videoFilter);
 
-      GUIINFO::CGUIInfoLabel viewMode;
-      GetInfoLabel(pControlNode, "viewmode", viewMode, parentID);
-      static_cast<RETRO::CGUIGameControl*>(control)->SetViewMode(viewMode);
+      GUIINFO::CGUIInfoLabel stretchMode;
+      GetInfoLabel(pControlNode, "stretchmode", stretchMode, parentID);
+      static_cast<RETRO::CGUIGameControl*>(control)->SetStretchMode(stretchMode);
 
       GUIINFO::CGUIInfoLabel rotation;
       GetInfoLabel(pControlNode, "rotation", rotation, parentID);
@@ -1292,6 +1295,14 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
         textureOverlay, bReveal);
 
       static_cast<CGUIProgressControl*>(control)->SetInfo(singleInfo, singleInfo2);
+    }
+    break;
+  case CGUIControl::GUICONTROL_RANGES:
+    {
+      control = new CGUIRangesControl(
+        parentID, id, posX, posY, width, height,
+        textureBackground, textureLeft, textureMid, textureRight,
+        textureOverlay, singleInfo);
     }
     break;
   case CGUIControl::GUICONTROL_IMAGE:

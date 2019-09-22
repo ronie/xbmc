@@ -10,6 +10,9 @@
 
 #include "guilib/GUIDialog.h"
 
+class CFileItem;
+class CGUIMessage;
+
 namespace PVR
 {
   class CGUIDialogPVRRecordingInfo : public CGUIDialog
@@ -27,6 +30,7 @@ namespace PVR
     static void ShowFor(const CFileItemPtr& item);
 
   private:
+    bool OnClickButtonFind(CGUIMessage& message);
     bool OnClickButtonOK(CGUIMessage &message);
     bool OnClickButtonPlay(CGUIMessage &message);
 

@@ -13,22 +13,22 @@
  \brief
  */
 
-#include <map>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
+#include "LockType.h"
+#include "XBDateTime.h"
 #include "addons/IAddon.h"
 #include "guilib/GUIListItem.h"
-#include "LockType.h"
 #include "pvr/PVRTypes.h"
 #include "threads/CriticalSection.h"
 #include "utils/IArchivable.h"
 #include "utils/ISerializable.h"
 #include "utils/ISortable.h"
 #include "utils/SortUtils.h"
-#include "XBDateTime.h"
+
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace MUSIC_INFO
 {
@@ -223,12 +223,12 @@ public:
   bool IsVideoDb() const;
   bool IsEPG() const;
   bool IsPVRChannel() const;
+  bool IsPVRChannelGroup() const;
   bool IsPVRRecording() const;
   bool IsUsablePVRRecording() const;
   bool IsDeletedPVRRecording() const;
   bool IsInProgressPVRRecording() const;
   bool IsPVRTimer() const;
-  bool IsPVRRadioRDS() const;
   bool IsType(const char *ext) const;
   bool IsVirtualDirectoryRoot() const;
   bool IsReadOnly() const;
@@ -315,21 +315,6 @@ public:
   inline const PVR::CPVRTimerInfoTagPtr GetPVRTimerInfoTag() const
   {
     return m_pvrTimerInfoTag;
-  }
-
-  inline bool HasPVRRadioRDSInfoTag() const
-  {
-    return m_pvrRadioRDSInfoTag.get() != NULL;
-  }
-
-  inline const PVR::CPVRRadioRDSInfoTagPtr GetPVRRadioRDSInfoTag() const
-  {
-    return m_pvrRadioRDSInfoTag;
-  }
-
-  inline void SetPVRRadioRDSInfoTag(const PVR::CPVRRadioRDSInfoTagPtr& tag)
-  {
-    m_pvrRadioRDSInfoTag = tag;
   }
 
   /*!
@@ -583,7 +568,6 @@ private:
   PVR::CPVRChannelPtr m_pvrChannelInfoTag;
   PVR::CPVRRecordingPtr m_pvrRecordingInfoTag;
   PVR::CPVRTimerInfoTagPtr m_pvrTimerInfoTag;
-  PVR::CPVRRadioRDSInfoTagPtr m_pvrRadioRDSInfoTag;
   CPictureInfoTag* m_pictureInfoTag;
   std::shared_ptr<const ADDON::IAddon> m_addonInfo;
   KODI::GAME::CGameInfoTag* m_gameInfoTag;

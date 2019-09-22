@@ -7,17 +7,20 @@
  */
 
 #include "FavouritesService.h"
-#include "filesystem/File.h"
-#include "Util.h"
+
 #include "FileItem.h"
-#include "utils/XBMCTinyXML.h"
-#include "utils/log.h"
+#include "ServiceBroker.h"
+#include "URL.h"
+#include "Util.h"
+#include "filesystem/File.h"
+#include "music/tags/MusicInfoTag.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "settings/AdvancedSettings.h"
+#include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 #include "video/VideoInfoTag.h"
-#include "music/tags/MusicInfoTag.h"
-#include "URL.h"
 
 
 static bool LoadFromFile(const std::string& strPath, CFileItemList& items)
@@ -182,7 +185,7 @@ std::string CFavouritesService::GetExecutePath(const CFileItem &item, const std:
     const CURL url(item.GetPath());
     execute = CURL::Decode(url.GetHostName());
   }
-  else if (item.m_bIsFolder && (g_advancedSettings.m_playlistAsFolders ||
+  else if (item.m_bIsFolder && (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_playlistAsFolders ||
                                 !(item.IsSmartPlayList() || item.IsPlayList())))
   {
     if (!contextWindow.empty())

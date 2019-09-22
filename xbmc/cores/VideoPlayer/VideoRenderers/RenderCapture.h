@@ -15,6 +15,7 @@
 
 #include "threads/Event.h"
 
+
 enum ECAPTURESTATE
 {
   CAPTURESTATE_WORKING,
@@ -173,7 +174,7 @@ class CRenderCaptureDX : public CRenderCaptureBase, public ID3DResource
 
     void OnDestroyDevice(bool fatal) override;
     void OnCreateDevice() override {};
-    CD3DTexture* GetTarget() { return &m_renderTex; }
+    CD3DTexture& GetTarget() { return m_renderTex; }
 
   private:
     void SurfaceToBuffer();

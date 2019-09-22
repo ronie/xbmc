@@ -7,21 +7,21 @@
  */
 
 #include "PeripheralCecAdapter.h"
-#include "input/remote/IRRemote.h"
+
 #include "Application.h"
 #include "ServiceBroker.h"
-#include "messaging/ApplicationMessenger.h"
-#include "DynamicDll.h"
-#include "threads/SingleLock.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "input/remote/IRRemote.h"
+#include "messaging/ApplicationMessenger.h"
 #include "pictures/GUIWindowSlideShow.h"
+#include "threads/SingleLock.h"
 #include "utils/JobManager.h"
-#include "utils/log.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 
 #include <libcec/cec.h>
 
@@ -600,6 +600,8 @@ void CPeripheralCecAdapter::OnTvStandby(void)
   case LOCALISED_ID_STOP:
     KODI::MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_MEDIA_STOP);
     break;
+  case LOCALISED_ID_IGNORE:
+  break;
   default:
     CLog::Log(LOGERROR, "%s - Unexpected [standby_pc_on_tv_standby] setting value", __FUNCTION__);
     break;
@@ -1345,11 +1347,11 @@ void CPeripheralCecAdapter::SetConfigurationFromSettings(void)
     ReadLogicalAddresses(GetSettingInt("standby_devices"), m_configuration.powerOffDevices);
 
   // read the boolean settings
-  m_bUseTVMenuLanguage                 = GetSettingBool("use_tv_menu_language") ? 1 : 0;
+  m_bUseTVMenuLanguage                 = GetSettingBool("use_tv_menu_language");
   m_configuration.bActivateSource      = GetSettingBool("activate_source") ? 1 : 0;
-  m_bPowerOffScreensaver               = GetSettingBool("cec_standby_screensaver") ? 1 : 0;
-  m_bPowerOnScreensaver                = GetSettingBool("cec_wake_screensaver") ? 1 : 0;
-  m_bSendInactiveSource                = GetSettingBool("send_inactive_source") ? 1 : 0;
+  m_bPowerOffScreensaver               = GetSettingBool("cec_standby_screensaver");
+  m_bPowerOnScreensaver                = GetSettingBool("cec_wake_screensaver");
+  m_bSendInactiveSource                = GetSettingBool("send_inactive_source");
   m_configuration.bAutoWakeAVR         = GetSettingBool("power_avr_on_as") ? 1 : 0;
 
   // read the mutually exclusive boolean settings

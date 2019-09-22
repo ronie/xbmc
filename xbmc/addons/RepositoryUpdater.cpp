@@ -7,6 +7,7 @@
  */
 
 #include "RepositoryUpdater.h"
+
 #include "Application.h"
 #include "ServiceBroker.h"
 #include "addons/AddonInstaller.h"
@@ -20,10 +21,12 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
 #include "utils/log.h"
+
 #include <algorithm>
 #include <iterator>
 #include <vector>
@@ -39,7 +42,7 @@ CRepositoryUpdater::CRepositoryUpdater(CAddonMgr& addonMgr) :
   // Register settings
   std::set<std::string> settingSet;
   settingSet.insert(CSettings::SETTING_ADDONS_AUTOUPDATES);
-  CServiceBroker::GetSettings()->RegisterCallback(this, settingSet);
+  CServiceBroker::GetSettingsComponent()->GetSettings()->RegisterCallback(this, settingSet);
 }
 
 void CRepositoryUpdater::Start()
@@ -51,7 +54,7 @@ void CRepositoryUpdater::Start()
 CRepositoryUpdater::~CRepositoryUpdater()
 {
   // Unregister settings
-  CServiceBroker::GetSettings()->UnregisterCallback(this);
+  CServiceBroker::GetSettingsComponent()->GetSettings()->UnregisterCallback(this);
 
   m_addonMgr.Events().Unsubscribe(this);
 }
@@ -76,7 +79,7 @@ void CRepositoryUpdater::OnJobComplete(unsigned int jobID, bool success, CJob* j
 
     VECADDONS updates = m_addonMgr.GetAvailableUpdates();
 
-    if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NOTIFY)
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NOTIFY)
     {
       if (!updates.empty())
       {
@@ -94,7 +97,7 @@ void CRepositoryUpdater::OnJobComplete(unsigned int jobID, bool success, CJob* j
       }
     }
 
-    if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_ON)
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_ON)
     {
       CAddonInstaller::GetInstance().InstallUpdates();
     }
@@ -204,7 +207,7 @@ void CRepositoryUpdater::ScheduleUpdate()
   CSingleLock lock(m_criticalSection);
   m_timer.Stop(true);
 
-  if (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NEVER)
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NEVER)
     return;
 
   if (!m_addonMgr.HasAddons(ADDON_REPOSITORY))

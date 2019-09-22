@@ -20,18 +20,17 @@
 #if defined(TARGET_DARWIN_OSX)
 #include "platform/darwin/osx/smc.h"
 #endif
-#ifdef TARGET_POSIX
-#include "platform/linux/XMemUtils.h"
-#endif
 #include "powermanagement/PowerManager.h"
-#include "profiles/ProfilesManager.h"
+#include "profiles/ProfileManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "storage/MediaManager.h"
 #include "utils/AlarmClock.h"
 #include "utils/CPUInfo.h"
+#include "utils/MemUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
 #include "utils/TimeUtils.h"
@@ -93,7 +92,7 @@ CTemperature CSystemGUIInfo::GetGPUTemperature() const
 #elif defined(TARGET_WINDOWS_STORE)
   return CTemperature::CreateFromCelsius(0);
 #else
-  std::string cmd = g_advancedSettings.m_gpuTempCmd;
+  std::string cmd = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_gpuTempCmd;
   int ret = 0;
   FILE* p = NULL;
 
@@ -202,22 +201,21 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
     case SYSTEM_USED_MEMORY_PERCENT:
     case SYSTEM_TOTAL_MEMORY:
     {
-      MEMORYSTATUSEX stat;
-      stat.dwLength = sizeof(MEMORYSTATUSEX);
-      GlobalMemoryStatusEx(&stat);
-      int iMemPercentFree = 100 - static_cast<int>(100.0f * (stat.ullTotalPhys - stat.ullAvailPhys) / stat.ullTotalPhys + 0.5f);
+      KODI::MEMORY::MemoryStatus stat;
+      KODI::MEMORY::GetMemoryStatus(&stat);
+      int iMemPercentFree = 100 - static_cast<int>(100.0f * (stat.totalPhys - stat.availPhys) / stat.totalPhys + 0.5f);
       int iMemPercentUsed = 100 - iMemPercentFree;
 
       if (info.m_info == SYSTEM_FREE_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.ullAvailPhys / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.availPhys / MB));
       else if (info.m_info == SYSTEM_FREE_MEMORY_PERCENT)
         value = StringUtils::Format("%i%%", iMemPercentFree);
       else if (info.m_info == SYSTEM_USED_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>((stat.ullTotalPhys - stat.ullAvailPhys) / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>((stat.totalPhys - stat.availPhys) / MB));
       else if (info.m_info == SYSTEM_USED_MEMORY_PERCENT)
         value = StringUtils::Format("%i%%", iMemPercentUsed);
       else if (info.m_info == SYSTEM_TOTAL_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.ullTotalPhys / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.totalPhys / MB));
       return true;
     }
     case SYSTEM_SCREEN_MODE:
@@ -250,22 +248,22 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
       }
       return true;
     case SYSTEM_PROFILENAME:
-      value = CServiceBroker::GetProfileManager().GetCurrentProfile().getName();
+      value = CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().getName();
       return true;
     case SYSTEM_PROFILECOUNT:
-      value = StringUtils::Format("{0}", CServiceBroker::GetProfileManager().GetNumberOfProfiles());
+      value = StringUtils::Format("{0}", CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetNumberOfProfiles());
       return true;
     case SYSTEM_PROFILEAUTOLOGIN:
     {
-      CProfilesManager& profilesMgr = CServiceBroker::GetProfileManager();
-      int iProfileId = profilesMgr.GetAutoLoginProfileId();
-      if ((iProfileId < 0) || !profilesMgr.GetProfileName(iProfileId, value))
+      const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
+      int iProfileId = profileManager->GetAutoLoginProfileId();
+      if ((iProfileId < 0) || !profileManager->GetProfileName(iProfileId, value))
         value = g_localizeStrings.Get(37014); // Last used profile
       return true;
     }
     case SYSTEM_PROFILETHUMB:
     {
-      const std::string& thumb = CServiceBroker::GetProfileManager().GetCurrentProfile().getThumb();
+      const std::string& thumb = CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetCurrentProfile().getThumb();
       value = thumb.empty() ? "DefaultUser.png" : thumb;
       return true;
     }
@@ -280,7 +278,7 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
       return true;
     case SYSTEM_STEREOSCOPIC_MODE:
     {
-      int iStereoMode = CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE);
+      int iStereoMode = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE);
       value = StringUtils::Format("%i", iStereoMode);
       return true;
     }
@@ -384,10 +382,9 @@ bool CSystemGUIInfo::GetInt(int& value, const CGUIListItem *gitem, int contextWi
     case SYSTEM_FREE_MEMORY:
     case SYSTEM_USED_MEMORY:
     {
-      MEMORYSTATUSEX stat;
-      stat.dwLength = sizeof(MEMORYSTATUSEX);
-      GlobalMemoryStatusEx(&stat);
-      int memPercentUsed = static_cast<int>(100.0f * (stat.ullTotalPhys - stat.ullAvailPhys) / stat.ullTotalPhys + 0.5f);
+      KODI::MEMORY::MemoryStatus stat;
+      KODI::MEMORY::GetMemoryStatus(&stat);
+      int memPercentUsed = static_cast<int>(100.0f * (stat.totalPhys - stat.availPhys) / stat.totalPhys + 0.5f);
       if (info.m_info == SYSTEM_FREE_MEMORY)
         value = 100 - memPercentUsed;
       else
@@ -487,6 +484,19 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
     case SYSTEM_MEDIA_DVD:
       value = g_mediaManager.IsDiscInDrive();
       return true;
+    case SYSTEM_MEDIA_AUDIO_CD:
+    #ifdef HAS_DVD_DRIVE
+      if (g_mediaManager.IsDiscInDrive())
+      {
+        MEDIA_DETECT::CCdInfo *pCdInfo = g_mediaManager.GetCdInfo();
+        value = pCdInfo && (pCdInfo->IsAudio(1) || pCdInfo->IsCDExtra(1) || pCdInfo->IsMixedMode(1));
+      }
+      else
+    #endif
+      {
+        value = false;
+      }
+      return true;
 #ifdef HAS_DVD_DRIVE
     case SYSTEM_DVDREADY:
       value = g_mediaManager.GetDriveStatus() != DRIVE_NOT_READY;
@@ -514,7 +524,7 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = g_application.IsDPMSActive();
       return true;
     case SYSTEM_HASLOCKS:
-      value = CServiceBroker::GetProfileManager().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE;
+      value = CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE;
       return true;
     case SYSTEM_HAS_PVR:
       value = true;
@@ -535,7 +545,7 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
 #endif
       return true;
     case SYSTEM_ISMASTER:
-      value = CServiceBroker::GetProfileManager().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE && g_passwordManager.bMasterUser;
+      value = CServiceBroker::GetSettingsComponent()->GetProfileManager()->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE && g_passwordManager.bMasterUser;
       return true;
     case SYSTEM_ISFULLSCREEN:
       value = CServiceBroker::GetWinSystem()->IsFullScreen();
@@ -547,16 +557,16 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = g_application.IsIdleShutdownInhibited();
       return true;
     case SYSTEM_HAS_SHUTDOWN:
-      value = (CServiceBroker::GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) > 0);
+      value = (CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNTIME) > 0);
       return true;
     case SYSTEM_LOGGEDON:
       value = !(CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow() == WINDOW_LOGIN_SCREEN);
       return true;
     case SYSTEM_SHOW_EXIT_BUTTON:
-      value = g_advancedSettings.m_showExitButton;
+      value = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_showExitButton;
       return true;
     case SYSTEM_HAS_LOGINSCREEN:
-      value = CServiceBroker::GetProfileManager().UsingLoginScreen();
+      value = CServiceBroker::GetSettingsComponent()->GetProfileManager()->UsingLoginScreen();
       return true;
     case SYSTEM_INTERNET_STATE:
     {
@@ -611,7 +621,7 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = g_alarmClock.HasAlarm(info.GetData3());
       return true;
     case SYSTEM_GET_BOOL:
-      value = CServiceBroker::GetSettings()->GetBool(info.GetData3());
+      value = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(info.GetData3());
       return true;
     case SYSTEM_SETTING:
     {

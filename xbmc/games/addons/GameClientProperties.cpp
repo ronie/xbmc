@@ -7,19 +7,19 @@
  */
 
 #include "GameClientProperties.h"
+
 #include "GameClient.h"
 #include "ServiceBroker.h"
-#include "addons/IAddon.h"
 #include "addons/AddonManager.h"
 #include "addons/GameResource.h"
+#include "addons/IAddon.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "filesystem/Directory.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/LocalizeStrings.h"
 #include "messaging/helpers/DialogOKHelper.h"
-#include "settings/Settings.h"
-#include "utils/log.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 
 #include <cstring>
 
@@ -38,16 +38,16 @@ CGameClientProperties::CGameClientProperties(const CGameClient& parent, AddonPro
 
 void CGameClientProperties::ReleaseResources(void)
 {
-  for (std::vector<char*>::const_iterator it = m_proxyDllPaths.begin(); it != m_proxyDllPaths.end(); ++it)
-    delete[] *it;
+  for (auto& it : m_proxyDllPaths)
+    delete[] it;
   m_proxyDllPaths.clear();
 
-  for (std::vector<char*>::const_iterator it = m_resourceDirectories.begin(); it != m_resourceDirectories.end(); ++it)
-    delete[] *it;
+  for (auto& it : m_resourceDirectories)
+    delete[] it;
   m_resourceDirectories.clear();
 
-  for (std::vector<char*>::const_iterator it = m_extensions.begin(); it != m_extensions.end(); ++it)
-    delete[] *it;
+  for (auto& it : m_extensions)
+    delete[] it;
   m_extensions.clear();
 }
 
@@ -137,9 +137,17 @@ const char** CGameClientProperties::GetResourceDirectories(void)
       CDirectory::Create(addonProfile);
     }
 
-    char* addonProfileDir = new char[addonProfile.length() + 1];
-    std::strcpy(addonProfileDir, addonProfile.c_str());
-    m_resourceDirectories.push_back(addonProfileDir);
+    // Only add user profile directory if non-empty
+    CFileItemList items;
+    if (CDirectory::GetDirectory(addonProfile, items, "", DIR_FLAG_DEFAULTS))
+    {
+      if (!items.IsEmpty())
+      {
+        char* addonProfileDir = new char[addonProfile.length() + 1];
+        std::strcpy(addonProfileDir, addonProfile.c_str());
+        m_resourceDirectories.push_back(addonProfileDir);
+      }
+    }
 
     char* addonPathDir = new char[addonPath.length() + 1];
     std::strcpy(addonPathDir, addonPath.c_str());
@@ -265,9 +273,9 @@ void CGameClientProperties::AddProxyDll(const GameClientPtr& gameClient)
 
 bool CGameClientProperties::HasProxyDll(const std::string& strLibPath) const
 {
-  for (std::vector<char*>::const_iterator it = m_proxyDllPaths.begin(); it != m_proxyDllPaths.end(); ++it)
+  for (const auto& it : m_proxyDllPaths)
   {
-    if (strLibPath == *it)
+    if (strLibPath == it)
       return true;
   }
   return false;

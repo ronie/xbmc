@@ -8,27 +8,29 @@
 
 #include "GUIDialogVideoSettings.h"
 
-#include <utility>
-
+#include "Application.h"
+#include "GUIPassword.h"
 #include "ServiceBroker.h"
 #include "addons/Skin.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "GUIPassword.h"
-#include "profiles/ProfilesManager.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
+#include "profiles/ProfileManager.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
-#include "utils/log.h"
-#include "utils/Variant.h"
-#include "video/VideoDatabase.h"
-#include "Application.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
+#include "settings/lib/SettingsManager.h"
 #include "utils/LangCodeExpander.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/VideoDatabase.h"
 #include "video/ViewModeSettings.h"
+
+#include <utility>
 
 #define SETTING_VIDEO_VIEW_MODE           "video.viewmode"
 #define SETTING_VIDEO_ZOOM                "video.zoom"
@@ -209,11 +211,11 @@ void CGUIDialogVideoSettings::OnSettingAction(std::shared_ptr<const CSetting> se
   const std::string &settingId = setting->GetId();
   if (settingId == SETTING_VIDEO_CALIBRATION)
   {
-    const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+    const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
     // launch calibration window
-    if (profileManager.GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE  &&
-        g_passwordManager.CheckSettingLevelLock(CServiceBroker::GetSettings()->GetSetting(CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION)->GetLevel()))
+    if (profileManager->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE  &&
+        g_passwordManager.CheckSettingLevelLock(CServiceBroker::GetSettingsComponent()->GetSettings()->GetSetting(CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION)->GetLevel()))
       return;
     CServiceBroker::GetGUI()->GetWindowManager().ForceActivateWindow(WINDOW_SCREEN_CALIBRATION);
   }
@@ -224,9 +226,9 @@ void CGUIDialogVideoSettings::OnSettingAction(std::shared_ptr<const CSetting> se
 
 void CGUIDialogVideoSettings::Save()
 {
-  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+  const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (profileManager.GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
+  if (profileManager->GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
       !g_passwordManager.CheckSettingLevelLock(::SettingLevel::Expert))
     return;
 
@@ -242,7 +244,7 @@ void CGUIDialogVideoSettings::Save()
     CMediaSettings::GetInstance().GetDefaultVideoSettings() = g_application.GetAppPlayer().GetVideoSettings();
     CMediaSettings::GetInstance().GetDefaultVideoSettings().m_SubtitleStream = -1;
     CMediaSettings::GetInstance().GetDefaultVideoSettings().m_AudioStream = -1;
-    CServiceBroker::GetSettings()->Save();
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Save();
   }
 }
 
@@ -433,7 +435,7 @@ void CGUIDialogVideoSettings::AddVideoStreams(std::shared_ptr<CSettingGroup> gro
   AddList(group, settingId, 38031, SettingLevel::Basic, m_videoStream, VideoStreamsOptionFiller, 38031);
 }
 
-void CGUIDialogVideoSettings::VideoStreamsOptionFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CGUIDialogVideoSettings::VideoStreamsOptionFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   int videoStreamCount = g_application.GetAppPlayer().GetVideoStreamCount();
 
@@ -472,22 +474,22 @@ void CGUIDialogVideoSettings::VideoStreamsOptionFiller(std::shared_ptr<const CSe
 
     strItem += FormatFlags(info.flags);
     strItem += StringUtils::Format(" (%i/%i)", i + 1, videoStreamCount);
-    list.push_back(make_pair(strItem, i));
+    list.push_back(IntegerSettingOption(strItem, i));
   }
 
   if (list.empty())
   {
-    list.push_back(make_pair(g_localizeStrings.Get(231), -1));
+    list.push_back(IntegerSettingOption(g_localizeStrings.Get(231), -1));
     current = -1;
   }
 }
 
-void CGUIDialogVideoSettings::VideoOrientationFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CGUIDialogVideoSettings::VideoOrientationFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(687), 0));
-  list.push_back(std::make_pair(g_localizeStrings.Get(35229), 90));
-  list.push_back(std::make_pair(g_localizeStrings.Get(35230), 180));
-  list.push_back(std::make_pair(g_localizeStrings.Get(35231), 270));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(687), 0));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(35229), 90));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(35230), 180));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(35231), 270));
 }
 
 std::string CGUIDialogVideoSettings::FormatFlags(StreamFlags flags)

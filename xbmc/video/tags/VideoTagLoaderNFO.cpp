@@ -7,15 +7,16 @@
  */
 
 #include "VideoTagLoaderNFO.h"
+
 #include "FileItem.h"
+#include "NfoFile.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "filesystem/StackDirectory.h"
-#include "NfoFile.h"
-#include "video/VideoInfoTag.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
 
 using namespace XFILE;
 
@@ -40,10 +41,10 @@ CInfoScanner::INFO_TYPE CVideoTagLoaderNFO::Load(CVideoInfoTag& tag,
                                                  std::vector<EmbeddedArt>*)
 {
   CNfoFile nfoReader;
-  CInfoScanner::INFO_TYPE result;
-  if (m_info->Content() == CONTENT_TVSHOWS && !m_item.m_bIsFolder)
+  CInfoScanner::INFO_TYPE result = CInfoScanner::NO_NFO;
+  if (m_info && m_info->Content() == CONTENT_TVSHOWS && !m_item.m_bIsFolder)
     result = nfoReader.Create(m_path, m_info, m_item.GetVideoInfoTag()->m_iEpisode);
-  else
+  else if (m_info)
     result = nfoReader.Create(m_path, m_info);
 
   if (result == CInfoScanner::FULL_NFO || result == CInfoScanner::COMBINED_NFO)

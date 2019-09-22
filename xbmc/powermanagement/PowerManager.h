@@ -8,16 +8,18 @@
 
 #pragma once
 
+#include "IPowerSyscall.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "IPowerSyscall.h"
-
 class CFileItem;
 class CSetting;
 class CSettings;
+
+struct IntegerSettingOption;
 
 // This class will wrap and handle PowerSyscalls.
 // It will handle and decide if syscalls are needed.
@@ -44,7 +46,7 @@ public:
 
   void ProcessEvents();
 
-  static void SettingOptionsShutdownStatesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsShutdownStatesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
 
 private:
   void OnSleep() override;

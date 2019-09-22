@@ -7,12 +7,12 @@
  */
 
 #include "BinaryAddonManager.h"
-#include "BinaryAddonBase.h"
 
+#include "BinaryAddonBase.h"
 #include "ServiceBroker.h"
 #include "addons/AddonManager.h"
-#include "filesystem/SpecialProtocol.h"
 #include "filesystem/Directory.h"
+#include "filesystem/SpecialProtocol.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 
@@ -149,12 +149,6 @@ AddonPtr CBinaryAddonManager::GetRunningAddon(const std::string& addonId) const
 bool CBinaryAddonManager::AddAddonBaseEntry(BINARY_ADDON_LIST_ENTRY& entry)
 {
   BinaryAddonBasePtr base = std::make_shared<CBinaryAddonBase>(entry.second);
-  if (!base->Create())
-  {
-    CLog::Log(LOGERROR, "CBinaryAddonManager::%s: Failed to create base for '%s' and addon not usable", __FUNCTION__, base->ID().c_str());
-    return false;
-  }
-
   m_installedAddons[base->ID()] = base;
   if (entry.first)
     m_enabledAddons[base->ID()] = base;
@@ -163,11 +157,12 @@ bool CBinaryAddonManager::AddAddonBaseEntry(BINARY_ADDON_LIST_ENTRY& entry)
 
 void CBinaryAddonManager::OnEvent(const AddonEvent& event)
 {
-  if (typeid(event) == typeid(AddonEvents::Enabled))
+  if (typeid(event) == typeid(AddonEvents::Enabled)) // also called on install
   {
+    InstalledChangeEvent();
     EnableEvent(event.id);
   }
-  else if (typeid(event) == typeid(AddonEvents::Disabled))
+  else if (typeid(event) == typeid(AddonEvents::Disabled)) // not called on uninstall
   {
     DisableEvent(event.id);
   }
@@ -218,17 +213,17 @@ void CBinaryAddonManager::InstalledChangeEvent()
   BinaryAddonMgrBaseList deletedAddons = m_installedAddons;
   for (auto addon : binaryAddonList)
   {
-    auto knownAddon = m_installedAddons.find(addon.second.ID());
+    auto knownAddon = m_installedAddons.find(addon.second->ID());
     if (knownAddon == m_installedAddons.end())
     {
-      CLog::Log(LOGDEBUG, "CBinaryAddonManager::%s: Adding new binary addon '%s'", __FUNCTION__, addon.second.ID().c_str());
+      CLog::Log(LOGDEBUG, "CBinaryAddonManager::%s: Adding new binary addon '%s'", __FUNCTION__, addon.second->ID().c_str());
 
       if (!AddAddonBaseEntry(addon))
         continue;
     }
     else
     {
-      deletedAddons.erase(addon.second.ID());
+      deletedAddons.erase(addon.second->ID());
     }
   }
 

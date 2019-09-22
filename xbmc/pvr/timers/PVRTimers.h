@@ -8,25 +8,22 @@
 
 #pragma once
 
-#include <map>
-#include <memory>
-#include <vector>
-
 #include "XBDateTime.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "utils/Observer.h"
-
 #include "pvr/PVRSettings.h"
 #include "pvr/PVRTypes.h"
-#include "pvr/timers/PVRTimerInfoTag.h"
+#include "threads/Thread.h"
+#include "utils/Observer.h"
 
-class CFileItem;
-class CFileItemList;
-typedef std::shared_ptr<CFileItem> CFileItemPtr;
+#include <map>
+#include <memory>
+#include <queue>
+#include <vector>
 
 namespace PVR
 {
-  class CPVRRecording;
+  enum class TimerOperationResult;
+
+  class CPVRTimerInfoTag;
   class CPVRTimersPath;
 
   class CPVRTimersContainer
@@ -42,10 +39,10 @@ namespace PVR
     /*!
      * @brief Get the timer tag denoted by given client id and timer id.
      * @param iClientId The client id.
-     * @param iClientTimerId The timer id.
+     * @param iClientIndex The timer id.
      * @return the timer tag if found, null otherwise.
      */
-    CPVRTimerInfoTagPtr GetByClient(int iClientId, unsigned int iClientTimerId) const;
+    CPVRTimerInfoTagPtr GetByClient(int iClientId, int iClientIndex) const;
 
     typedef std::vector<CPVRTimerInfoTagPtr> VecTimerInfoTag;
     typedef std::map<CDateTime, VecTimerInfoTag> MapTags;
@@ -57,14 +54,14 @@ namespace PVR
     const MapTags& GetTags() const { return m_tags; }
 
   protected:
-    void InsertTimer(const CPVRTimerInfoTagPtr &newTimer);
+    void InsertEntry(const std::shared_ptr<CPVRTimerInfoTag>& newTimer);
 
     mutable CCriticalSection m_critSection;
     unsigned int m_iLastId = 0;
     MapTags m_tags;
   };
 
-  class CPVRTimers : public CPVRTimersContainer, public Observer
+  class CPVRTimers : public CPVRTimersContainer, public Observer, private CThread
   {
   public:
     CPVRTimers(void);
@@ -82,40 +79,47 @@ namespace PVR
     void Unload();
 
     /**
-     * @brief refresh the channel list from the clients.
+     * @brief refresh the timer list from the clients.
      */
     bool Update(void);
 
+    /**
+     * @brief load the local timers from database.
+     * @return True if loaded successfully, false otherwise.
+     */
+    bool LoadFromDatabase(void);
+
     /*!
+     * @param bIgnoreReminders include or ignore reminders
      * @return The tv or radio timer that will be active next (state scheduled), or an empty fileitemptr if none.
      */
-    CFileItemPtr GetNextActiveTimer(void) const;
+    std::shared_ptr<CPVRTimerInfoTag> GetNextActiveTimer(bool bIgnoreReminders = true) const;
 
     /*!
-     * @return The tv timer that will be active next (state scheduled), or an empty fileitemptr if none.
+     * @return The tv timer that will be active next (state scheduled), or nullptr if none.
      */
-    CFileItemPtr GetNextActiveTVTimer(void) const;
+    std::shared_ptr<CPVRTimerInfoTag> GetNextActiveTVTimer(void) const;
 
     /*!
-     * @return The radio timer that will be active next (state scheduled), or an empty fileitemptr if none.
+     * @return The radio timer that will be active next (state scheduled), or nullptr if none.
      */
-    CFileItemPtr GetNextActiveRadioTimer(void) const;
+    std::shared_ptr<CPVRTimerInfoTag> GetNextActiveRadioTimer(void) const;
 
     /*!
      * @return All timers that are active (states scheduled or recording)
      */
-    std::vector<CFileItemPtr> GetActiveTimers(void) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetActiveTimers(void) const;
+
+    /*!
+     * @return Next due reminder, if any. Removes it from the queue of due reminders.
+     */
+    std::shared_ptr<CPVRTimerInfoTag> GetNextReminderToAnnnounce();
 
     /*!
      * Get all timers
-     * @param items The list to add the timers to
+     * @return The list of all timers
      */
-    void GetAll(CFileItemList& items) const;
-
-    /*!
-     * @return True when there is at least one timer that is active (states scheduled or recording), false otherwise.
-     */
-    bool HasActiveTimers(void) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetAll() const;
 
     /*!
      * @return The amount of tv and radio timers that are active (states scheduled or recording)
@@ -135,17 +139,17 @@ namespace PVR
     /*!
      * @return All tv and radio timers that are recording
      */
-    std::vector<CFileItemPtr> GetActiveRecordings(void) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetActiveRecordings() const;
 
     /*!
      * @return All tv timers that are recording
      */
-    std::vector<CFileItemPtr> GetActiveTVRecordings(void) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetActiveTVRecordings() const;
 
     /*!
      * @return All radio timers that are recording
      */
-    std::vector<CFileItemPtr> GetActiveRadioRecordings(void) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetActiveRadioRecordings() const;
 
     /*!
      * @return True when recording, false otherwise.
@@ -182,14 +186,6 @@ namespace PVR
     int AmountActiveRadioRecordings(void) const;
 
     /*!
-     * @brief Get all timers for the given path.
-     * @param strPath The vfs path to get the timers for.
-     * @param items The results.
-     * @return True when the path was valid, false otherwise.
-     */
-    bool GetDirectory(const std::string& strPath, CFileItemList &items) const;
-
-    /*!
      * @brief Delete all timers on a channel.
      * @param channel The channel to delete the timers for.
      * @param bDeleteTimerRules True to delete timer rules too, false otherwise.
@@ -208,7 +204,7 @@ namespace PVR
      * @param tag The timer to add.
      * @return True if timer add request was sent correctly, false if not.
      */
-     static bool AddTimer(const CPVRTimerInfoTagPtr &tag);
+    bool AddTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag);
 
     /*!
      * @brief Delete a timer on the client. Doesn't delete the timer from the container. The backend will do this.
@@ -218,56 +214,35 @@ namespace PVR
      * @param bDeleteRule Also delete the timer rule that scheduled the timer instead of single timer only.
      * @return The result.
      */
-    static TimerOperationResult DeleteTimer(const CPVRTimerInfoTagPtr &tag, bool bForce = false, bool bDeleteRule = false);
+    TimerOperationResult DeleteTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag, bool bForce = false, bool bDeleteRule = false);
 
     /*!
      * @brief Rename a timer on the client. Doesn't update the timer in the container. The backend will do this.
      * @param tag The timer to rename.
      * @return True if timer rename request was sent correctly, false if not.
      */
-    static bool RenameTimer(const CPVRTimerInfoTagPtr &tag, const std::string &strNewName);
+    bool RenameTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag, const std::string &strNewName);
 
     /*!
      * @brief Update the timer on the client. Doesn't update the timer in the container. The backend will do this.
      * @param tag The timer to update.
      * @return True if timer update request was sent correctly, false if not.
      */
-    static bool UpdateTimer(const CPVRTimerInfoTagPtr &tag);
+    bool UpdateTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag);
 
     /*!
      * @brief Get the timer tag that matches the given epg tag.
      * @param epgTag The epg tag.
-     * @return The requested timer tag, or an empty fileitemptr if none was found.
+     * @return The requested timer tag, or nullptr if none was found.
      */
     CPVRTimerInfoTagPtr GetTimerForEpgTag(const CPVREpgInfoTagPtr &epgTag) const;
 
     /*!
-     * @brief Check whether there is a timer currently recording the given recording.
-     * @param recording The recording to check.
-     * @return true if there is a timer currently recording the given recording, false otherwise.
-     */
-    bool HasRecordingTimerForRecording(const CPVRRecording &recording) const;
-
-    /*!
-     * @brief Get the timer currently recording the given recording, if any.
-     * @param recording The recording to check.
-     * @return The requested timer tag, or an null if none was found.
-     */
-    CPVRTimerInfoTagPtr GetRecordingTimerForRecording(const CPVRRecording &recording) const;
-
-    /*!
-     * Get the timer rule for a given timer tag
+     * @brief Get the timer rule for a given timer tag
      * @param timer The timer to query the timer rule for
-     * @return The timer rule, or null if none was found.
+     * @return The timer rule, or nullptr if none was found.
      */
     CPVRTimerInfoTagPtr GetTimerRule(const CPVRTimerInfoTagPtr &timer) const;
-
-    /*!
-     * Get the timer rule for a given timer tag
-     * @param item The timer to query the timer rule for
-     * @return The timer rule, or an empty fileitemptr if none was found.
-     */
-    CFileItemPtr GetTimerRule(const CFileItemPtr &item) const;
 
     /*!
      * @brief Update the channel pointers.
@@ -277,18 +252,27 @@ namespace PVR
     void Notify(const Observable &obs, const ObservableMessage msg) override;
 
     /*!
-     * Get a timer tag given it's unique ID
+     * @brief Get a timer tag given it's unique ID
      * @param iTimerId The ID to find
      * @return The tag, or an empty one when not found
      */
     CPVRTimerInfoTagPtr GetById(unsigned int iTimerId) const;
 
   private:
+    void Process() override;
+
+    void RemoveEntry(const std::shared_ptr<CPVRTimerInfoTag>& tag);
     bool UpdateEntries(const CPVRTimersContainer &timers, const std::vector<int> &failedClients);
-    bool GetRootDirectory(const CPVRTimersPath &path, CFileItemList &items) const;
-    bool GetSubDirectory(const CPVRTimersPath &path, CFileItemList &items) const;
-    bool SetEpgTagTimer(const CPVRTimerInfoTagPtr &timer);
-    bool ClearEpgTagTimer(const CPVRTimerInfoTagPtr &timer);
+    bool UpdateEntries(int iMaxNotificationDelay);
+    std::shared_ptr<CPVRTimerInfoTag> UpdateEntry(const std::shared_ptr<CPVRTimerInfoTag>& timer);
+
+    bool AddLocalTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag, bool bNotify);
+    bool DeleteLocalTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag, bool bNotify);
+    bool RenameLocalTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag, const std::string& strNewName);
+    bool UpdateLocalTimer(const std::shared_ptr<CPVRTimerInfoTag>& tag);
+    std::shared_ptr<CPVRTimerInfoTag> PersistAndUpdateLocalTimer(const std::shared_ptr<CPVRTimerInfoTag>& timer,
+                                                                 const std::shared_ptr<CPVRTimerInfoTag>& parentTimer);
+    void NotifyTimersEvent(bool bAddedOrDeleted = true);
 
     enum TimerKind
     {
@@ -299,44 +283,14 @@ namespace PVR
 
     bool KindMatchesTag(const TimerKind &eKind, const CPVRTimerInfoTagPtr &tag) const;
 
-    CFileItemPtr GetNextActiveTimer(const TimerKind &eKind) const;
+    std::shared_ptr<CPVRTimerInfoTag> GetNextActiveTimer(const TimerKind& eKind, bool bIgnoreReminders) const;
     int AmountActiveTimers(const TimerKind &eKind) const;
-    std::vector<CFileItemPtr> GetActiveRecordings(const TimerKind &eKind) const;
+    std::vector<std::shared_ptr<CPVRTimerInfoTag>> GetActiveRecordings(const TimerKind& eKind) const;
     int AmountActiveRecordings(const TimerKind &eKind) const;
 
     bool m_bIsUpdating = false;
     CPVRSettings m_settings;
-  };
-
-  class CPVRTimersPath
-  {
-  public:
-    static const std::string PATH_ADDTIMER;
-    static const std::string PATH_NEW;
-
-    explicit CPVRTimersPath(const std::string &strPath);
-    CPVRTimersPath(const std::string &strPath, int iClientId, unsigned int iParentId);
-    CPVRTimersPath(bool bRadio, bool bTimerRules);
-
-    bool IsValid() const { return m_bValid; }
-
-    const std::string &GetPath() const     { return m_path; }
-    bool              IsTimersRoot() const { return m_bRoot; }
-    bool              IsTimerRule() const  { return !IsTimersRoot(); }
-    bool              IsRadio() const      { return m_bRadio; }
-    bool              IsRules() const      { return m_bTimerRules; }
-    int               GetClientId() const  { return m_iClientId; }
-    unsigned int      GetParentId() const  { return m_iParentId; }
-
-  private:
-    bool Init(const std::string &strPath);
-
-    std::string  m_path;
-    bool         m_bValid;
-    bool         m_bRoot;
-    bool         m_bRadio;
-    bool         m_bTimerRules;
-    int          m_iClientId;
-    unsigned int m_iParentId;
+    std::queue<std::shared_ptr<CPVRTimerInfoTag>> m_remindersToAnnounce;
+    bool m_bReminderRulesUpdatePending = false;
   };
 }

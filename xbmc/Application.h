@@ -10,7 +10,6 @@
 
 #include "XBApplicationEx.h"
 
-#include "addons/AddonSystemSettings.h"
 #include "guilib/IMsgTargetCallback.h"
 #include "windowing/Resolution.h"
 #include "utils/GlobalsHandling.h"
@@ -42,7 +41,6 @@
 #include "threads/Thread.h"
 
 #include "ApplicationPlayer.h"
-#include "FileItem.h"
 
 class CAction;
 class CFileItem;
@@ -50,13 +48,12 @@ class CFileItemList;
 class CKey;
 class CSeekHandler;
 class CInertialScrollingHandler;
-class DPMSSupport;
 class CSplash;
 class CBookmark;
 class IActionListener;
 class CGUIComponent;
 class CAppInboundProtocol;
-class CSettings;
+class CSettingsComponent;
 
 namespace ADDON
 {
@@ -152,7 +149,6 @@ public:
 
   bool CreateGUI();
   bool InitWindow(RESOLUTION res = RES_INVALID);
-  bool DestroyWindow();
   void StartServices();
   void StopServices();
 
@@ -310,32 +306,9 @@ public:
 
   int GlobalIdleTime();
 
-  void EnablePlatformDirectories(bool enable=true)
-  {
-    m_bPlatformDirectories = enable;
-  }
-
-  bool PlatformDirectoriesEnabled()
-  {
-    return m_bPlatformDirectories;
-  }
-
-  void SetStandAlone(bool value);
-
-  bool IsStandAlone()
-  {
-    return m_bStandalone;
-  }
-
-  void SetEnableTestMode(bool value)
-  {
-    m_bTestMode = value;
-  }
-
-  bool IsEnableTestMode()
-  {
-    return m_bTestMode;
-  }
+  bool PlatformDirectoriesEnabled() { return m_bPlatformDirectories; }
+  bool IsStandAlone() { return m_bStandalone; }
+  bool IsEnableTestMode() { return m_bTestMode; }
 
   bool IsAppFocused() const { return m_AppFocused; }
 
@@ -344,7 +317,7 @@ public:
 
   bool SwitchToFullScreen(bool force = false);
 
-  bool GetRenderGUI() const { return m_renderGUI; };
+  bool GetRenderGUI() const override { return m_renderGUI; };
 
   bool SetLanguage(const std::string &strLanguage);
   bool LoadLanguage(bool reload);
@@ -376,6 +349,8 @@ public:
   */
   void UnlockFrameMoveGuard();
 
+  void SetRenderGUI(bool renderGUI);
+
 protected:
   bool OnSettingsSaving() const override;
   bool Load(const TiXmlNode *settings) override;
@@ -391,7 +366,6 @@ protected:
 
   // inbound protocol
   bool OnEvent(XBMC_Event& newEvent);
-  void SetRenderGUI(bool renderGUI);
 
   /*!
    \brief Delegates the action to all registered action handlers.
@@ -401,7 +375,7 @@ protected:
   bool NotifyActionListeners(const CAction &action) const;
 
   std::shared_ptr<ANNOUNCEMENT::CAnnouncementManager> m_pAnnouncementManager;
-  std::shared_ptr<CSettings> m_pSettings;
+  std::unique_ptr<CSettingsComponent> m_pSettingsComponent;
   std::unique_ptr<CGUIComponent> m_pGUI;
   std::unique_ptr<CWinSystemBase> m_pWinSystem;
   std::unique_ptr<ActiveAE::CActiveAE> m_pActiveAE;
@@ -447,14 +421,13 @@ protected:
 
   bool m_bInhibitIdleShutdown = false;
 
-  std::unique_ptr<DPMSSupport> m_dpms;
   bool m_dpmsIsActive = false;
   bool m_dpmsIsManual = false;
 
   CFileItemPtr m_itemCurrentFile;
 
   std::string m_prevMedia;
-  ThreadIdentifier m_threadID = 0;       // application thread ID.  Used in applicationMessenger to know where we are firing a thread with delay from.
+  std::thread::id m_threadID;       // application thread ID.  Used in applicationMessenger to know where we are firing a thread with delay from.
   bool m_bInitializing = true;
   bool m_bPlatformDirectories = true;
 
@@ -482,10 +455,6 @@ protected:
   bool PlayStack(CFileItem& item, bool bRestart);
 
   float NavigationIdleTime();
-  bool InitDirectoriesLinux();
-  bool InitDirectoriesOSX();
-  bool InitDirectoriesWin32();
-  void CreateUserDirs() const;
   void HandlePortEvents();
 
   /*! \brief Helper method to determine how to handle TMSG_SHUTDOWN

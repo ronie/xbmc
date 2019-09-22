@@ -12,10 +12,14 @@
 #include <vector>
 
 class CURL;
+class CAdvancedSettings;
 
 class URIUtils
 {
 public:
+  static void RegisterAdvancedSettings(const CAdvancedSettings& advancedSettings);
+  static void UnregisterAdvancedSettings();
+
   static std::string GetDirectory(const std::string &strFilePath);
 
   static std::string GetFileName(const CURL& url);
@@ -148,7 +152,9 @@ public:
   static bool IsAndroidApp(const std::string& strFile);
   static bool IsLibraryFolder(const std::string& strFile);
   static bool IsLibraryContent(const std::string& strFile);
+  static bool IsPVR(const std::string& strFile);
   static bool IsPVRChannel(const std::string& strFile);
+  static bool IsPVRChannelGroup(const std::string& strFile);
   static bool IsPVRGuideItem(const std::string& strFile);
   static bool IsUsingFastSwitch(const std::string& strFile);
 
@@ -216,5 +222,7 @@ public:
 
 private:
   static std::string resolvePath(const std::string &path);
+
+  static const CAdvancedSettings* m_advancedSettings;
 };
 
