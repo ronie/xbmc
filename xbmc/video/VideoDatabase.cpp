@@ -7134,13 +7134,13 @@ bool CVideoDatabase::GetItems(const std::string &strBaseDir, const std::string &
 bool CVideoDatabase::GetItems(const std::string &strBaseDir, VIDEODB_CONTENT_TYPE mediaType, const std::string &itemType, CFileItemList &items, const Filter &filter /* = Filter() */, const SortDescription &sortDescription /* = SortDescription() */)
 {
   if (StringUtils::EqualsNoCase(itemType, "movies") && (mediaType == VIDEODB_CONTENT_MOVIES || mediaType == VIDEODB_CONTENT_MOVIE_SETS))
-    return GetMoviesByWhere(strBaseDir, filter, items, sortDescription);
+    return GetMoviesByWhere(strBaseDir, filter, items, sortDescription, VideoDbDetailsRating | VideoDbDetailsUniqueID);
   else if (StringUtils::EqualsNoCase(itemType, "tvshows") && mediaType == VIDEODB_CONTENT_TVSHOWS)
-    return GetTvShowsByWhere(strBaseDir, filter, items, sortDescription);
+    return GetTvShowsByWhere(strBaseDir, filter, items, sortDescription, VideoDbDetailsRating | VideoDbDetailsUniqueID);
   else if (StringUtils::EqualsNoCase(itemType, "musicvideos") && mediaType == VIDEODB_CONTENT_MUSICVIDEOS)
     return GetMusicVideosByWhere(strBaseDir, filter, items, true, sortDescription);
   else if (StringUtils::EqualsNoCase(itemType, "episodes") && mediaType == VIDEODB_CONTENT_EPISODES)
-    return GetEpisodesByWhere(strBaseDir, filter, items, true, sortDescription);
+    return GetEpisodesByWhere(strBaseDir, filter, items, true, sortDescription, VideoDbDetailsRating | VideoDbDetailsUniqueID);
   else if (StringUtils::EqualsNoCase(itemType, "seasons") && mediaType == VIDEODB_CONTENT_TVSHOWS)
     return GetSeasonsNav(strBaseDir, items);
   else if (StringUtils::EqualsNoCase(itemType, "genres"))
