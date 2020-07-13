@@ -14,7 +14,7 @@ jobs:
     - uses: damccorm/tag-ur-it@master
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        configuration-path: "./triage-rules.yml"
+#        configuration-path: "./triage-rules.yml"
 
     - if: always()
       uses: actions/github-script@0.4.0
