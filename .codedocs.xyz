@@ -4,4 +4,4 @@ DOXYFILE=docs/doxygen/Doxyfile.doxy
 
 PROJECT_LOGO=docs/doxygen/Thumbnail-symbol-whitebg-small.jpg
 
-INPUT=xbmc\docs/CODE_GUIDELINES.md\docs/doxygen
+INPUT=xbmc/docs/CODE_GUIDELINES.md/d/ocs/doxygen
