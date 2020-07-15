@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+-*- coding: utf-8 -*-
 import difflib
 
 def discogs_albumfind(data, artist, album):
