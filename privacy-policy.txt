@@ -1,5 +1,5 @@
 [B]Kodi Privacy Policy[/B]
-[I]2016 Oct 23[/I]
+[I]July 15 2020[/I]
 
 Your privacy is an important factor that the XBMC Foundation and Team Kodi considers in the development of all of our software and services. We are committed to being transparent and open. This Privacy Policy explains generally how we receive information about you, and what we do with that information once we have it.
 
@@ -17,9 +17,9 @@ If we store your personal information with information that is non-personal, we 
 
 We learn information about you when:
 
-    • you give it to us directly (e.g., when you choose to send us logs in the forums);
-    • we collect it automatically through our software and services (e.g., when your Kodi connects with our servers to update add-ons, or in download statistics provided by Google Play);
-    • when we try and understand more about you based on information you’ve given to us (e.g., when we use your platform information provided to the add-on server to figure out which platforms use Kodi the most, to better understand where we should focus our efforts).
+• You give it to us directly (e.g., when you choose to send us logs in the forums);
+• We collect it automatically through our software and services (e.g., when your Kodi connects with our servers to update add-ons, or in download statistics provided by Google Play).
+• When we try and understand more about you based on information you’ve given to us (e.g., when we use your platform information provided to the add-on server to figure out which platforms use Kodi the most, to better understand where we should focus our efforts).
 
 
 [B]What do we do with your information once we have it?[/B]
@@ -29,10 +29,10 @@ Generally, we use your information to help us provide and improve our software a
 
 [B]When do we share your information with others?[/B]
 
-    • When we have asked and received your permission to share it.
-    • When we are fulfilling our educational purpose. We sometimes publicly release information to make our software better and foster an open web, but when we do so, we will remove your personal information and try to disclose it in a way that minimizes the risk of you being re-identified. For example, in a blog post we might attempt to analyze from available data how many active users of Kodi existed at the time and share that info with the community.
-    • When the law requires it. To date, this has never happened, and we do not anticipate it happening in the future, as the majority of the information we collect is already almost entirely anonymous and never shows unique user behavior, except in voluntarily submitted logs on our forum.
-    • If our organizational structure or status changes (if we undergo a restructuring, are acquired, or go bankrupt) we may pass your information to a successor or affiliate.
+• When we have asked and received your permission to share it.
+• When we are fulfilling our educational purpose. We sometimes publicly release information to make our software better and foster an open web, but when we do so, we will remove your personal information and try to disclose it in a way that minimizes the risk of you being re-identified. For example, in a blog post we might attempt to analyze from available data how many active users of Kodi existed at the time and share that info with the community.
+• When the law requires it. To date, this has never happened, and we do not anticipate it happening in the future, as the majority of the information we collect is already almost entirely anonymous and never shows unique user behavior, except in voluntarily submitted logs on our forum.
+• If our organizational structure or status changes (if we undergo a restructuring, are acquired, or go bankrupt) we may pass your information to a successor or affiliate.
 
 
 [B]How do we store and protect your personal information?[/B]
