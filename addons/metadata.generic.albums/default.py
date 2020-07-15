@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+-*- coding: utf-8 -*-
 import sys
 from urllib.parse import parse_qsl
 from lib.scraper import Scraper
