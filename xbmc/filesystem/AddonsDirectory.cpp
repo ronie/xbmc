@@ -502,10 +502,18 @@ static void OutdatedAddons(const CURL& path, CFileItemList &items)
 
   if (!items.IsEmpty())
   {
-    CFileItemPtr item(new CFileItem("addons://update_all/", false));
-    item->SetLabel(g_localizeStrings.Get(24122));
-    item->SetSpecialSort(SortSpecialOnTop);
-    items.Add(item);
+    if (CAddonSystemSettings::GetInstance().GetAddonAutoUpdateMode() == AUTO_UPDATES_ON)
+    {
+      CFileItemPtr itemUpdateAllowed(new CFileItem("addons://update_allowed/", false));
+      itemUpdateAllowed->SetLabel(g_localizeStrings.Get(24137));
+      itemUpdateAllowed->SetSpecialSort(SortSpecialOnTop);
+      items.Add(itemUpdateAllowed);
+    }
+
+    CFileItemPtr itemUpdateEverything(new CFileItem("addons://update_all/", false));
+    itemUpdateEverything->SetLabel(g_localizeStrings.Get(24122));
+    itemUpdateEverything->SetSpecialSort(SortSpecialOnTop);
+    items.Add(itemUpdateEverything);
   }
 }
 
