@@ -5,16 +5,14 @@
 			<include>OpenClose_Right</include>
 			<visible>Control.IsVisible(55)</visible>
 			<include>Visible_Right</include>
-			<control type="fixedlist" id="55">
+			<control type="wraplist" id="55">
 				<left>594</left>
-				<top>list_y_offset</top>
-				<bottom>list_y_offset</bottom>
+				<top>100</top>
+				<height>880</height>
 				<right>0</right>
 				<scrolltime tween="cubic" easing="out">500</scrolltime>
 				<orientation>vertical</orientation>
 				<pagecontrol>531</pagecontrol>
-				<movement>5</movement>
-				<focusposition>6</focusposition>
 				<onleft>9000</onleft>
 				<onright>531</onright>
 				<onup>55</onup>
