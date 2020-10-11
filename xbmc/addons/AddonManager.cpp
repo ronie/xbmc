@@ -211,7 +211,10 @@ bool CAddonMgr::ReloadSettings(const std::string &id)
 
 std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetAvailableUpdates() const
 {
-  return GetAvailableUpdatesOrOutdatedAddons(false);
+  std::vector<std::shared_ptr<IAddon>> availableUpdates =
+      GetAvailableUpdatesOrOutdatedAddons(false);
+
+  return availableUpdates;
 }
 
 std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetOutdatedAddons() const
