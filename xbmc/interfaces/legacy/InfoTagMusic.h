@@ -72,6 +72,23 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_InfoTagMusic
+      /// @brief \python_func{ getAlbumId() }
+      /// Returns the database albumid from music tag if present.
+      ///
+      /// @return [integer] Music album database id.
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      /// @python_v19 New function added.
+      ///
+      getAlbumId();
+#else
+      int getAlbumId();
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_InfoTagMusic
       /// @brief \python_func{ getURL() }
       /// Returns url of source as string from music info tag.
       ///

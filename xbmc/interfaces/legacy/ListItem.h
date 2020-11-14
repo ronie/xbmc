@@ -628,6 +628,7 @@ namespace XBMCAddon
       /// | lastplayed               | string (%Y-%m-%d %h:%m:%s = 2009-04-05 23:16:04)
       /// | mediatype                | string - "music", "song", "album", "artist"
       /// | dbid                     | integer (23) - Only add this for items which are part of the local db. You also need to set the correct 'mediatype'!
+      /// | albumid                  | integer (27) - Only add this for items which are part of the local db.
       /// | listeners                | integer (25614)
       /// | musicbrainztrackid       | string (cd1de9af-0b71-4503-9f96-9f5efe27923c)
       /// | musicbrainzartistid      | string (d87e52c5-bb8d-4da8-b941-9f4928627dc8)
@@ -665,6 +666,7 @@ namespace XBMCAddon
       /// @python_v18 Added new **game** type and associated infolabels.
       /// Added labels **dbid** (music), **setoverview**, **tag**, **sortepisode**, **sortseason**, **episodeguide**, **showlink**.
       /// Extended labels **genre**, **country**, **director**, **studio**, **writer**, **tag**, **credits** to also use a list of strings.
+      /// @python_v19 Added new label **albumid** (music).
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}

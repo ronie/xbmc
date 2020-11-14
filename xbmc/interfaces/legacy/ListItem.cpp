@@ -514,6 +514,8 @@ namespace XBMCAddon
             musictag.SetListeners(strtol(value.c_str(), nullptr, 10));
           else if (key == "playcount")
             musictag.SetPlayCount(strtol(value.c_str(), nullptr, 10));
+          else if (key == "albumid")
+            musictag.SetAlbumId(strtol(value.c_str(), nullptr, 10));
           else if (key == "genre")
             musictag.SetGenre(value);
           else if (key == "album")

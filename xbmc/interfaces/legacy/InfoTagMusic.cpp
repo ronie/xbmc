@@ -38,6 +38,11 @@ namespace XBMCAddon
       return infoTag->GetDatabaseId();
     }
 
+    int InfoTagMusic::getAlbumId()
+    {
+      return infoTag->GetAlbumId();
+    }
+
     String InfoTagMusic::getURL()
     {
       return infoTag->GetURL();
