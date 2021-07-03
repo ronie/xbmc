@@ -1,7 +1,4 @@
 # Kodi Media Center language file
-# Addon Name: Dim
-# Addon id: screensaver.xbmc.builtin.dim
-# Addon Provider: Team Kodi
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
@@ -16,6 +13,3 @@ msgstr ""
 "Language: lv_LV\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);\n"
 
-msgctxt "#30000"
-msgid "Dim level"
-msgstr "Aptumsuma līmenis"
