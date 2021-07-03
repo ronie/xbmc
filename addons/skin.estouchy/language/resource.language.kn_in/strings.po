@@ -1,7 +1,4 @@
 # Kodi Media Center language file
-# Addon Name: Estouchy
-# Addon id: skin.estouchy
-# Addon Provider: Team Kodi
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
