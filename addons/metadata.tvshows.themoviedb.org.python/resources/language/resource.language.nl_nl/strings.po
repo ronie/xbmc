@@ -1,0 +1,38 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Dutch (Netherlands) (https://www.transifex.com/teamxbmc/teams/40581/nl_NL/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: nl_NL\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Voorkeurstaal"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Prefix"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Behoud oorspronkelijke titel"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Toon fanart"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Geavanceerd"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Uitgebreide foutregistratie"

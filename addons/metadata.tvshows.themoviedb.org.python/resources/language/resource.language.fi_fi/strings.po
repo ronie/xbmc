@@ -1,0 +1,134 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Finnish (Finland) (https://www.transifex.com/teamxbmc/teams/40581/fi_FI/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fi_FI\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Ensisijainen kieli"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "Ensisijainen luokitusmaa"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Sisällytä luokituksen etuliite"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Etuliite"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Pidä alkuperäinen nimi"
+
+msgctxt "#30005"
+msgid "Categorize fanart with text as landscape art"
+msgstr "Luokittele tekstiä sisältävä fanitaide landscape-kuvaksi"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "Asiakasavain (valinnainen)"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Käytä fanitaidetta"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Käytä julistetta"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "Käytä banneria"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "Käytä logoa"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "Käytä clearart-kuvia"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "Käytä landscape-kuvia"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "Käytä character art -kuvia"
+
+msgctxt "#30109"
+msgid "Include art from fanart.tv"
+msgstr "Sisällytä kuvat fanart-tv-sivustolta"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "Käytä kausijulistetta"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "Käytä kausibanneria"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "Käytä tuotantokausille landscape-kuvia"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Lisäasetukset"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Monipuolinen vianselvitysloki"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Arviot"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Oletusarvion lähde"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "Lisää myös IMDb-arviot"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "Lisää myös Trakt.tv-arviot"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "Lisää TMDb-arviot"
+
+msgctxt "#30305"
+msgid "Enable Trailer"
+msgstr "Lataa trailerit"
+
+msgctxt "#30306"
+msgid "Addon Player"
+msgstr "Videolisäosa"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"
+
+msgctxt "#30308"
+msgid "Tubed"
+msgstr "Tubed"

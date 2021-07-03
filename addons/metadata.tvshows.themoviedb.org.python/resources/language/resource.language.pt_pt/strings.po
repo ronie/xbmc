@@ -1,0 +1,134 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Portuguese (Portugal) (https://www.transifex.com/teamxbmc/teams/40581/pt_PT/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pt_PT\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Língua preferida"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "País de certificação preferido"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Incluir o prefixo de certificação"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Prefixo"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Manter título original"
+
+msgctxt "#30005"
+msgid "Categorize fanart with text as landscape art"
+msgstr "Categorizar fanart com o texto em arte de paisagem"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "Chave cliente (opcional)"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Ativar fanart"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Ativar poster"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "Ativar banner"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "Ativar logótipo simples"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "Ativar arte simples"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "Ativar modo paisagem"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "Ativar arte de caracter"
+
+msgctxt "#30109"
+msgid "Include art from fanart.tv"
+msgstr "Incluir arte de fanart.tv"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "Ativar poster da temporada"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "Ativar banner da temporada"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "Ativar paisagem da temporada"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Avançado"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Registo de depuração detalhada"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Pontuação"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Pontuação por defeito de"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "Adicionar também a pontuação do IMDb"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "Adicionar também a pontuação do Trakt.tv"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "Adicionar também a pontuação do TMDb"
+
+msgctxt "#30305"
+msgid "Enable Trailer"
+msgstr "Ativar trailer"
+
+msgctxt "#30306"
+msgid "Addon Player"
+msgstr "Addon Player"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"
+
+msgctxt "#30308"
+msgid "Tubed"
+msgstr "Tubed"

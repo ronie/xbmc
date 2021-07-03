@@ -1,0 +1,50 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Romanian (Romania) (https://www.transifex.com/teamxbmc/teams/40581/ro_RO/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ro_RO\n"
+"Plural-Forms: nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?2:1));\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Limba preferată"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "Țara de certificare preferată"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Include prefixul certificării"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Prefix"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Păstrează numele original"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Acitvează afiș"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Avansat"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Evaluări"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"

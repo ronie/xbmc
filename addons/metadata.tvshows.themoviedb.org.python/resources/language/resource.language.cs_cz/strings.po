@@ -1,0 +1,42 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Czech (Czech Republic) (https://www.transifex.com/teamxbmc/teams/40581/cs_CZ/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: cs_CZ\n"
+"Plural-Forms: nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n >= 2 && n <= 4 && n % 1 == 0) ? 1: (n % 1 != 0 ) ? 2 : 3;\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Preferovaný jazyk"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Zapnout fanart"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Povolit plakát"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Rozšířené"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Hodnocení"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Výchozí hodnocení z"

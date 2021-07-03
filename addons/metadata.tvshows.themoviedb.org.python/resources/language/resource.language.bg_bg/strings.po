@@ -1,0 +1,134 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Bulgarian (Bulgaria) (https://www.transifex.com/teamxbmc/teams/40581/bg_BG/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: bg_BG\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Предпочитан език"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "Предпочитана държава за сертифициране"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Да се включва префикса на сертифицирането"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Префикс"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Запазване на оригиналното заглавие"
+
+msgctxt "#30005"
+msgid "Categorize fanart with text as landscape art"
+msgstr "Категоризиране на фен-арта с текст като пейзажни изображения"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "Клиентски ключ (незадължително)"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Включване на фен-арта"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Включване на постера"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "Включване на банера"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "Включване на изчистеното лого"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "Включване на изчистеното изображение"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "Включване на пейзажа"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "Включване на изображението на персонажа"
+
+msgctxt "#30109"
+msgid "Include art from fanart.tv"
+msgstr "Включване на изображения от fanart.tv"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "Включване на сезонния постер"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "Включване на сезонния банер"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "Включване на сезонния пейзаж"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Допълнителни"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Подробна информация за дебъгване"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Оценки"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Оценка по подразбиране от"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "Да се добавят и оценките от IMDb"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "Да се добавят и оценките от Trakt.tv"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "Да се добавят и оценките от TMDb"
+
+msgctxt "#30305"
+msgid "Enable Trailer"
+msgstr "Включване на трейлъра"
+
+msgctxt "#30306"
+msgid "Addon Player"
+msgstr "Плеър от добавката"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"
+
+msgctxt "#30308"
+msgid "Tubed"
+msgstr "Tubed"

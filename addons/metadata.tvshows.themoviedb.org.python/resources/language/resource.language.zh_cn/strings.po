@@ -1,0 +1,138 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Chinese (China) (https://www.transifex.com/teamxbmc/teams/40581/zh_CN/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "首选语言"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "首选分级国家"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "包括分级前缀"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "前缀"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "保留原片名"
+
+msgctxt "#30005"
+msgid "Categorize fanart with text as landscape art"
+msgstr "包含文字的同人画归类为场景贴画"
+
+msgctxt "#30006"
+msgid "Include country code with studio"
+msgstr "制片人包含国家代码"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "客户端密钥（可选）"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "启用同人画"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "启用海报"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "启用横幅"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "启用徽标贴画"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "启用剪贴画"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "启用剧照贴画"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "启用角色贴画"
+
+msgctxt "#30109"
+msgid "Include art from fanart.tv"
+msgstr "包括 fanart.tv 的艺术图片"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "启用季海报"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "启用季横幅"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "启用季剧照贴画"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "高级"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "详细的调试日志"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "评分"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "默认评分来自"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "同时加入 IMDb 评分"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "同时加入 Trakt.tv 评分"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "同时加入 TMDb 评分"
+
+msgctxt "#30305"
+msgid "Enable Trailer"
+msgstr "启用预告片"
+
+msgctxt "#30306"
+msgid "Addon Player"
+msgstr "插件播放器"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"
+
+msgctxt "#30308"
+msgid "Tubed"
+msgstr "Tubed"

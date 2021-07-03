@@ -1,0 +1,114 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Afrikaans (South Africa) (https://www.transifex.com/teamxbmc/teams/40581/af_ZA/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: af_ZA\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Verkose taal"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "Verkose sertifisering land"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Sluit sertifisering voorvoegsel in"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Voorvoegsel"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Hou oorspronklike titel"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "Kliënt sleutel (opsioneel)"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Stel ondersteunerkuns in staat"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Stel plakkaat in staat"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "Stel banier in staat"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "Stel clearlogo in staat"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "Stel clearart in staat"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "Stel landskap in staat"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "Stel karakter kuns in staat"
+
+msgctxt "#30109"
+msgid "Include art from fanart.tv"
+msgstr "Sluit kuns vanaf fanart.tv in"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "Stel seisoen plakkaat in staat"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "Stel seisoen banier in staat"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "Stel seisoen landskap in staat"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Gevorderde"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Breedvoerige ontfout loghouding"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Graderings"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Verstek gradering vanaf"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "Voeg ook IMDB graderings by"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "Voeg ook Trak.tv graderings by"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "Voeg ook TMDb graderings by"

@@ -1,0 +1,114 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Kodi Translation Team\n"
+"Language-Team: Polish (Poland) (https://www.transifex.com/teamxbmc/teams/40581/pl_PL/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pl_PL\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+
+msgctxt "#30000"
+msgid "Preferred language"
+msgstr "Preferowany język"
+
+msgctxt "#30001"
+msgid "Preferred certification country"
+msgstr "Preferowany kraj certyfikacji"
+
+msgctxt "#30002"
+msgid "Include certification prefix"
+msgstr "Dołącz prefiks certyfikacji"
+
+msgctxt "#30003"
+msgid "Prefix"
+msgstr "Prefiks"
+
+msgctxt "#30004"
+msgid "Keep original title"
+msgstr "Zachowaj oryginalny tytuł"
+
+msgctxt "#30100"
+msgid "Fanart.tv"
+msgstr "Fanart.tv"
+
+msgctxt "#30101"
+msgid "Client key (optional)"
+msgstr "Klucz klienta (opcjonalnie)"
+
+msgctxt "#30102"
+msgid "Enable fanart"
+msgstr "Włącz fanart"
+
+msgctxt "#30103"
+msgid "Enable poster"
+msgstr "Włącz plakat"
+
+msgctxt "#30104"
+msgid "Enable banner"
+msgstr "Włącz baner"
+
+msgctxt "#30105"
+msgid "Enable clearlogo"
+msgstr "Włącz Clearlogo"
+
+msgctxt "#30106"
+msgid "Enable clearart"
+msgstr "Włącz Clearart"
+
+msgctxt "#30107"
+msgid "Enable landscape"
+msgstr "Włącz krajobraz"
+
+msgctxt "#30108"
+msgid "Enable character art"
+msgstr "Włącz grafikę postaci"
+
+msgctxt "#30150"
+msgid "Enable season poster"
+msgstr "Włącz plakat sezonu"
+
+msgctxt "#30151"
+msgid "Enable season banner"
+msgstr "Włącz baner sezonu"
+
+msgctxt "#30152"
+msgid "Enable season landscape"
+msgstr "Włącz krajobraz sezonu"
+
+msgctxt "#30200"
+msgid "Advanced"
+msgstr "Zaawansowane"
+
+msgctxt "#30201"
+msgid "Verbose debug logging"
+msgstr "Pełne rejestrowanie debugowania"
+
+msgctxt "#30300"
+msgid "Ratings"
+msgstr "Oceny"
+
+msgctxt "#30301"
+msgid "Default rating from"
+msgstr "Ocena domyślna od"
+
+msgctxt "#30302"
+msgid "Also add IMDb ratings"
+msgstr "Dodaj także oceny IMDb"
+
+msgctxt "#30303"
+msgid "Also add Trakt.tv ratings"
+msgstr "Dodaj także oceny w Trakt.tv"
+
+msgctxt "#30304"
+msgid "Also add TMDb ratings"
+msgstr "Dodaj także oceny TMDb"
+
+msgctxt "#30307"
+msgid "YouTube"
+msgstr "YouTube"
